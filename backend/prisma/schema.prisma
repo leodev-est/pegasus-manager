@@ -1,0 +1,238 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id                 String     @id @default(uuid())
+  name               String
+  username           String     @unique
+  email              String?    @unique
+  password           String
+  active             Boolean    @default(true)
+  mustChangePassword Boolean    @default(false)
+  athleteId          String?    @unique
+  createdAt          DateTime   @default(now())
+  updatedAt          DateTime   @updatedAt
+  athlete            Athlete?   @relation(fields: [athleteId], references: [id], onDelete: SetNull)
+  roles              UserRole[]
+  notifications      Notification[]
+}
+
+model Role {
+  id          String           @id @default(uuid())
+  name        String           @unique
+  description String?
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+  users       UserRole[]
+  permissions RolePermission[]
+}
+
+model Permission {
+  id          String           @id @default(uuid())
+  key         String           @unique
+  name        String
+  description String?
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+  roles       RolePermission[]
+}
+
+model UserRole {
+  id        String   @id @default(uuid())
+  userId    String
+  roleId    String
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role      Role     @relation(fields: [roleId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, roleId])
+}
+
+model RolePermission {
+  id           String     @id @default(uuid())
+  roleId       String
+  permissionId String
+  createdAt    DateTime   @default(now())
+  role         Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  permission   Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+
+  @@unique([roleId, permissionId])
+}
+
+model Athlete {
+  id                   String    @id @default(uuid())
+  name                 String
+  email                String?
+  phone                String?
+  category             String?
+  position             String?
+  status               String    @default("teste")
+  activatedAt          DateTime?
+  monthlyPaymentStatus String    @default("pendente")
+  notes                String?
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
+  payments             Payment[]
+  user                 User?
+  attendances          TrainingAttendance[]
+  evaluation           AthleteEvaluation?
+}
+
+model AthleteApplication {
+  id           String   @id @default(uuid())
+  name         String
+  email        String?
+  phone        String?
+  category     String?
+  position     String?
+  contribution String?
+  source       String   @default("site")
+  status       String   @default("pendente")
+  notes        String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+model Payment {
+  id          String    @id @default(uuid())
+  athleteId   String?
+  description String
+  amount      Decimal   @db.Decimal(10, 2)
+  type        String
+  category    String?
+  status      String    @default("pendente")
+  dueDate     DateTime?
+  paidAt      DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  athlete     Athlete?  @relation(fields: [athleteId], references: [id], onDelete: SetNull)
+}
+
+model CashMovement {
+  id          String   @id @default(uuid())
+  description String
+  amount      Decimal  @db.Decimal(10, 2)
+  type        String
+  category    String?
+  date        DateTime
+  responsible String?
+  notes       String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model Task {
+  id          String    @id @default(uuid())
+  title       String
+  description String?
+  status      String    @default("todo")
+  area        String    @default("management")
+  assignedTo  String?
+  dueDate     DateTime?
+    priority    String    @default("media")
+    channel     String?
+    labels      Json      @default("[]")
+    comments    Json      @default("[]")
+    checklist   Json      @default("[]")
+    createdAt   DateTime  @default(now())
+    updatedAt   DateTime  @updatedAt
+  }
+
+model Training {
+  id        String   @id @default(uuid())
+  date      DateTime
+  title     String
+  category  String?
+  objective String?
+  warmup    String?
+  fundamentals String?
+  mainPart  String?
+  reducedGame String?
+  finalPart String?
+  notes     String?
+  createdBy String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  attendances TrainingAttendance[]
+}
+
+model TrainingAttendance {
+  id          String   @id @default(uuid())
+  trainingId  String
+  athleteId   String
+  status      String   @default("presente")
+  checkedInAt DateTime @default(now())
+  notes       String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  training    Training @relation(fields: [trainingId], references: [id], onDelete: Cascade)
+  athlete     Athlete  @relation(fields: [athleteId], references: [id], onDelete: Cascade)
+
+  @@unique([trainingId, athleteId])
+}
+
+model AthleteEvaluation {
+  id           String   @id @default(uuid())
+  athleteId    String   @unique
+  selfRating   Float?
+  strengths    String?
+  improvements String?
+  technical    Float?
+  physical     Float?
+  tactical     Float?
+  mental       Float?
+  coachNotes   String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  athlete      Athlete  @relation(fields: [athleteId], references: [id], onDelete: Cascade)
+}
+
+model Notification {
+  id        String   @id @default(uuid())
+  userId    String
+  title     String
+  message   String
+  type      String
+  read      Boolean  @default(false)
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Formation {
+  id        String   @id @default(uuid())
+  name      String
+  createdBy String
+  positions Json
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model School {
+  id          String   @id @default(uuid())
+  name        String
+  contact     String?
+  phone       String?
+  email       String?
+  region      String?
+  status      String   @default("nao_contatada")
+  responsible String?
+  nextAction  String?
+  notes       String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model Spreadsheet {
+  id          String   @id @default(uuid())
+  name        String
+  url         String
+  description String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
