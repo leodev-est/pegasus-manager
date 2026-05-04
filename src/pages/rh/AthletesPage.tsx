@@ -1,4 +1,4 @@
-﻿import { Download, Loader2, Plus, UserCheck } from "lucide-react";
+﻿import { ChevronDown, ChevronUp, Download, Loader2, Plus, UserCheck, UserX } from "lucide-react";
 import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 import { useAuth } from "../../auth/AuthContext";
 import { ActionButtons } from "../../components/ui/ActionButtons";
@@ -41,7 +41,6 @@ const statusOptions = [
   { label: "Todos os status", value: "todos" },
   { label: "Ativo", value: "ativo" },
   { label: "Teste", value: "teste" },
-  { label: "Inativo", value: "inativo" },
 ];
 
 const paymentOptions = [
@@ -119,14 +118,30 @@ export function AthletesPage() {
   const [editingAthlete, setEditingAthlete] = useState<Athlete | null>(null);
   const [form, setForm] = useState<AthleteForm>(emptyAthlete);
   const [deleteTarget, setDeleteTarget] = useState<Athlete | null>(null);
+  const [reactivateTarget, setReactivateTarget] = useState<Athlete | null>(null);
+  const [showInactive, setShowInactive] = useState(false);
 
   const filters = useMemo(
     () => ({
       search,
-      status: status as AthleteStatus | "todos",
-      monthlyPaymentStatus: monthlyPaymentStatus as MonthlyPaymentStatus | "todos",
+      status: "todos" as const,
+      monthlyPaymentStatus: "todos" as const,
     }),
-    [monthlyPaymentStatus, search, status],
+    [search],
+  );
+
+  const displayedAthletes = useMemo(() => {
+    return athletes.filter((a) => {
+      if (a.status === "inativo") return false;
+      if (status !== "todos" && a.status !== status) return false;
+      if (monthlyPaymentStatus !== "todos" && a.monthlyPaymentStatus !== monthlyPaymentStatus) return false;
+      return true;
+    });
+  }, [athletes, status, monthlyPaymentStatus]);
+
+  const inactiveAthletes = useMemo(
+    () => athletes.filter((a) => a.status === "inativo"),
+    [athletes],
   );
 
   const loadAthletes = useCallback(async () => {
@@ -199,6 +214,21 @@ export function AthletesPage() {
       await athleteService.remove(deleteTarget.id);
       showToast("Atleta inativado com sucesso.", "success");
       setDeleteTarget(null);
+      await loadAthletes();
+    } catch (error) {
+      showToast(getApiErrorMessage(error), "error");
+    } finally {
+      setIsSaving(false);
+    }
+  }
+
+  async function confirmReactivate() {
+    if (!reactivateTarget) return;
+    setIsSaving(true);
+    try {
+      await athleteService.update(reactivateTarget.id, { status: "ativo" });
+      showToast("Atleta reativado com sucesso.", "success");
+      setReactivateTarget(null);
       await loadAthletes();
     } catch (error) {
       showToast(getApiErrorMessage(error), "error");
@@ -292,7 +322,7 @@ export function AthletesPage() {
           <UserCheck className="text-pegasus-primary" size={22} />
           <div>
             <h2 className="text-xl font-bold text-pegasus-navy">Atletas</h2>
-            <p className="text-sm text-slate-500">{athletes.length} registro(s) encontrados.</p>
+            <p className="text-sm text-slate-500">{displayedAthletes.length} registro(s) encontrados.</p>
           </div>
         </div>
 
@@ -301,10 +331,10 @@ export function AthletesPage() {
             <Loader2 className="animate-spin" size={18} />
             Carregando atletas
           </div>
-        ) : athletes.length > 0 ? (
+        ) : displayedAthletes.length > 0 ? (
           <>
             <div className="grid gap-3 p-4 md:hidden">
-              {athletes.map((athlete) => (
+              {displayedAthletes.map((athlete) => (
                 <article key={athlete.id} className="rounded-2xl border border-blue-100 bg-white p-4 shadow-sm">
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0">
@@ -339,7 +369,7 @@ export function AthletesPage() {
                 headers={["Nome", "Posição", "Status", "Mensalidade", "Ações"]}
                 minWidth="820px"
               >
-                {athletes.map((athlete) => (
+                {displayedAthletes.map((athlete) => (
                   <tr key={athlete.id} className="bg-white">
                     <td className="px-6 py-4">
                       <p className="font-bold text-pegasus-navy">{athlete.name}</p>
@@ -380,6 +410,82 @@ export function AthletesPage() {
           </div>
         )}
       </section>
+
+      {inactiveAthletes.length > 0 ? (
+        <section className="panel overflow-hidden">
+          <button
+            className="flex w-full items-center justify-between gap-3 p-6 text-left"
+            onClick={() => setShowInactive((prev) => !prev)}
+            type="button"
+          >
+            <div className="flex items-center gap-3">
+              <UserX className="text-slate-400" size={22} />
+              <div>
+                <h2 className="text-xl font-bold text-pegasus-navy">Atletas inativos</h2>
+                <p className="text-sm text-slate-500">{inactiveAthletes.length} atleta(s) inativo(s)</p>
+              </div>
+            </div>
+            {showInactive ? <ChevronUp className="text-slate-400" size={20} /> : <ChevronDown className="text-slate-400" size={20} />}
+          </button>
+
+          {showInactive ? (
+            <>
+              <div className="grid gap-3 border-t border-blue-100 p-4 md:hidden">
+                {inactiveAthletes.map((athlete) => (
+                  <article key={athlete.id} className="rounded-2xl border border-blue-100 bg-white p-4 shadow-sm opacity-75">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <h3 className="font-bold text-pegasus-navy">{athlete.name}</h3>
+                        <p className="mt-1 text-sm text-slate-500">{athlete.email ?? athlete.phone ?? "Sem contato"}</p>
+                      </div>
+                      <StatusBadge label="Inativo" tone="danger" />
+                    </div>
+                    <div className="mt-4 border-t border-blue-50 pt-3">
+                      <ActionButtons
+                        canDelete={false}
+                        canEdit={canUpdate}
+                        canToggle={canUpdate}
+                        onEdit={() => openEditModal(athlete)}
+                        onToggle={() => setReactivateTarget(athlete)}
+                        toggleLabel="Reativar"
+                      />
+                    </div>
+                  </article>
+                ))}
+              </div>
+              <div className="hidden border-t border-blue-100 md:block">
+                <Table headers={["Nome", "Posição", "Mensalidade", "Ações"]} minWidth="720px">
+                  {inactiveAthletes.map((athlete) => (
+                    <tr key={athlete.id} className="bg-white opacity-75">
+                      <td className="px-6 py-4">
+                        <p className="font-bold text-pegasus-navy">{athlete.name}</p>
+                        <p className="text-xs text-slate-500">{athlete.email ?? "-"}</p>
+                      </td>
+                      <td className="px-6 py-4 text-slate-600">{athlete.position ?? "-"}</td>
+                      <td className="px-6 py-4">
+                        <StatusBadge
+                          label={label(athlete.monthlyPaymentStatus)}
+                          tone={badgeTone(athlete.monthlyPaymentStatus)}
+                        />
+                      </td>
+                      <td className="px-6 py-4">
+                        <ActionButtons
+                          canDelete={false}
+                          canEdit={canUpdate}
+                          canToggle={canUpdate}
+                          onEdit={() => openEditModal(athlete)}
+                          onToggle={() => setReactivateTarget(athlete)}
+                          toggleLabel="Reativar"
+                        />
+                      </td>
+                    </tr>
+                  ))}
+                </Table>
+              </div>
+            </>
+          ) : null}
+        </section>
+      ) : null}
 
       <Modal
         description="Preencha os dados do atleta. As alterações serão salvas na API."
@@ -466,6 +572,15 @@ export function AthletesPage() {
         onClose={() => setDeleteTarget(null)}
         onConfirm={confirmInactivate}
         title="Confirmar inativação"
+      />
+
+      <ConfirmDialog
+        confirmLabel={isSaving ? "Reativando..." : "Reativar atleta"}
+        description={`Deseja reativar ${reactivateTarget?.name ?? "este atleta"}? Ele voltará a aparecer na lista principal.`}
+        isOpen={Boolean(reactivateTarget)}
+        onClose={() => setReactivateTarget(null)}
+        onConfirm={confirmReactivate}
+        title="Confirmar reativação"
       />
     </div>
   );
