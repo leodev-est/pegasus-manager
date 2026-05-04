@@ -60,15 +60,16 @@ const rolePermissions: Record<string, string[]> = {
 };
 
 const users = [
-  { name: "Leo", username: "leo", email: "leo@pegasus.com", roles: ["Diretor"] },
-  { name: "Allef", username: "allef", email: "allef@pegasus.com", roles: ["Diretor"] },
-  { name: "Giulia", username: "giulia", email: "giulia@pegasus.com", roles: ["RH", "Financeiro"] },
-  { name: "Victoria", username: "victoria", email: "victoria@pegasus.com", roles: ["Conselheiro", "Operacional"] },
-  { name: "Vito", username: "vito", email: "vito@pegasus.com", roles: ["Marketing"] },
+  { name: "Leo", username: "leo", roles: ["Diretor"] },
+  { name: "Allef", username: "allef", roles: ["Diretor"] },
+  { name: "Giulia", username: "giulia", roles: ["RH", "Financeiro"] },
+  { name: "Victoria", username: "victoria", roles: ["Conselheiro", "Operacional"] },
+  { name: "Vito", username: "vito", roles: ["Marketing"] },
 ];
 
 async function main() {
-  const password = await bcrypt.hash("123456", 10);
+  const tempPassword = process.env.ATHLETE_TEMP_PASSWORD ?? "Pegasus@Temp!2025";
+  const password = await bcrypt.hash(tempPassword, 10);
 
   for (const key of permissions) {
     await prisma.permission.upsert({
@@ -117,18 +118,17 @@ async function main() {
 
   for (const userData of users) {
     const user = await prisma.user.upsert({
-      where: { email: userData.email },
+      where: { username: userData.username },
       update: {
         name: userData.name,
-        username: userData.username,
         active: true,
       },
       create: {
         name: userData.name,
         username: userData.username,
-        email: userData.email,
         password,
         active: true,
+        mustChangePassword: true,
       },
     });
 
@@ -153,16 +153,6 @@ async function main() {
     }
   }
 
-  await prisma.user.updateMany({
-    where: {
-      email: {
-        in: ["rafa@pegasus.com", "carol@pegasus.com", "bia@pegasus.com", "nina@pegasus.com"],
-      },
-    },
-    data: {
-      active: false,
-    },
-  });
 }
 
 main()
