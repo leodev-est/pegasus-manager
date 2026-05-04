@@ -11,8 +11,8 @@ export function LoginPage() {
   const { isAuthenticated, isLoading, login, user } = useAuth();
   const { showToast } = useToast();
   const navigate = useNavigate();
-  const [email, setEmail] = useState("leo@pegasus.com");
-  const [password, setPassword] = useState("123456");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -84,7 +84,7 @@ export function LoginPage() {
                     value={email}
                     onChange={(event) => setEmail(event.target.value)}
                     disabled={isSubmitting}
-                    placeholder="leo ou leo@pegasus.com"
+                    placeholder="Seu usuário"
                     className="w-full outline-none placeholder:text-slate-400"
                   />
                 </span>
@@ -100,7 +100,7 @@ export function LoginPage() {
                     value={password}
                     onChange={(event) => setPassword(event.target.value)}
                     disabled={isSubmitting}
-                    placeholder="123456"
+                    placeholder="Sua senha"
                     className="w-full outline-none placeholder:text-slate-400"
                   />
                 </span>
