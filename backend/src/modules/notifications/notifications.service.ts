@@ -89,10 +89,10 @@ export const notificationsService = {
     if (!userId) return null;
     validateType(payload.type);
 
-    const start = new Date();
-    start.setHours(0, 0, 0, 0);
+    const now = new Date();
+    const start = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
     const end = new Date(start);
-    end.setDate(end.getDate() + 1);
+    end.setUTCDate(end.getUTCDate() + 1);
 
     const existing = await prisma.notification.findFirst({
       where: {

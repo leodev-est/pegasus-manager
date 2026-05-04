@@ -38,26 +38,7 @@ export default defineConfig({
       },
       workbox: {
         globPatterns: ["**/*.{js,css,html,ico,png,svg,webp}"],
-        navigateFallbackDenylist: [/^\/api\//, /^\/auth\//],
-        runtimeCaching: [
-          {
-            urlPattern: ({ request, url }) =>
-              request.method === "GET" &&
-              (url.pathname.startsWith("/auth") ||
-                url.pathname.startsWith("/athletes") ||
-                url.pathname.startsWith("/athlete-applications") ||
-                url.pathname.startsWith("/finance") ||
-                url.pathname.startsWith("/formations") ||
-                url.pathname.startsWith("/permissions") ||
-                url.pathname.startsWith("/roles") ||
-                url.pathname.startsWith("/schools") ||
-                url.pathname.startsWith("/spreadsheets") ||
-                url.pathname.startsWith("/tasks") ||
-                url.pathname.startsWith("/trainings") ||
-                url.pathname.startsWith("/users")),
-            handler: "NetworkOnly",
-          },
-        ],
+        navigateFallbackDenylist: [/^\/api\//],
       },
     }),
   ],

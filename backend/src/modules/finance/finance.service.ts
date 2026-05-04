@@ -211,66 +211,77 @@ async function notifyOverduePayment(payment: ReturnType<typeof serializePayment>
 
 export const financeService = {
   async getSummary(month = new Date().toISOString().slice(0, 7)) {
-    const monthRange = parseMonth(month) ?? parseMonth(new Date().toISOString().slice(0, 7));
+    const monthRange = parseMonth(month) ?? parseMonth(new Date().toISOString().slice(0, 7))!;
 
-    const [paymentRows, movementRows] = await Promise.all([
-      prisma.$queryRaw<PaymentRow[]>`
-        SELECT p.*, a.name as "athleteName"
-        FROM "Payment" p
-        LEFT JOIN "Athlete" a ON a.id = p."athleteId"
+    type AggRow = { value: Prisma.Decimal };
+    type CountRow = { count: bigint };
+
+    const [
+      cashFromPayments,
+      cashFromMovements,
+      monthlyRevenuePayments,
+      monthlyRevenueMovements,
+      monthlyExpensesPayments,
+      monthlyExpensesMovements,
+      pendingCount,
+      overdueCount,
+    ] = await Promise.all([
+      prisma.$queryRaw<AggRow[]>`
+        SELECT COALESCE(SUM(CASE WHEN type = 'receita' THEN amount ELSE -amount END), 0) AS value
+        FROM "Payment" WHERE status = 'pago'
       `,
-      prisma.$queryRaw<MovementRow[]>`
-        SELECT *
+      prisma.$queryRaw<AggRow[]>`
+        SELECT COALESCE(SUM(CASE WHEN type = 'entrada' THEN amount ELSE -amount END), 0) AS value
         FROM "CashMovement"
+      `,
+      prisma.$queryRaw<AggRow[]>`
+        SELECT COALESCE(SUM(amount), 0) AS value FROM "Payment"
+        WHERE status = 'pago' AND type = 'receita'
+          AND COALESCE("paidAt", "dueDate", "createdAt") >= ${monthRange.start}
+          AND COALESCE("paidAt", "dueDate", "createdAt") < ${monthRange.end}
+      `,
+      prisma.$queryRaw<AggRow[]>`
+        SELECT COALESCE(SUM(amount), 0) AS value FROM "CashMovement"
+        WHERE type = 'entrada'
+          AND date >= ${monthRange.start} AND date < ${monthRange.end}
+      `,
+      prisma.$queryRaw<AggRow[]>`
+        SELECT COALESCE(SUM(amount), 0) AS value FROM "Payment"
+        WHERE status = 'pago' AND type = 'despesa'
+          AND COALESCE("paidAt", "dueDate", "createdAt") >= ${monthRange.start}
+          AND COALESCE("paidAt", "dueDate", "createdAt") < ${monthRange.end}
+      `,
+      prisma.$queryRaw<AggRow[]>`
+        SELECT COALESCE(SUM(amount), 0) AS value FROM "CashMovement"
+        WHERE type = 'saida'
+          AND date >= ${monthRange.start} AND date < ${monthRange.end}
+      `,
+      prisma.$queryRaw<CountRow[]>`
+        SELECT COUNT(*) AS count FROM "Payment"
+        WHERE "athleteId" IS NOT NULL AND status = 'pendente'
+      `,
+      prisma.$queryRaw<CountRow[]>`
+        SELECT COUNT(*) AS count FROM "Payment"
+        WHERE "athleteId" IS NOT NULL AND status = 'atrasado'
       `,
     ]);
 
-    const payments = paymentRows.map(serializePayment);
-    const movements = movementRows.map(serializeMovement);
-    const isInMonth = (date?: Date | null) =>
-      Boolean(date && monthRange && date >= monthRange.start && date < monthRange.end);
-    const paymentDate = (payment: ReturnType<typeof serializePayment>) =>
-      payment.paidAt ?? payment.dueDate ?? payment.createdAt;
-
     const currentCash =
-      payments.reduce((sum, payment) => {
-        if (payment.status !== "pago") return sum;
-        return sum + (payment.type === "receita" ? payment.amount : -payment.amount);
-      }, 0) +
-      movements.reduce(
-        (sum, movement) => sum + (movement.type === "entrada" ? movement.amount : -movement.amount),
-        0,
-      );
-
+      Number(cashFromPayments[0]?.value ?? 0) + Number(cashFromMovements[0]?.value ?? 0);
     const monthlyRevenue =
-      payments
-        .filter((payment) => payment.status === "pago" && payment.type === "receita")
-        .filter((payment) => isInMonth(paymentDate(payment)))
-        .reduce((sum, payment) => sum + payment.amount, 0) +
-      movements
-        .filter((movement) => movement.type === "entrada" && isInMonth(movement.date))
-        .reduce((sum, movement) => sum + movement.amount, 0);
-
+      Number(monthlyRevenuePayments[0]?.value ?? 0) +
+      Number(monthlyRevenueMovements[0]?.value ?? 0);
     const monthlyExpenses =
-      payments
-        .filter((payment) => payment.status === "pago" && payment.type === "despesa")
-        .filter((payment) => isInMonth(paymentDate(payment)))
-        .reduce((sum, payment) => sum + payment.amount, 0) +
-      movements
-        .filter((movement) => movement.type === "saida" && isInMonth(movement.date))
-        .reduce((sum, movement) => sum + movement.amount, 0);
+      Number(monthlyExpensesPayments[0]?.value ?? 0) +
+      Number(monthlyExpensesMovements[0]?.value ?? 0);
 
     return {
       currentCash,
       monthlyRevenue,
       monthlyExpenses,
       monthlyBalance: monthlyRevenue - monthlyExpenses,
-      pendingMonthlyPayments: payments.filter(
-        (payment) => payment.athleteId && payment.status === "pendente",
-      ).length,
-      overdueMonthlyPayments: payments.filter(
-        (payment) => payment.athleteId && payment.status === "atrasado",
-      ).length,
+      pendingMonthlyPayments: Number(pendingCount[0]?.count ?? 0),
+      overdueMonthlyPayments: Number(overdueCount[0]?.count ?? 0),
     };
   },
 

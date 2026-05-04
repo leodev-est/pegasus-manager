@@ -1,4 +1,4 @@
-﻿import bcrypt from "bcrypt";
+import bcrypt from "bcrypt";
 import { prisma } from "../../config/prisma";
 import { AppError } from "../../middlewares/error.middleware";
 
@@ -55,58 +55,73 @@ async function formatUser(userId: string) {
 }
 
 async function syncRoles(userId: string, roles?: string[]) {
-  if (!roles) {
-    return;
-  }
+  if (!roles) return;
 
-  await prisma.userRole.deleteMany({
-    where: { userId },
+  const roleRecords = await prisma.role.findMany({
+    where: { name: { in: roles } },
+    select: { id: true, name: true },
   });
 
-  for (const roleName of roles) {
-    const role = await prisma.role.findUnique({
-      where: { name: roleName },
-    });
+  const foundNames = new Set(roleRecords.map((r) => r.name));
+  const missing = roles.find((r) => !foundNames.has(r));
 
-    if (!role) {
-      throw new AppError(`Role ${roleName} não encontrada`, 400);
-    }
-
-    await prisma.userRole.create({
-      data: {
-        userId,
-        roleId: role.id,
-      },
-    });
+  if (missing) {
+    throw new AppError(`Role ${missing} não encontrada`, 400);
   }
+
+  await prisma.$transaction([
+    prisma.userRole.deleteMany({ where: { userId } }),
+    prisma.userRole.createMany({
+      data: roleRecords.map((role) => ({ userId, roleId: role.id })),
+    }),
+  ]);
+}
+
+function serializeUser(user: {
+  id: string;
+  name: string;
+  email: string | null;
+  username: string;
+  active: boolean;
+  mustChangePassword: boolean;
+  createdAt: Date;
+  updatedAt: Date;
+  roles: Array<{
+    role: {
+      name: string;
+      permissions: Array<{ permission: { key: string } }>;
+    };
+  }>;
+}) {
+  return {
+    id: user.id,
+    name: user.name,
+    email: user.email,
+    username: user.username,
+    active: user.active,
+    mustChangePassword: user.mustChangePassword,
+    roles: user.roles.map((userRole) => userRole.role.name),
+    permissions: Array.from(
+      new Set(
+        user.roles.flatMap((userRole) =>
+          userRole.role.permissions.map((rolePermission) => rolePermission.permission.key),
+        ),
+      ),
+    ),
+    createdAt: user.createdAt,
+    updatedAt: user.updatedAt,
+  };
 }
 
 export const usersService = {
-  async findAll() {
+  async findAll(includeInactive = false) {
     const users = await prisma.user.findMany({
-      where: { active: true },
+      where: includeInactive ? undefined : { active: true },
       orderBy: { name: "asc" },
       include: includeRoles,
     });
 
-    return users.map((user) => ({
-      id: user.id,
-      name: user.name,
-      email: user.email,
-      username: user.username,
-      active: user.active,
-      mustChangePassword: user.mustChangePassword,
-      roles: user.roles.map((userRole) => userRole.role.name),
-      permissions: Array.from(
-        new Set(
-          user.roles.flatMap((userRole) =>
-            userRole.role.permissions.map((rolePermission) => rolePermission.permission.key),
-          ),
-        ),
-      ),
-      createdAt: user.createdAt,
-      updatedAt: user.updatedAt,
-    }));
+    return users.map(serializeUser);
   },
 
   async create(payload: UserPayload) {
@@ -133,7 +148,7 @@ export const usersService = {
     const data: {
       name?: string;
       username?: string;
-      email?: string;
+      email?: string | null;
       password?: string;
       active?: boolean;
       mustChangePassword?: boolean;
@@ -141,7 +156,7 @@ export const usersService = {
 
     if (payload.name !== undefined) data.name = payload.name;
     if (payload.username !== undefined) data.username = payload.username.trim().toLowerCase();
-    if (payload.email !== undefined) data.email = payload.email?.trim().toLowerCase() || undefined;
+    if (payload.email !== undefined) data.email = payload.email?.trim().toLowerCase() || null;
     if (payload.active !== undefined) data.active = payload.active;
     if (payload.mustChangePassword !== undefined) {
       data.mustChangePassword = payload.mustChangePassword;
@@ -165,12 +180,9 @@ export const usersService = {
   async softDelete(id: string) {
     await prisma.user.update({
       where: { id },
-      data: {
-        active: false,
-      },
+      data: { active: false },
     });
 
     return formatUser(id);
   },
 };
-

@@ -6,9 +6,10 @@ function getParamId(id: string | string[]) {
 }
 
 export const usersController = {
-  findAll: (async (_request, response, next) => {
+  findAll: (async (request, response, next) => {
     try {
-      const users = await usersService.findAll();
+      const includeInactive = request.query.includeInactive === "true";
+      const users = await usersService.findAll(includeInactive);
       response.json(users);
     } catch (error) {
       next(error);

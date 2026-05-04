@@ -1,8 +1,42 @@
-﻿import { ArrowRight, LogIn, Trophy } from "lucide-react";
+﻿import { ArrowRight, Banknote, CalendarDays, ClipboardList, Dumbbell, LogIn, Trophy, Users, type LucideIcon } from "lucide-react";
 import { Link } from "react-router-dom";
 import logoFull from "../../assets/logo/logo-full.png";
 import { InstallPwaButton } from "../../components/pwa/InstallPwaButton";
-import { landingSections } from "../../data/mockData";
+
+type LandingSection = { title: string; text: string; icon: LucideIcon };
+
+const landingSections: LandingSection[] = [
+  {
+    title: "Propósito e Inclusão",
+    text: "Iniciativa esportiva independente com foco no desenvolvimento humano, social e comunitário, oferecendo a experiência real de atleta a jovens e adultos, com ênfase na disciplina, responsabilidade e acolhimento.",
+    icon: Users,
+  },
+  {
+    title: "Modalidade Principal",
+    text: "Voleibol como atividade central, com plano de expansão para outras modalidades.",
+    icon: Dumbbell,
+  },
+  {
+    title: "Público-alvo",
+    text: "Jovens Sub-19 e adultos de ambos os gêneros. Atletas em formação e reinserção esportiva.",
+    icon: ClipboardList,
+  },
+  {
+    title: "Impacto Comunitário",
+    text: "Prevenção à evasão esportiva, redução da exposição de jovens a riscos sociais, estímulo à saúde física e mental, fortalecimento do vínculo comunitário.",
+    icon: Banknote,
+  },
+  {
+    title: "Cronograma Flexível",
+    text: "Proposta de utilização do espaço aos finais de semana em horários variados e em dias úteis no período noturno, com total flexibilidade para alinhamento conforme a disponibilidade institucional.",
+    icon: CalendarDays,
+  },
+  {
+    title: "Foco Social e Comunitário",
+    text: "Buscamos ocupar horários disponíveis das quadras por meio de parceria com foco em um legado esportivo sustentável e organizado para a comunidade local.",
+    icon: Users,
+  },
+];
 
 const PUBLIC_REGISTRATION_FORM_URL =
   "https://docs.google.com/forms/d/e/1FAIpQLScEitglNJVRgXHJBvBi6uELuqLouUD95BBG4Z2e67d2d2Ha2A/viewform";

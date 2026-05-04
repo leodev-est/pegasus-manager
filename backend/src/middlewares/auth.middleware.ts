@@ -2,17 +2,8 @@
 import jwt from "jsonwebtoken";
 import { prisma } from "../config/prisma";
 import { AppError } from "./error.middleware";
+import { getJwtSecret } from "../utils/jwt";
 import type { JwtPayload } from "../types/auth";
-
-function getJwtSecret() {
-  const secret = process.env.JWT_SECRET;
-
-  if (!secret) {
-    throw new AppError("JWT_SECRET não configurado", 500);
-  }
-
-  return secret;
-}
 
 export const authMiddleware: RequestHandler = async (request, _response, next) => {
   try {

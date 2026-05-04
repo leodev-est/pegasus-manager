@@ -2,18 +2,9 @@
 import jwt from "jsonwebtoken";
 import { prisma } from "../../config/prisma";
 import { AppError } from "../../middlewares/error.middleware";
+import { getJwtSecret } from "../../utils/jwt";
 
 type UserWithRoles = Awaited<ReturnType<typeof findUserByEmail>>;
-
-function getJwtSecret() {
-  const secret = process.env.JWT_SECRET;
-
-  if (!secret) {
-    throw new AppError("JWT_SECRET não configurado", 500);
-  }
-
-  return secret;
-}
 
 function buildUserResponse(user: NonNullable<UserWithRoles>) {
   const roles = user.roles.map((userRole) => userRole.role.name);

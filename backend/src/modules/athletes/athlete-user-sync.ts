@@ -3,7 +3,7 @@ import { prisma } from "../../config/prisma";
 import { isMonthlyPaymentExempt } from "./monthly-exemption";
 
 const athleteRoleName = "Atleta";
-const temporaryAthletePassword = "123456";
+const temporaryAthletePassword = process.env.ATHLETE_TEMP_PASSWORD ?? "Pegasus@Temp!2025";
 
 function normalizeUsernameBase(value: string) {
   return (

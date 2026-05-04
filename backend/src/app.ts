@@ -1,9 +1,13 @@
 ﻿import cors from "cors";
 import express from "express";
+import helmet from "helmet";
+import morgan from "morgan";
 import { errorMiddleware } from "./middlewares/error.middleware";
 import { routes } from "./routes";
 
 export const app = express();
+
+const isProduction = process.env.NODE_ENV === "production";
 
 const configuredOrigins = [
   process.env.CORS_ORIGIN,
@@ -16,20 +20,22 @@ const configuredOrigins = [
   .filter(Boolean);
 
 function isAllowedOrigin(origin: string) {
-  try {
-    const { hostname } = new URL(origin);
+  if (configuredOrigins.includes(origin)) return true;
 
-    return (
-      configuredOrigins.includes(origin) ||
-      hostname === "localhost" ||
-      hostname === "127.0.0.1" ||
-      hostname.endsWith(".vercel.app")
-    );
-  } catch {
-    return false;
+  if (!isProduction) {
+    try {
+      const { hostname } = new URL(origin);
+      return hostname === "localhost" || hostname === "127.0.0.1";
+    } catch {
+      return false;
+    }
   }
+
+  return false;
 }
 
+app.use(helmet());
+app.use(morgan(isProduction ? "combined" : "dev"));
 app.use(
   cors({
     origin(origin, callback) {
@@ -42,7 +48,7 @@ app.use(
     },
   }),
 );
-app.use(express.json());
+app.use(express.json({ limit: "1mb" }));
 app.use(routes);
 app.use((_request, response) => {
   response.status(404).json({ message: "Rota não encontrada." });
