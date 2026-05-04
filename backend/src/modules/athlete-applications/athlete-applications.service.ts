@@ -1,7 +1,6 @@
 ﻿import { Prisma } from "@prisma/client";
 import { prisma } from "../../config/prisma";
 import { AppError } from "../../middlewares/error.middleware";
-import { syncActiveAthleteUser } from "../athletes/athlete-user-sync";
 import { getMonthlyPaymentStatusForAthlete } from "../athletes/monthly-exemption";
 
 const allowedStatuses = ["pendente", "em_analise", "aprovado", "recusado"] as const;
@@ -171,8 +170,6 @@ export const athleteApplicationsService = {
           monthlyPaymentStatus: getMonthlyPaymentStatusForAthlete(application.name),
         },
       });
-
-      await syncActiveAthleteUser(athlete);
 
       const updatedApplication = await transaction.athleteApplication.update({
         where: { id },

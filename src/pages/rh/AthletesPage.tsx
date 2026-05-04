@@ -32,7 +32,7 @@ const emptyAthlete: AthleteForm = {
   phone: "",
   category: "",
   position: "",
-  status: "ativo",
+  status: "teste",
   monthlyPaymentStatus: "pendente",
   notes: "",
 };
