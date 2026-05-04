@@ -60,11 +60,11 @@ const rolePermissions: Record<string, string[]> = {
 };
 
 const users = [
-  { name: "Leo", username: "leo", roles: ["Diretor"] },
-  { name: "Allef", username: "allef", roles: ["Diretor"] },
-  { name: "Giulia", username: "giulia", roles: ["RH", "Financeiro"] },
-  { name: "Victoria", username: "victoria", roles: ["Conselheiro", "Operacional"] },
-  { name: "Vito", username: "vito", roles: ["Marketing"] },
+  { name: "Leo", username: "leo", roles: ["Diretor", "Atleta"] },
+  { name: "Allef", username: "allef", roles: ["Diretor", "Atleta"] },
+  { name: "Giulia", username: "giulia", roles: ["RH", "Financeiro", "Atleta"] },
+  { name: "Victoria", username: "victoria", roles: ["Conselheiro", "Operacional", "Atleta"] },
+  { name: "Vito", username: "vito", roles: ["Marketing", "Atleta"] },
 ];
 
 async function main() {
@@ -117,18 +117,32 @@ async function main() {
   }
 
   for (const userData of users) {
+    const existingUser = await prisma.user.findUnique({ where: { username: userData.username } });
+
+    let athleteId = existingUser?.athleteId ?? null;
+
+    if (!athleteId) {
+      const athlete = await prisma.athlete.create({
+        data: { name: userData.name, status: "ativo", monthlyPaymentStatus: "isento" },
+      });
+      athleteId = athlete.id;
+    } else {
+      await prisma.athlete.update({
+        where: { id: athleteId },
+        data: { name: userData.name, status: "ativo" },
+      });
+    }
+
     const user = await prisma.user.upsert({
       where: { username: userData.username },
-      update: {
-        name: userData.name,
-        active: true,
-      },
+      update: { name: userData.name, active: true, athleteId },
       create: {
         name: userData.name,
         username: userData.username,
         password,
         active: true,
         mustChangePassword: true,
+        athleteId,
       },
     });
 
