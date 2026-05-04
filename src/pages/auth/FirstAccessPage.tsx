@@ -1,14 +1,14 @@
 import { ArrowLeft, Loader2, LockKeyhole } from "lucide-react";
 import type { FormEvent } from "react";
 import { useEffect, useState } from "react";
-import { Link, Navigate, useNavigate } from "react-router-dom";
+import { Navigate, useNavigate } from "react-router-dom";
 import { useAuth } from "../../auth/AuthContext";
 import logoFull from "../../assets/logo/logo-full.png";
 import { Button } from "../../components/ui/Button";
 import { useToast } from "../../components/ui/Toast";
 
 export function FirstAccessPage() {
-  const { changeFirstPassword, isAuthenticated, user } = useAuth();
+  const { changeFirstPassword, isAuthenticated, logout, user } = useAuth();
   const { showToast } = useToast();
   const navigate = useNavigate();
   const [newPassword, setNewPassword] = useState("");
@@ -48,10 +48,14 @@ export function FirstAccessPage() {
     <main className="relative grid min-h-screen place-items-center overflow-hidden bg-pegasus-navy px-6 py-10 text-white">
       <div className="absolute inset-0 bg-[linear-gradient(135deg,#0B2E59_0%,#0D47A1_55%,#1565C0_100%)]" />
       <section className="relative z-10 w-full max-w-md">
-        <Link to="/login" className="mb-8 inline-flex items-center gap-2 text-sm font-semibold text-blue-50">
+        <button
+          type="button"
+          onClick={() => { logout(); navigate("/login", { replace: true }); }}
+          className="mb-8 inline-flex items-center gap-2 text-sm font-semibold text-blue-50"
+        >
           <ArrowLeft size={17} />
           Voltar ao login
-        </Link>
+        </button>
         <div className="rounded-3xl border border-white/20 bg-white p-8 text-pegasus-navy shadow-2xl shadow-blue-950/30">
           <div className="text-center">
             <img
