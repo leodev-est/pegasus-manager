@@ -420,17 +420,28 @@ export const attendanceService = {
       ]);
     }
 
-    return athletes.map((athlete) => ({
-      athlete: {
-        id: athlete.id,
-        category: athlete.category,
-        name: athlete.name,
-        position: athlete.position,
-      },
-      month,
-      year,
-      ...summarizeDetails(getAthleteTrainingDates(dateKeys, athlete), attendancesByAthlete.get(athlete.id) ?? []),
-    }));
+    return athletes.map((athlete) => {
+      const athleteDateKeys = getAthleteTrainingDates(dateKeys, athlete);
+      const athleteAttendances = attendancesByAthlete.get(athlete.id) ?? [];
+
+      // Include dates with actual attendance records even if before activatedAt
+      const attendanceDateKeys = athleteAttendances
+        .map((a) => toTrainingDateKey(a.training.date))
+        .filter((key) => dateKeys.includes(key));
+      const mergedDateKeys = Array.from(new Set([...athleteDateKeys, ...attendanceDateKeys])).sort();
+
+      return {
+        athlete: {
+          id: athlete.id,
+          category: athlete.category,
+          name: athlete.name,
+          position: athlete.position,
+        },
+        month,
+        year,
+        ...summarizeDetails(mergedDateKeys, athleteAttendances),
+      };
+    });
   },
 
   async getChamada(dateKey: string) {
