@@ -199,7 +199,7 @@ function normalizeUser(rawUser: unknown): AuthUser {
     roles,
     roleLabels: roleLabels.length > 0 ? roleLabels : roles,
     permissions: Array.from(
-      new Set(["dashboard", ...(permissions.length > 0 ? permissions : getPermissionsByRoles(roles))]),
+      new Set(["dashboard", ...permissions, ...getPermissionsByRoles(roles)]),
     ),
   };
 }

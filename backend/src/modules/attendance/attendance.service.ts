@@ -320,7 +320,14 @@ export const attendanceService = {
       include: { training: { select: { date: true } } },
       orderBy: { checkedInAt: "asc" },
     });
-    const summary = summarizeDetails(athleteDateKeys, attendances);
+
+    // Include dates where attendance was actually recorded (e.g. via Chamada before activatedAt)
+    const attendanceDateKeys = attendances
+      .map((a) => toTrainingDateKey(a.training.date))
+      .filter((key) => dateKeys.includes(key));
+    const mergedDateKeys = Array.from(new Set([...athleteDateKeys, ...attendanceDateKeys])).sort();
+
+    const summary = summarizeDetails(mergedDateKeys, attendances);
 
     return {
       athlete: {
