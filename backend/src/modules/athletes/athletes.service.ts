@@ -159,6 +159,10 @@ export const athletesService = {
       data,
     });
 
+    if (athlete.status === "ativo") {
+      await syncActiveAthleteUser(athlete);
+    }
+
     return prisma.athlete.findUniqueOrThrow({
       where: { id: athlete.id },
       include: includeUser,

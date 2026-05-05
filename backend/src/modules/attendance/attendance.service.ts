@@ -60,15 +60,34 @@ async function getAthleteForUser(userId: string, requireActive = false) {
     include: { athlete: true },
   });
 
-  if (!user?.athlete) {
+  if (!user) {
     throw new AppError("Seu usuario nao esta vinculado a um atleta.", 403);
   }
 
-  if (requireActive && user.athlete.status !== "ativo") {
+  let { athlete } = user;
+
+  // Fallback: link athlete by name when user.athleteId is null (e.g. staff who are also athletes)
+  if (!athlete && user.name) {
+    const candidates = await prisma.athlete.findMany({
+      where: { name: user.name },
+      take: 2,
+    });
+
+    if (candidates.length === 1) {
+      athlete = candidates[0];
+      await prisma.user.update({ where: { id: userId }, data: { athleteId: athlete.id } });
+    }
+  }
+
+  if (!athlete) {
+    throw new AppError("Seu usuario nao esta vinculado a um atleta.", 403);
+  }
+
+  if (requireActive && athlete.status !== "ativo") {
     throw new AppError("Check-in disponivel apenas para atletas ativos.", 403);
   }
 
-  return user.athlete;
+  return athlete;
 }
 
 async function findTrainingByDate(dateKey: string) {
