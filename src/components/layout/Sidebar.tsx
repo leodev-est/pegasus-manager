@@ -1,6 +1,5 @@
 ﻿import {
   CalendarDays,
-  CalendarCheck,
   ClipboardList,
   FileSpreadsheet,
   Landmark,
@@ -50,6 +49,7 @@ export const menuGroups: MenuGroup[] = [
     title: "RH",
     items: [
       { label: "Atletas", path: "/app/rh/atletas", icon: Users, permissions: ["rh"] },
+      { label: "Testes", path: "/app/rh/testes", icon: ClipboardList, permissions: ["rh"] },
       { label: "Inscrições", path: "/app/rh/inscricoes", icon: UserPlus, permissions: ["rh"] },
     ],
   },
@@ -84,7 +84,7 @@ export const menuGroups: MenuGroup[] = [
         label: "Chamada",
         path: "/app/chamada",
         icon: ClipboardList,
-        permissions: ["treinos"],
+        permissions: ["chamada"],
       },
       {
         label: "Frequência",
@@ -109,13 +109,7 @@ export const menuGroups: MenuGroup[] = [
         icon: UserRound,
         permissions: ["atleta", "trainings:update"],
       },
-      {
-        label: "Check-in",
-        path: "/app/atleta/check-in",
-        icon: CalendarCheck,
-        permissions: ["atleta"],
-      },
-      {
+{
         label: "Minha Frequência",
         path: "/app/atleta/frequencia",
         icon: UserCheck,

@@ -7,7 +7,19 @@
       "Bash(xargs -I {} sh -c 'echo \"=== {} ===\" && cat {}')",
       "Bash(xargs grep *)",
       "Bash(npm install *)",
-      "Bash(npx tsc *)"
+      "Bash(npx tsc *)",
+      "Bash(npx plugins *)",
+      "Bash(npm i *)",
+      "Bash(git add *)",
+      "Bash(git commit -m ' *)",
+      "Bash(git push *)",
+      "Bash(vercel --version)",
+      "Bash(vercel login *)",
+      "Bash(timeout 5)",
+      "Bash(vercel --prod --yes)",
+      "Bash(vercel --prod --yes --scope leonardo-esteves-projects)",
+      "Bash(vercel link *)",
+      "Bash(vercel env *)"
     ]
   }
 }

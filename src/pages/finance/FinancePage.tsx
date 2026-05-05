@@ -51,7 +51,7 @@ const emptyPayment: PaymentForm = {
   type: "receita",
   category: "",
   status: "pago",
-  dueDate: new Date().toISOString().slice(0, 10),
+  dueDate: defaultDueDate(),
   paidAt: new Date().toISOString().slice(0, 10),
 };
 
@@ -113,6 +113,11 @@ function label(value: string) {
   if (labels[value]) return labels[value];
 
   return value.charAt(0).toUpperCase() + value.slice(1);
+}
+
+function defaultDueDate() {
+  const now = new Date();
+  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-10`;
 }
 
 function normalizePayload<T extends Record<string, unknown>>(payload: T) {
@@ -246,6 +251,11 @@ export function FinancePage() {
           : ["- Nenhum gasto registrado"]),
       ].join("\n"),
     [month, monthExpenses, summary],
+  );
+
+  const payableAthletes = useMemo(
+    () => athletes.filter((a) => a.status === "ativo" && a.monthlyPaymentStatus !== "isento"),
+    [athletes],
   );
 
   const monthlyPayments = useMemo(() => payments.filter(isMonthlyPayment), [payments]);
@@ -709,7 +719,7 @@ export function FinancePage() {
               onChange={(event) => setPaymentForm({ ...paymentForm, athleteId: event.target.value })}
               options={[
                 { label: "Sem atleta vinculado", value: "" },
-                ...athletes.map((athlete) => ({ label: athlete.name, value: athlete.id })),
+                ...payableAthletes.map((athlete) => ({ label: athlete.name, value: athlete.id })),
               ]}
               value={paymentForm.athleteId}
             />

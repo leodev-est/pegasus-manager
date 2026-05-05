@@ -32,7 +32,7 @@ const emptyAthlete: AthleteForm = {
   phone: "",
   category: "",
   position: "",
-  status: "teste",
+  status: "ativo",
   monthlyPaymentStatus: "pendente",
   notes: "",
 };
@@ -40,7 +40,6 @@ const emptyAthlete: AthleteForm = {
 const statusOptions = [
   { label: "Todos os status", value: "todos" },
   { label: "Ativo", value: "ativo" },
-  { label: "Teste", value: "teste" },
 ];
 
 const paymentOptions = [
@@ -132,7 +131,7 @@ export function AthletesPage() {
 
   const displayedAthletes = useMemo(() => {
     return athletes.filter((a) => {
-      if (a.status === "inativo") return false;
+      if (a.status === "inativo" || a.status === "teste") return false;
       if (status !== "todos" && a.status !== status) return false;
       if (monthlyPaymentStatus !== "todos" && a.monthlyPaymentStatus !== monthlyPaymentStatus) return false;
       return true;

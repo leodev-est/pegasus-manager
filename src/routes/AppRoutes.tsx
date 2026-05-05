@@ -3,7 +3,6 @@ import { ProtectedRoute } from "../components/auth/ProtectedRoute";
 import { AppLayout } from "../components/layout/AppLayout";
 import { AccessControlPage } from "../pages/admin/AccessControlPage";
 import { AttendanceAdminPage } from "../pages/attendance/AttendanceAdminPage";
-import { AthleteCheckInPage } from "../pages/attendance/AthleteCheckInPage";
 import { ChamadaPage } from "../pages/attendance/ChamadaPage";
 import { MyFrequencyPage } from "../pages/attendance/MyFrequencyPage";
 import { LoginPage } from "../pages/auth/LoginPage";
@@ -20,6 +19,7 @@ import { LandingPage } from "../pages/public/LandingPage";
 import { NotFoundPage } from "../pages/public/NotFoundPage";
 import { AthleteApplicationsPage } from "../pages/rh/AthleteApplicationsPage";
 import { AthletesPage } from "../pages/rh/AthletesPage";
+import { TestesPage } from "../pages/rh/TestesPage";
 import { TacticalCourtPage } from "../pages/tactical/TacticalCourtPage";
 import { TrainingCalendarPage } from "../pages/trainings/TrainingCalendarPage";
 import { TrainingsPage } from "../pages/trainings/TrainingsPage";
@@ -39,6 +39,14 @@ export function AppRoutes() {
         }
       >
         <Route index element={<DashboardPage />} />
+        <Route
+          path="rh/testes"
+          element={
+            <ProtectedRoute permissions={["rh"]}>
+              <TestesPage />
+            </ProtectedRoute>
+          }
+        />
         <Route
           path="rh/inscricoes"
           element={
@@ -104,15 +112,7 @@ export function AppRoutes() {
             </ProtectedRoute>
           }
         />
-        <Route
-          path="atleta/check-in"
-          element={
-            <ProtectedRoute permissions={["atleta"]}>
-              <AthleteCheckInPage />
-            </ProtectedRoute>
-          }
-        />
-        <Route
+<Route
           path="meu-perfil"
           element={
             <ProtectedRoute permissions={["atleta", "trainings:update"]}>
@@ -131,7 +131,7 @@ export function AppRoutes() {
         <Route
           path="chamada"
           element={
-            <ProtectedRoute permissions={["treinos"]}>
+            <ProtectedRoute permissions={["chamada"]}>
               <ChamadaPage />
             </ProtectedRoute>
           }

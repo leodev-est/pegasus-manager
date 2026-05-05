@@ -15,6 +15,7 @@ export type Permission =
   | "financeiro"
   | "marketing"
   | "treinos"
+  | "chamada"
   | "operacional"
   | "admin"
   | "atleta";
@@ -27,6 +28,7 @@ export const rolePermissions: Record<Role, Permission[]> = {
     "financeiro",
     "marketing",
     "treinos",
+    "chamada",
     "operacional",
     "admin",
   ],
@@ -34,7 +36,7 @@ export const rolePermissions: Record<Role, Permission[]> = {
   Financeiro: ["dashboard", "financeiro", "gestao"],
   Marketing: ["dashboard", "marketing", "gestao"],
   Conselheira: ["dashboard", "gestao"],
-  Tecnico: ["dashboard", "treinos"],
+  Tecnico: ["dashboard", "treinos", "chamada"],
   Operacional: ["dashboard", "operacional", "gestao"],
   Atleta: ["dashboard", "atleta"],
 };

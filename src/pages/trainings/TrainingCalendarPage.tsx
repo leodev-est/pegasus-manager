@@ -18,7 +18,72 @@ const OFFICIAL_TRAINING = {
   modality: "Voleibol",
 };
 
-const BLOCKED_DATES = new Set(["2026-05-30", "2026-06-20", "2026-09-26"]);
+// Datas bloqueadas manualmente (além dos automáticos por feriado em sexta)
+const MANUAL_BLOCKED_DATES = new Set(["2026-05-30", "2026-06-20", "2026-09-26"]);
+
+function addUTCDays(date: Date, days: number): Date {
+  return new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate() + days));
+}
+
+// Algoritmo de Gauss para cálculo da Páscoa
+function getEaster(year: number): Date {
+  const a = year % 19;
+  const b = Math.floor(year / 100);
+  const c = year % 100;
+  const d = Math.floor(b / 4);
+  const e = b % 4;
+  const f = Math.floor((b + 8) / 25);
+  const g = Math.floor((b - f + 1) / 3);
+  const h = (19 * a + b - d - g + 15) % 30;
+  const i = Math.floor(c / 4);
+  const k = c % 4;
+  const l = (32 + 2 * e + 2 * i - h - k) % 7;
+  const m = Math.floor((a + 11 * h + 22 * l) / 451);
+  const month = Math.floor((h + l - 7 * m + 114) / 31);
+  const day = ((h + l - 7 * m + 114) % 31) + 1;
+  return new Date(Date.UTC(year, month - 1, day));
+}
+
+// Retorna os sábados que devem ser bloqueados por serem após uma sexta-feira feriado nacional
+function getAutoBlockedSaturdays(year: number): Set<string> {
+  const blocked = new Set<string>();
+  const easter = getEaster(year);
+
+  // Sexta-Feira da Paixão é sempre sexta (Páscoa - 2 dias)
+  const goodFriday = addUTCDays(easter, -2);
+  blocked.add(toDateKey(addUTCDays(goodFriday, 1)));
+
+  // Feriados nacionais fixos — bloqueia sábado seguinte se cair em sexta
+  const fixedHolidays = [
+    new Date(Date.UTC(year, 0, 1)),   // Ano Novo
+    new Date(Date.UTC(year, 3, 21)),  // Tiradentes
+    new Date(Date.UTC(year, 4, 1)),   // Dia do Trabalho
+    new Date(Date.UTC(year, 8, 7)),   // Independência
+    new Date(Date.UTC(year, 9, 12)),  // N.S. Aparecida
+    new Date(Date.UTC(year, 10, 2)),  // Finados
+    new Date(Date.UTC(year, 10, 15)), // Proclamação da República
+    new Date(Date.UTC(year, 11, 25)), // Natal
+  ];
+
+  for (const holiday of fixedHolidays) {
+    if (holiday.getUTCDay() === 5) {
+      blocked.add(toDateKey(addUTCDays(holiday, 1)));
+    }
+  }
+
+  return blocked;
+}
+
+function buildAllBlockedDates(): Set<string> {
+  const all = new Set(MANUAL_BLOCKED_DATES);
+  for (let year = 2024; year <= 2032; year++) {
+    getAutoBlockedSaturdays(year).forEach((d) => all.add(d));
+  }
+  return all;
+}
+
+const BLOCKED_DATES = buildAllBlockedDates();
+
 const WEEK_DAYS = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
 const INFO_CARDS: Array<{ label: string; value: string; icon: LucideIcon }> = [
   { label: "Horário", value: OFFICIAL_TRAINING.time, icon: Clock },
@@ -78,7 +143,10 @@ function getMonthDays(month: Date) {
 }
 
 export function TrainingCalendarPage() {
-  const [month, setMonth] = useState(() => new Date(Date.UTC(2026, 3, 1)));
+  const [month, setMonth] = useState(() => {
+    const now = new Date();
+    return new Date(Date.UTC(now.getFullYear(), now.getMonth(), 1));
+  });
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const days = useMemo(() => getMonthDays(month), [month]);
   const officialDays = days.filter((day): day is Date => Boolean(day && isOfficialTrainingDate(day)));
