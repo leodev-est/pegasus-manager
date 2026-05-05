@@ -1,5 +1,5 @@
-import { ChevronLeft, ChevronRight, ClipboardList, Loader2, MapPin, Users } from "lucide-react";
-import { useCallback, useEffect, useState } from "react";
+import { AlertCircle, ChevronLeft, ChevronRight, ClipboardList, Loader2, MapPin, Users } from "lucide-react";
+import { useEffect, useState } from "react";
 import { useToast } from "../../components/ui/Toast";
 import {
   type ChamadaAthlete,
@@ -60,28 +60,27 @@ type ChamadaData = Awaited<ReturnType<typeof attendanceService.getChamada>>;
 export function ChamadaPage() {
   const { showToast } = useToast();
   const [dateKey, setDateKey] = useState(() => nearestSaturday(getBrazilTodayKey()));
+  // showToast still used for save errors below
+  const [retryCount, setRetryCount] = useState(0);
   const [chamada, setChamada] = useState<ChamadaData | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isError, setIsError] = useState(false);
   const [savingId, setSavingId] = useState<string | null>(null);
 
-  const load = useCallback(
-    async (date: string) => {
-      setIsLoading(true);
-      try {
-        const data = await attendanceService.getChamada(date);
-        setChamada(data);
-      } catch {
-        showToast("Erro ao carregar chamada.", "error");
-      } finally {
-        setIsLoading(false);
-      }
-    },
-    [showToast],
-  );
-
   useEffect(() => {
-    load(dateKey);
-  }, [dateKey, load]);
+    let cancelled = false;
+    setIsLoading(true);
+    setIsError(false);
+    setChamada(null);
+
+    attendanceService
+      .getChamada(dateKey)
+      .then((data) => { if (!cancelled) setChamada(data); })
+      .catch(() => { if (!cancelled) setIsError(true); })
+      .finally(() => { if (!cancelled) setIsLoading(false); });
+
+    return () => { cancelled = true; };
+  }, [dateKey, retryCount]);
 
   async function handleStatusClick(athlete: ChamadaAthlete, status: ChamadaAttendanceStatus) {
     if (savingId === athlete.id || athlete.status === status) return;
@@ -154,6 +153,18 @@ export function ChamadaPage() {
       {isLoading ? (
         <div className="flex items-center justify-center py-16">
           <Loader2 className="animate-spin text-pegasus-primary" size={28} />
+        </div>
+      ) : isError ? (
+        <div className="flex flex-col items-center justify-center gap-3 rounded-2xl border border-rose-100 bg-rose-50 py-16 text-center shadow-soft">
+          <AlertCircle className="text-rose-400" size={40} />
+          <p className="font-bold text-pegasus-navy">Erro ao carregar chamada</p>
+          <button
+            type="button"
+            onClick={() => setRetryCount((n) => n + 1)}
+            className="text-sm font-semibold text-pegasus-primary underline underline-offset-2"
+          >
+            Tentar novamente
+          </button>
         </div>
       ) : !chamada?.available ? (
         <div className="flex flex-col items-center justify-center gap-3 rounded-2xl border border-blue-100 bg-white py-16 text-center shadow-soft">
