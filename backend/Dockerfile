@@ -8,4 +8,4 @@ COPY src ./src
 COPY tsconfig.json ./
 RUN npx tsc
 RUN npm prune --production
-CMD ["node", "dist/index.js"]
+CMD ["npm", "start"]
