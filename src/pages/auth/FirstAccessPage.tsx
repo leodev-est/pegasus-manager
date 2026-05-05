@@ -1,4 +1,4 @@
-import { ArrowLeft, Loader2, LockKeyhole } from "lucide-react";
+import { ArrowLeft, Eye, EyeOff, Loader2, LockKeyhole } from "lucide-react";
 import type { FormEvent } from "react";
 import { useEffect, useState } from "react";
 import { Navigate, useNavigate } from "react-router-dom";
@@ -13,6 +13,8 @@ export function FirstAccessPage() {
   const navigate = useNavigate();
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+  const [showNew, setShowNew] = useState(false);
+  const [showConfirm, setShowConfirm] = useState(false);
   const [error, setError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -80,9 +82,17 @@ export function FirstAccessPage() {
                   minLength={6}
                   onChange={(event) => setNewPassword(event.target.value)}
                   required
-                  type="password"
+                  type={showNew ? "text" : "password"}
                   value={newPassword}
                 />
+                <button
+                  type="button"
+                  onClick={() => setShowNew((v) => !v)}
+                  className="shrink-0 text-slate-400 hover:text-pegasus-medium"
+                  tabIndex={-1}
+                >
+                  {showNew ? <EyeOff size={18} /> : <Eye size={18} />}
+                </button>
               </span>
             </label>
             <label className="block">
@@ -95,9 +105,17 @@ export function FirstAccessPage() {
                   minLength={6}
                   onChange={(event) => setConfirmPassword(event.target.value)}
                   required
-                  type="password"
+                  type={showConfirm ? "text" : "password"}
                   value={confirmPassword}
                 />
+                <button
+                  type="button"
+                  onClick={() => setShowConfirm((v) => !v)}
+                  className="shrink-0 text-slate-400 hover:text-pegasus-medium"
+                  tabIndex={-1}
+                >
+                  {showConfirm ? <EyeOff size={18} /> : <Eye size={18} />}
+                </button>
               </span>
             </label>
             {error ? (

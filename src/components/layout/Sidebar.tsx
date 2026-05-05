@@ -81,6 +81,12 @@ export const menuGroups: MenuGroup[] = [
         permissions: ["treinos"],
       },
       {
+        label: "Chamada",
+        path: "/app/chamada",
+        icon: ClipboardList,
+        permissions: ["treinos"],
+      },
+      {
         label: "Frequência",
         path: "/app/frequencia",
         icon: UserCheck,

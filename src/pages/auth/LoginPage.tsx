@@ -1,4 +1,4 @@
-﻿import { ArrowLeft, Loader2, LockKeyhole, LogIn, Mail } from "lucide-react";
+﻿import { ArrowLeft, Eye, EyeOff, Loader2, LockKeyhole, LogIn, Mail } from "lucide-react";
 import type { FormEvent } from "react";
 import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
@@ -13,6 +13,7 @@ export function LoginPage() {
   const navigate = useNavigate();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -95,7 +96,7 @@ export function LoginPage() {
                 <span className="mt-2 flex items-center gap-3 rounded-2xl border border-blue-100 bg-white px-4 py-3">
                   <LockKeyhole className="text-pegasus-medium" size={18} />
                   <input
-                    type="password"
+                    type={showPassword ? "text" : "password"}
                     required
                     value={password}
                     onChange={(event) => setPassword(event.target.value)}
@@ -103,6 +104,14 @@ export function LoginPage() {
                     placeholder="Sua senha"
                     className="w-full outline-none placeholder:text-slate-400"
                   />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword((v) => !v)}
+                    className="shrink-0 text-slate-400 hover:text-pegasus-medium"
+                    tabIndex={-1}
+                  >
+                    {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                  </button>
                 </span>
               </label>
 

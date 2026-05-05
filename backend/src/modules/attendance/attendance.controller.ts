@@ -1,4 +1,5 @@
 import type { RequestHandler } from "express";
+import { getBrazilDateKey } from "../../utils/trainingDates";
 import { attendanceService } from "./attendance.service";
 
 function getParamId(id: string | string[]) {
@@ -56,6 +57,26 @@ export const attendanceController = {
   update: (async (request, response, next) => {
     try {
       const data = await attendanceService.updateAttendance(getParamId(request.params.id), request.body);
+      response.json(data);
+    } catch (error) {
+      next(error);
+    }
+  }) satisfies RequestHandler,
+
+  getChamada: (async (request, response, next) => {
+    try {
+      const dateKey = getQueryParam(request.query.date) ?? getBrazilDateKey();
+      const data = await attendanceService.getChamada(dateKey);
+      response.json(data);
+    } catch (error) {
+      next(error);
+    }
+  }) satisfies RequestHandler,
+
+  markChamadaBulk: (async (request, response, next) => {
+    try {
+      const { date, entries } = request.body as { date: string; entries: Array<{ athleteId: string; status: string }> };
+      const data = await attendanceService.markChamadaBulk(date, entries);
       response.json(data);
     } catch (error) {
       next(error);

@@ -57,6 +57,23 @@ export type AthleteFrequency = Omit<MyFrequency, "athlete"> & {
   };
 };
 
+export type ChamadaAttendanceStatus = Exclude<AttendanceStatus, "programado">;
+
+export type ChamadaAthlete = {
+  id: string;
+  name: string;
+  category: string | null;
+  attendanceId: string | null;
+  status: ChamadaAttendanceStatus | null;
+};
+
+export type Chamada = {
+  available: boolean;
+  date: string;
+  training: AttendanceTraining | null;
+  athletes: ChamadaAthlete[];
+};
+
 export const attendanceService = {
   async getTodayCheckIn() {
     const { data } = await api.get<TodayCheckIn>("/attendance/check-in/today");
@@ -84,6 +101,16 @@ export const attendanceService = {
 
   async updateAttendance(id: string, payload: { notes?: string | null; status: Exclude<AttendanceStatus, "programado"> }) {
     const { data } = await api.patch(`/attendance/${id}`, payload);
+    return data;
+  },
+
+  async getChamada(date: string) {
+    const { data } = await api.get<Chamada>("/attendance/chamada", { params: { date } });
+    return data;
+  },
+
+  async markChamadaBulk(date: string, entries: Array<{ athleteId: string; status: ChamadaAttendanceStatus }>) {
+    const { data } = await api.post("/attendance/chamada/bulk", { date, entries });
     return data;
   },
 };

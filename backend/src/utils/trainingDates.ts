@@ -1,4 +1,12 @@
 export const BLOCKED_TRAINING_DATES = ["2026-05-30", "2026-06-20", "2026-09-26"] as const;
+
+// Feriados nacionais em 2026 que caem numa sexta-feira.
+// O sábado subsequente não terá treino.
+export const FRIDAY_NATIONAL_HOLIDAYS_2026 = [
+  "2026-05-01", // Dia do Trabalho → cancela 02/05
+  "2026-11-20", // Consciência Negra → cancela 21/11
+  "2026-12-25", // Natal → cancela 26/12
+] as const;
 export const OFFICIAL_TRAINING_START_DATE = "2026-04-25";
 export const OFFICIAL_TRAINING_END_DATE = "2026-12-31";
 export const OFFICIAL_TRAINING_TIME = "17:30 as 19:00";
@@ -53,7 +61,20 @@ export function isOfficialPegasusTrainingDate(date: Date | string) {
     return false;
   }
 
-  return dateKeyToDate(dateKey).getUTCDay() === 6;
+  const d = dateKeyToDate(dateKey);
+
+  if (d.getUTCDay() !== 6) {
+    return false;
+  }
+
+  // Sábado subsequente a feriado nacional na sexta não tem treino
+  const prevDayKey = toDateKey(new Date(d.getTime() - 24 * 60 * 60 * 1000));
+
+  if (FRIDAY_NATIONAL_HOLIDAYS_2026.includes(prevDayKey as (typeof FRIDAY_NATIONAL_HOLIDAYS_2026)[number])) {
+    return false;
+  }
+
+  return true;
 }
 
 export function getOfficialTrainingDatesForMonth(year: number, month: number) {

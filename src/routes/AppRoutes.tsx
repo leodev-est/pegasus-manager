@@ -4,6 +4,7 @@ import { AppLayout } from "../components/layout/AppLayout";
 import { AccessControlPage } from "../pages/admin/AccessControlPage";
 import { AttendanceAdminPage } from "../pages/attendance/AttendanceAdminPage";
 import { AthleteCheckInPage } from "../pages/attendance/AthleteCheckInPage";
+import { ChamadaPage } from "../pages/attendance/ChamadaPage";
 import { MyFrequencyPage } from "../pages/attendance/MyFrequencyPage";
 import { LoginPage } from "../pages/auth/LoginPage";
 import { FirstAccessPage } from "../pages/auth/FirstAccessPage";
@@ -124,6 +125,14 @@ export function AppRoutes() {
           element={
             <ProtectedRoute permissions={["atleta"]}>
               <MyFrequencyPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="chamada"
+          element={
+            <ProtectedRoute permissions={["treinos"]}>
+              <ChamadaPage />
             </ProtectedRoute>
           }
         />

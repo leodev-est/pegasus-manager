@@ -407,6 +407,63 @@ export const attendanceService = {
     }));
   },
 
+  async getChamada(dateKey: string) {
+    const training = await ensureOfficialTrainingForDate(dateKey);
+
+    if (!training) {
+      return { available: false, date: dateKey, training: null, athletes: [] };
+    }
+
+    const athletes = await prisma.athlete.findMany({
+      where: { status: "ativo" },
+      orderBy: { name: "asc" },
+      include: {
+        attendances: {
+          where: { trainingId: training.id },
+        },
+      },
+    });
+
+    return {
+      available: true,
+      date: dateKey,
+      training: {
+        id: training.id,
+        title: training.title,
+        ...getTrainingMeta(dateKey),
+      },
+      athletes: athletes.map((athlete) => ({
+        id: athlete.id,
+        name: athlete.name,
+        category: athlete.category,
+        attendanceId: athlete.attendances[0]?.id ?? null,
+        status: athlete.attendances[0]?.status ?? null,
+      })),
+    };
+  },
+
+  async markChamadaBulk(dateKey: string, entries: Array<{ athleteId: string; status: string }>) {
+    const training = await ensureOfficialTrainingForDate(dateKey);
+
+    if (!training) {
+      throw new AppError("Não há treino oficial para esta data", 404);
+    }
+
+    for (const entry of entries) {
+      validateAttendanceStatus(entry.status);
+    }
+
+    return Promise.all(
+      entries.map(({ athleteId, status }) =>
+        prisma.trainingAttendance.upsert({
+          where: { trainingId_athleteId: { trainingId: training.id, athleteId } },
+          create: { trainingId: training.id, athleteId, status },
+          update: { status },
+        }),
+      ),
+    );
+  },
+
   async updateAttendance(id: string, payload: { notes?: string | null; status?: string }) {
     validateAttendanceStatus(payload.status);
 

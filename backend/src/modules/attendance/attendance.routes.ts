@@ -44,14 +44,18 @@ function ensureDirectorOrCoach(
   _response: Response,
   next: NextFunction,
 ) {
-  if (request.user?.roles.includes("Diretor") || request.user?.roles.includes("Tecnico")) {
+  const roles = request.user?.roles ?? [];
+
+  if (roles.includes("Diretor") || roles.includes("Tecnico") || roles.includes("Treinador")) {
     next();
     return;
   }
 
-  next(new AppError("Acesso exclusivo para Diretor ou Técnico.", 403));
+  next(new AppError("Acesso exclusivo para Diretor, Técnico ou Treinador.", 403));
 }
 
+attendanceRoutes.get("/chamada", ensureDirectorOrCoach, attendanceController.getChamada);
+attendanceRoutes.post("/chamada/bulk", ensureDirectorOrCoach, attendanceController.markChamadaBulk);
 attendanceRoutes.get("/check-in/today", ensureTrainingsReadOrAthlete, attendanceController.todayCheckIn);
 attendanceRoutes.post("/check-in", ensureAthlete, attendanceController.checkIn);
 attendanceRoutes.get("/my-frequency", ensureAthlete, attendanceController.myFrequency);
