@@ -150,6 +150,15 @@ export function MyProfilePage() {
     loadProfile();
   }, [loadProfile]);
 
+  // Refresh profile whenever the user comes back to this tab/page
+  useEffect(() => {
+    function handleVisibilityChange() {
+      if (!document.hidden) loadProfile();
+    }
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    return () => document.removeEventListener("visibilitychange", handleVisibilityChange);
+  }, [loadProfile]);
+
   const currentPayment = useMemo(() => {
     if (!profile?.payments.length) return null;
     return [...profile.payments].sort((a, b) =>

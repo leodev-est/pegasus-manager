@@ -1,7 +1,7 @@
 ﻿import type { RequestHandler } from "express";
 import { AppError } from "./error.middleware";
 
-export function permissionMiddleware(permissionKey: string): RequestHandler {
+export function permissionMiddleware(permissionKey: string | string[]): RequestHandler {
   return (request, _response, next) => {
     const user = request.user;
 
@@ -10,7 +10,9 @@ export function permissionMiddleware(permissionKey: string): RequestHandler {
       return;
     }
 
-    if (user.roles.includes("Diretor") || user.permissions.includes(permissionKey)) {
+    const keys = Array.isArray(permissionKey) ? permissionKey : [permissionKey];
+
+    if (user.roles.includes("Diretor") || keys.some((key) => user.permissions.includes(key))) {
       next();
       return;
     }

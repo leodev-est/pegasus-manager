@@ -210,6 +210,8 @@ export function TacticalCourtPage() {
   const canCreate = hasPermission(["trainings:create"]);
   const canDelete = hasPermission(["trainings:delete"]);
   const canManageFormation = canCreate || canEdit;
+  // All authenticated users can view the court (athletes, gestao, etc.)
+  const canView = Boolean(user);
   const [athletes, setAthletes] = useState<Athlete[]>([]);
   const [formations, setFormations] = useState<Formation[]>([]);
   const [selectedFormationId, setSelectedFormationId] = useState("base");
@@ -438,7 +440,9 @@ export function TacticalCourtPage() {
           ) : null}
         </section>
 
-        {isLoading ? (
+        {!canView ? (
+          <div className="panel p-6 text-sm text-slate-500">Acesso restrito.</div>
+        ) : isLoading ? (
           <div className="panel flex items-center gap-3 p-6 text-sm font-bold text-pegasus-primary">
             <Loader2 className="animate-spin" size={18} />
             Carregando quadra tática

@@ -102,5 +102,45 @@ export const tasksController = {
       next(error);
     }
   }) satisfies RequestHandler,
+
+  approve: (async (request, response, next) => {
+    try {
+      const user = request.user;
+      if (!user || (!user.roles.includes("Diretor") && !user.roles.includes("MarketingLvl2"))) {
+        next(new AppError("Apenas o responsável de marketing pode aprovar tarefas", 403));
+        return;
+      }
+      const id = getParamId(request.params.id);
+      const { action, scheduledAt } = request.body as { action: "schedule" | "publish"; scheduledAt?: string };
+      const task = await tasksService.approve(id, action, scheduledAt);
+      response.json(task);
+    } catch (error) {
+      next(error);
+    }
+  }) satisfies RequestHandler,
+
+  reject: (async (request, response, next) => {
+    try {
+      const user = request.user;
+      if (!user || (!user.roles.includes("Diretor") && !user.roles.includes("MarketingLvl2"))) {
+        next(new AppError("Apenas o responsável de marketing pode reprovar tarefas", 403));
+        return;
+      }
+      const id = getParamId(request.params.id);
+      const task = await tasksService.reject(id);
+      response.json(task);
+    } catch (error) {
+      next(error);
+    }
+  }) satisfies RequestHandler,
+
+  publishScheduled: (async (_request, response, next) => {
+    try {
+      await tasksService.publishScheduled();
+      response.json({ ok: true });
+    } catch (error) {
+      next(error);
+    }
+  }) satisfies RequestHandler,
 };
 

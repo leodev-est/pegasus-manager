@@ -128,21 +128,30 @@ model CashMovement {
 }
 
 model Task {
-  id          String    @id @default(uuid())
-  title       String
-  description String?
-  status      String    @default("todo")
-  area        String    @default("management")
-  assignedTo  String?
-  dueDate     DateTime?
-    priority    String    @default("media")
-    channel     String?
-    labels      Json      @default("[]")
-    comments    Json      @default("[]")
-    checklist   Json      @default("[]")
-    createdAt   DateTime  @default(now())
-    updatedAt   DateTime  @updatedAt
-  }
+  id             String    @id @default(uuid())
+  title          String
+  description    String?
+  status         String    @default("todo")
+  area           String    @default("management")
+  assignedTo     String?
+  dueDate        DateTime?
+  priority       String    @default("media")
+  channel        String?
+  labels         Json      @default("[]")
+  comments       Json      @default("[]")
+  checklist      Json      @default("[]")
+  approvalStatus String?
+  scheduledAt    DateTime?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+}
+
+model TrainingSetting {
+  id           String   @id @default("singleton")
+  blockedDates String[]
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
 
 model Training {
   id        String   @id @default(uuid())

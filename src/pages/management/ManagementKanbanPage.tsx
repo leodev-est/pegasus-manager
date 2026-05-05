@@ -41,9 +41,9 @@ function buildPayload(form: ManagementForm): TaskPayload {
 export function ManagementKanbanPage() {
   const { hasPermission, user } = useAuth();
   const { showToast } = useToast();
-  const canCreate = hasPermission(["management:create"]);
-  const canUpdate = hasPermission(["management:update"]);
-  const canDelete = hasPermission(["management:delete"]);
+  const canCreate = hasPermission(["gestao", "management:create"]);
+  const canUpdate = hasPermission(["gestao", "management:update"]);
+  const canDelete = hasPermission(["gestao", "management:delete"]);
   const [tasks, setTasks] = useState<ManagementTask[]>([]);
   const [assignedTo, setAssignedTo] = useState("todos");
   const [priority, setPriority] = useState("todos");

@@ -1,15 +1,21 @@
-﻿import {
+import {
   CalendarDays,
   ChevronLeft,
   ChevronRight,
   Clock,
+  Lock,
+  LockOpen,
   MapPin,
   type LucideIcon,
 } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { useAuth } from "../../auth/AuthContext";
 import { Button } from "../../components/ui/Button";
 import { Modal } from "../../components/ui/Modal";
 import { PageHeader } from "../../components/ui/PageHeader";
+import { useToast } from "../../components/ui/Toast";
+import { getApiErrorMessage } from "../../services/api";
+import { calendarService } from "../../services/calendarService";
 
 const OFFICIAL_TRAINING = {
   time: "17:30 às 19:00",
@@ -18,14 +24,13 @@ const OFFICIAL_TRAINING = {
   modality: "Voleibol",
 };
 
-// Datas bloqueadas manualmente (além dos automáticos por feriado em sexta)
-const MANUAL_BLOCKED_DATES = new Set(["2026-05-30", "2026-06-20", "2026-09-26"]);
+// Datas bloqueadas manualmente (base fixa, complementadas pelas do banco)
+const STATIC_MANUAL_BLOCKED = new Set(["2026-05-30", "2026-06-20", "2026-09-26"]);
 
 function addUTCDays(date: Date, days: number): Date {
   return new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate() + days));
 }
 
-// Algoritmo de Gauss para cálculo da Páscoa
 function getEaster(year: number): Date {
   const a = year % 19;
   const b = Math.floor(year / 100);
@@ -44,25 +49,21 @@ function getEaster(year: number): Date {
   return new Date(Date.UTC(year, month - 1, day));
 }
 
-// Retorna os sábados que devem ser bloqueados por serem após uma sexta-feira feriado nacional
 function getAutoBlockedSaturdays(year: number): Set<string> {
   const blocked = new Set<string>();
   const easter = getEaster(year);
-
-  // Sexta-Feira da Paixão é sempre sexta (Páscoa - 2 dias)
   const goodFriday = addUTCDays(easter, -2);
   blocked.add(toDateKey(addUTCDays(goodFriday, 1)));
 
-  // Feriados nacionais fixos — bloqueia sábado seguinte se cair em sexta
   const fixedHolidays = [
-    new Date(Date.UTC(year, 0, 1)),   // Ano Novo
-    new Date(Date.UTC(year, 3, 21)),  // Tiradentes
-    new Date(Date.UTC(year, 4, 1)),   // Dia do Trabalho
-    new Date(Date.UTC(year, 8, 7)),   // Independência
-    new Date(Date.UTC(year, 9, 12)),  // N.S. Aparecida
-    new Date(Date.UTC(year, 10, 2)),  // Finados
-    new Date(Date.UTC(year, 10, 15)), // Proclamação da República
-    new Date(Date.UTC(year, 11, 25)), // Natal
+    new Date(Date.UTC(year, 0, 1)),
+    new Date(Date.UTC(year, 3, 21)),
+    new Date(Date.UTC(year, 4, 1)),
+    new Date(Date.UTC(year, 8, 7)),
+    new Date(Date.UTC(year, 9, 12)),
+    new Date(Date.UTC(year, 10, 2)),
+    new Date(Date.UTC(year, 10, 15)),
+    new Date(Date.UTC(year, 11, 25)),
   ];
 
   for (const holiday of fixedHolidays) {
@@ -74,15 +75,15 @@ function getAutoBlockedSaturdays(year: number): Set<string> {
   return blocked;
 }
 
-function buildAllBlockedDates(): Set<string> {
-  const all = new Set(MANUAL_BLOCKED_DATES);
+function buildStaticBlockedDates(): Set<string> {
+  const all = new Set(STATIC_MANUAL_BLOCKED);
   for (let year = 2024; year <= 2032; year++) {
     getAutoBlockedSaturdays(year).forEach((d) => all.add(d));
   }
   return all;
 }
 
-const BLOCKED_DATES = buildAllBlockedDates();
+const STATIC_BLOCKED_DATES = buildStaticBlockedDates();
 
 const WEEK_DAYS = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
 const INFO_CARDS: Array<{ label: string; value: string; icon: LucideIcon }> = [
@@ -113,15 +114,6 @@ function formatDate(date: Date) {
   }).format(date);
 }
 
-function isOfficialTrainingDate(date: Date) {
-  const dateKey = toDateKey(date);
-  return date.getUTCDay() === 6 && dateKey <= "2026-12-31" && !BLOCKED_DATES.has(dateKey);
-}
-
-function isBlockedDate(date: Date) {
-  return BLOCKED_DATES.has(toDateKey(date));
-}
-
 function getMonthDays(month: Date) {
   const start = new Date(Date.UTC(month.getUTCFullYear(), month.getUTCMonth(), 1));
   const end = new Date(Date.UTC(month.getUTCFullYear(), month.getUTCMonth() + 1, 0));
@@ -143,17 +135,90 @@ function getMonthDays(month: Date) {
 }
 
 export function TrainingCalendarPage() {
+  const { hasPermission } = useAuth();
+  const { showToast } = useToast();
+  const canEditCalendar = hasPermission(["management:create", "management:update", "gestao"]);
+
   const [month, setMonth] = useState(() => {
     const now = new Date();
     return new Date(Date.UTC(now.getFullYear(), now.getMonth(), 1));
   });
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
+  const [dynamicBlockedDates, setDynamicBlockedDates] = useState<Set<string>>(new Set());
+  const [isLoadingDates, setIsLoadingDates] = useState(false);
+  const [isTogglingDate, setIsTogglingDate] = useState(false);
+
+  const allBlockedDates = useMemo(
+    () => new Set([...STATIC_BLOCKED_DATES, ...dynamicBlockedDates]),
+    [dynamicBlockedDates],
+  );
+
+  const isOfficialTrainingDate = useCallback(
+    (date: Date) => {
+      const dateKey = toDateKey(date);
+      return date.getUTCDay() === 6 && dateKey <= "2026-12-31" && !allBlockedDates.has(dateKey);
+    },
+    [allBlockedDates],
+  );
+
+  const isBlockedDate = useCallback(
+    (date: Date) => allBlockedDates.has(toDateKey(date)),
+    [allBlockedDates],
+  );
+
+  const isDynamicallyBlocked = useCallback(
+    (date: Date) => dynamicBlockedDates.has(toDateKey(date)),
+    [dynamicBlockedDates],
+  );
+
+  const loadDynamicDates = useCallback(async () => {
+    setIsLoadingDates(true);
+    try {
+      const dates = await calendarService.getBlockedDates();
+      setDynamicBlockedDates(new Set(dates));
+    } catch {
+      // silent — fallback to static dates
+    } finally {
+      setIsLoadingDates(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    loadDynamicDates();
+  }, [loadDynamicDates]);
+
   const days = useMemo(() => getMonthDays(month), [month]);
   const officialDays = days.filter((day): day is Date => Boolean(day && isOfficialTrainingDate(day)));
 
   function changeMonth(direction: -1 | 1) {
     setMonth((current) => new Date(Date.UTC(current.getUTCFullYear(), current.getUTCMonth() + direction, 1)));
   }
+
+  async function handleToggleBlock(date: Date) {
+    if (!canEditCalendar) return;
+    const dateKey = toDateKey(date);
+
+    // Can only toggle saturdays
+    if (date.getUTCDay() !== 6) return;
+
+    setIsTogglingDate(true);
+    try {
+      const updated = await calendarService.toggleBlockedDate(dateKey);
+      setDynamicBlockedDates(new Set(updated));
+      const isNowBlocked = updated.includes(dateKey);
+      showToast(isNowBlocked ? "Treino bloqueado." : "Bloqueio removido.", "success");
+    } catch (error) {
+      showToast(getApiErrorMessage(error), "error");
+    } finally {
+      setIsTogglingDate(false);
+    }
+  }
+
+  // Blocked dates to display: only 2026 entries
+  const blockedDatesFor2026 = useMemo(
+    () => Array.from(allBlockedDates).filter((d) => d.startsWith("2026-")).sort(),
+    [allBlockedDates],
+  );
 
   return (
     <div className="space-y-8">
@@ -177,6 +242,17 @@ export function TrainingCalendarPage() {
           </article>
         ))}
       </section>
+
+      {canEditCalendar && (
+        <section className="rounded-2xl border border-amber-200 bg-amber-50 p-4">
+          <div className="flex items-center gap-2">
+            <Lock className="text-amber-600" size={16} />
+            <p className="text-sm font-bold text-amber-800">
+              Modo Gestão: clique em qualquer sábado para bloquear ou desbloquear o treino.
+            </p>
+          </div>
+        </section>
+      )}
 
       <section className="panel overflow-hidden">
         <div className="flex flex-col gap-4 border-b border-blue-100 p-4 sm:flex-row sm:items-center sm:justify-between sm:p-6">
@@ -214,15 +290,24 @@ export function TrainingCalendarPage() {
 
             const official = isOfficialTrainingDate(day);
             const blocked = isBlockedDate(day);
+            const isDynBlocked = isDynamicallyBlocked(day);
+            const isSaturday = day.getUTCDay() === 6;
+            const isEditableDay = canEditCalendar && isSaturday;
 
             return (
               <button
                 className={`min-h-24 border-b border-r border-blue-50 p-2 text-left transition sm:p-3 ${
                   official ? "bg-blue-50 hover:bg-blue-100" : "bg-white"
-                } ${blocked ? "bg-rose-50" : ""}`}
-                disabled={!official}
+                } ${blocked ? "bg-rose-50" : ""} ${isEditableDay ? "cursor-pointer hover:ring-2 hover:ring-amber-400" : ""}`}
+                disabled={isTogglingDate || isLoadingDates}
                 key={toDateKey(day)}
-                onClick={() => setSelectedDate(day)}
+                onClick={() => {
+                  if (isEditableDay) {
+                    handleToggleBlock(day);
+                  } else if (official) {
+                    setSelectedDate(day);
+                  }
+                }}
                 type="button"
               >
                 <span className="text-sm font-black text-pegasus-navy">{day.getUTCDate()}</span>
@@ -236,6 +321,18 @@ export function TrainingCalendarPage() {
                     Bloqueado
                   </span>
                 ) : null}
+                {isEditableDay && !blocked ? (
+                  <span className="mt-1 flex items-center gap-1 text-[10px] font-bold text-amber-600 opacity-60">
+                    <LockOpen size={10} />
+                    bloquear
+                  </span>
+                ) : null}
+                {isEditableDay && isDynBlocked ? (
+                  <span className="mt-1 flex items-center gap-1 text-[10px] font-bold text-green-700 opacity-60">
+                    <LockOpen size={10} />
+                    desbloquear
+                  </span>
+                ) : null}
               </button>
             );
           })}
@@ -243,13 +340,15 @@ export function TrainingCalendarPage() {
       </section>
 
       <section className="panel p-5">
-        <p className="text-sm font-bold text-pegasus-navy">Exceções bloqueadas</p>
+        <p className="text-sm font-bold text-pegasus-navy">Exceções bloqueadas em 2026</p>
         <div className="mt-3 flex flex-wrap gap-2">
-          {Array.from(BLOCKED_DATES).map((date) => (
+          {blockedDatesFor2026.length > 0 ? blockedDatesFor2026.map((date) => (
             <span className="rounded-full bg-rose-50 px-3 py-1 text-xs font-bold text-rose-700" key={date}>
               {new Intl.DateTimeFormat("pt-BR", { timeZone: "UTC" }).format(new Date(`${date}T00:00:00.000Z`))}
             </span>
-          ))}
+          )) : (
+            <p className="text-sm text-slate-500">Nenhuma exceção em 2026.</p>
+          )}
         </div>
       </section>
 
@@ -272,5 +371,3 @@ export function TrainingCalendarPage() {
     </div>
   );
 }
-
-

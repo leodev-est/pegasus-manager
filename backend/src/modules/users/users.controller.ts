@@ -52,4 +52,13 @@ export const usersController = {
       next(error);
     }
   }) satisfies RequestHandler,
+
+  findByRole: (async (request, response, next) => {
+    try {
+      const users = await usersService.findByRole(String(request.params.role));
+      response.json(users);
+    } catch (error) {
+      next(error);
+    }
+  }) satisfies RequestHandler,
 };

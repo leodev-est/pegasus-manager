@@ -7,7 +7,7 @@ export const formationsRoutes = Router();
 
 formationsRoutes.use(authMiddleware);
 
-formationsRoutes.get("/", permissionMiddleware("trainings:read"), formationsController.findAll);
+formationsRoutes.get("/", permissionMiddleware(["trainings:read", "management:read"]), formationsController.findAll);
 formationsRoutes.post("/", permissionMiddleware("trainings:create"), formationsController.create);
 formationsRoutes.patch("/:id", permissionMiddleware("trainings:update"), formationsController.update);
 formationsRoutes.delete("/:id", permissionMiddleware("trainings:delete"), formationsController.delete);

@@ -64,6 +64,8 @@ export type KanbanTaskBase = {
   labels?: string[];
   comments?: KanbanComment[];
   checklist?: KanbanChecklistItem[];
+  approvalStatus?: string | null;
+  scheduledAt?: string | null;
   createdAt: string;
   updatedAt: string;
 };
@@ -106,11 +108,18 @@ type AdvancedKanbanProps<TTask extends KanbanTaskBase, TStatus extends string> =
   areaLabel: string;
   currentUserName?: string;
   channelOptions?: ChannelOption[];
+  responsibleOptions?: ChannelOption[];
+  minDueDate?: string;
+  labelsAsTab?: boolean;
+  approvalColumn?: TStatus;
+  canApprove?: boolean;
   emptyStatus: TStatus;
   onCreate: (payload: TaskForm<TStatus>) => Promise<void>;
   onUpdate: (task: TTask, payload: TaskForm<TStatus>) => Promise<void>;
   onDelete: (task: TTask) => Promise<void>;
   onMove: (task: TTask, status: TStatus) => Promise<void>;
+  onApprove?: (task: TTask, action: "schedule" | "publish", scheduledAt?: string) => Promise<void>;
+  onReject?: (task: TTask) => Promise<void>;
 };
 
 const labelPalette = [
@@ -407,6 +416,8 @@ function TaskCard<TTask extends KanbanTaskBase>({
 
 export function AdvancedKanban<TTask extends KanbanTaskBase, TStatus extends string>({
   areaLabel,
+  approvalColumn,
+  canApprove,
   canCreate,
   canDelete,
   canUpdate,
@@ -419,19 +430,29 @@ export function AdvancedKanban<TTask extends KanbanTaskBase, TStatus extends str
   icon,
   isLoading,
   isSaving,
+  labelsAsTab,
+  minDueDate,
+  onApprove,
   onCreate,
   onDelete,
   onMove,
+  onReject,
   onUpdate,
+  responsibleOptions,
   tasks,
   title,
 }: AdvancedKanbanProps<TTask, TStatus>) {
   const [activeTaskId, setActiveTaskId] = useState<string | null>(null);
   const [overColumn, setOverColumn] = useState<string | null>(null);
   const [isFormOpen, setIsFormOpen] = useState(false);
+  const [formTab, setFormTab] = useState<"detalhes" | "etiquetas">("detalhes");
   const [editingTask, setEditingTask] = useState<TTask | null>(null);
   const [viewTask, setViewTask] = useState<TTask | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<TTask | null>(null);
+  const [approvalTask, setApprovalTask] = useState<TTask | null>(null);
+  const [approvalMode, setApprovalMode] = useState<"schedule" | "publish" | null>(null);
+  const [scheduledDate, setScheduledDate] = useState("");
+  const [scheduledTime, setScheduledTime] = useState("");
   const [form, setForm] = useState<TaskForm<TStatus>>(() =>
     emptyForm(emptyStatus, channelOptions?.[0]?.value),
   );
@@ -457,6 +478,7 @@ export function AdvancedKanban<TTask extends KanbanTaskBase, TStatus extends str
     setLabelInput("");
     setCommentInput("");
     setChecklistInput("");
+    setFormTab("detalhes");
     setIsFormOpen(true);
   }
 
@@ -466,8 +488,29 @@ export function AdvancedKanban<TTask extends KanbanTaskBase, TStatus extends str
     setLabelInput("");
     setCommentInput("");
     setChecklistInput("");
+    setFormTab("detalhes");
     setViewTask(null);
     setIsFormOpen(true);
+  }
+
+  async function handleApproveConfirm() {
+    if (!approvalTask || !approvalMode || !onApprove) return;
+    let scheduledAt: string | undefined;
+    if (approvalMode === "schedule") {
+      if (!scheduledDate) return;
+      scheduledAt = scheduledTime ? `${scheduledDate}T${scheduledTime}:00` : `${scheduledDate}T00:00:00`;
+    }
+    await onApprove(approvalTask, approvalMode, scheduledAt);
+    setApprovalTask(null);
+    setApprovalMode(null);
+    setScheduledDate("");
+    setScheduledTime("");
+  }
+
+  async function handleReject(task: TTask) {
+    if (!onReject) return;
+    await onReject(task);
+    setViewTask(null);
   }
 
   function openViewModal(task: TTask) {
@@ -695,6 +738,27 @@ export function AdvancedKanban<TTask extends KanbanTaskBase, TStatus extends str
               </div>
             </section>
 
+            {canApprove && approvalColumn && viewTask.status === approvalColumn && onApprove && onReject ? (
+              <div className="rounded-2xl border-2 border-amber-200 bg-amber-50 p-4">
+                <p className="mb-3 text-sm font-black text-amber-800">Aguardando aprovação</p>
+                <div className="flex flex-col gap-2 sm:flex-row">
+                  <Button
+                    onClick={() => { setApprovalTask(viewTask); setApprovalMode("publish"); }}
+                    className="flex-1 bg-emerald-600 hover:bg-emerald-700"
+                  >
+                    Aprovar
+                  </Button>
+                  <Button
+                    onClick={() => handleReject(viewTask)}
+                    variant="danger"
+                    className="flex-1"
+                  >
+                    Reprovar
+                  </Button>
+                </div>
+              </div>
+            ) : null}
+
             <div className="flex flex-col gap-3 sm:flex-row">
               {canUpdate ? (
                 <Button onClick={() => openEditModal(viewTask)} variant="secondary">
@@ -717,150 +781,212 @@ export function AdvancedKanban<TTask extends KanbanTaskBase, TStatus extends str
         onClose={() => setIsFormOpen(false)}
         title={editingTask ? "Editar tarefa" : "Nova tarefa"}
       >
-        <form className="grid gap-4" onSubmit={handleSubmit}>
-          <Input
-            disabled={isSaving}
-            label="Título"
-            onChange={(event) => setForm({ ...form, title: event.target.value })}
-            required
-            value={form.title}
-          />
-          <Textarea
-            disabled={isSaving}
-            label="Descrição"
-            onChange={(event) => setForm({ ...form, description: event.target.value })}
-            value={form.description}
-          />
-          <div className="grid gap-4 md:grid-cols-2">
-            <Input
-              disabled={isSaving}
-              label="Responsável"
-              onChange={(event) => setForm({ ...form, assignedTo: event.target.value })}
-              value={form.assignedTo}
-            />
-            <Input
-              disabled={isSaving}
-              label="Prazo"
-              onChange={(event) => setForm({ ...form, dueDate: event.target.value })}
-              type="date"
-              value={form.dueDate}
-            />
-            {channelOptions ? (
-              <Select
-                disabled={isSaving}
-                label="Canal"
-                onChange={(event) => setForm({ ...form, channel: event.target.value })}
-                options={channelOptions}
-                value={form.channel}
-              />
-            ) : null}
-            <Select
-              disabled={isSaving}
-              label="Prioridade"
-              onChange={(event) => setForm({ ...form, priority: event.target.value as TaskForm<TStatus>["priority"] })}
-              options={[
-                { label: "Baixa", value: "baixa" },
-                { label: "Média", value: "media" },
-                { label: "Alta", value: "alta" },
-              ]}
-              value={form.priority}
-            />
-            <Select
-              disabled={isSaving}
-              label="Status"
-              onChange={(event) => setForm({ ...form, status: event.target.value as TStatus })}
-              options={columns.map((item) => ({ label: item.label, value: item.value }))}
-              value={form.status}
-            />
+        {labelsAsTab ? (
+          <div className="mb-4 flex gap-2 rounded-xl border border-blue-100 bg-pegasus-surface p-1">
+            {(["detalhes", "etiquetas"] as const).map((tab) => (
+              <button
+                className={`rounded-lg px-4 py-1.5 text-sm font-bold transition ${
+                  formTab === tab ? "bg-white shadow-sm text-pegasus-primary" : "text-slate-500 hover:text-pegasus-primary"
+                }`}
+                key={tab}
+                onClick={() => setFormTab(tab)}
+                type="button"
+              >
+                {tab.charAt(0).toUpperCase() + tab.slice(1)}
+              </button>
+            ))}
           </div>
+        ) : null}
 
-          <section className="rounded-2xl border border-blue-100 p-4">
-            <div className="flex items-center gap-2">
-              <Tag className="text-pegasus-primary" size={18} />
-              <h3 className="font-black text-pegasus-navy">Etiquetas</h3>
-            </div>
-            <div className="mt-3 flex flex-wrap gap-2">
-              {form.labels.map((label) => (
-                <button
-                  className={`rounded-full px-3 py-1 text-xs font-bold ring-1 ${labelClass(label)}`}
-                  key={label}
-                  onClick={() => removeLabel(label)}
-                  type="button"
-                >
-                  {label} x
-                </button>
-              ))}
-            </div>
-            <div className="mt-3 flex flex-col gap-2 sm:flex-row">
-              <Input label="Nova etiqueta" onChange={(event) => setLabelInput(event.target.value)} value={labelInput} />
-              <Button className="sm:mt-7" onClick={addLabel} variant="secondary">
-                Adicionar
-              </Button>
-            </div>
-          </section>
-
-          <section className="rounded-2xl border border-blue-100 p-4">
-            <div className="flex items-center gap-2">
-              <MessageSquare className="text-pegasus-primary" size={18} />
-              <h3 className="font-black text-pegasus-navy">Comentários</h3>
-            </div>
-            <div className="mt-3 space-y-2">
-              {form.comments.map((comment) => (
-                <div className="rounded-2xl bg-pegasus-surface p-3 text-sm" key={comment.id}>
-                  <p className="font-bold text-pegasus-navy">{comment.author || "Pegasus"}</p>
-                  <p className="mt-1 text-slate-600">{comment.text}</p>
-                </div>
-              ))}
-            </div>
-            <div className="mt-3 flex flex-col gap-2 sm:flex-row">
-              <Input label="Novo comentário" onChange={(event) => setCommentInput(event.target.value)} value={commentInput} />
-              <Button className="sm:mt-7" onClick={addComment} variant="secondary">
-                Adicionar
-              </Button>
-            </div>
-          </section>
-
-          <section className="rounded-2xl border border-blue-100 p-4">
-            <div className="flex items-center gap-2">
-              <CheckSquare className="text-pegasus-primary" size={18} />
-              <h3 className="font-black text-pegasus-navy">Checklist</h3>
-            </div>
-            <div className="mt-3 space-y-2">
-              {form.checklist.map((item) => (
-                <label className="flex items-center gap-3 text-sm text-slate-600" key={item.id}>
-                  <input
-                    checked={item.done}
-                    className="h-5 w-5 rounded border-blue-200 text-pegasus-primary"
-                    onChange={(event) =>
-                      setForm({
-                        ...form,
-                        checklist: form.checklist.map((check) =>
-                          check.id === item.id ? { ...check, done: event.target.checked } : check,
-                        ),
-                      })
-                    }
-                    type="checkbox"
+        <form className="grid gap-4" onSubmit={handleSubmit}>
+          {(!labelsAsTab || formTab === "detalhes") ? (
+            <>
+              <Input
+                disabled={isSaving}
+                label="Título"
+                onChange={(event) => setForm({ ...form, title: event.target.value })}
+                required
+                value={form.title}
+              />
+              <Textarea
+                disabled={isSaving}
+                label="Descrição"
+                onChange={(event) => setForm({ ...form, description: event.target.value })}
+                value={form.description}
+              />
+              <div className="grid gap-4 md:grid-cols-2">
+                {responsibleOptions ? (
+                  <Select
+                    disabled={isSaving}
+                    label="Responsável"
+                    onChange={(event) => setForm({ ...form, assignedTo: event.target.value })}
+                    options={[{ label: "Sem responsável", value: "" }, ...responsibleOptions]}
+                    value={form.assignedTo}
                   />
-                  <span className={item.done ? "line-through" : ""}>{item.text}</span>
+                ) : (
+                  <Input
+                    disabled={isSaving}
+                    label="Responsável"
+                    onChange={(event) => setForm({ ...form, assignedTo: event.target.value })}
+                    value={form.assignedTo}
+                  />
+                )}
+                <Input
+                  disabled={isSaving}
+                  label="Prazo"
+                  min={minDueDate}
+                  onChange={(event) => setForm({ ...form, dueDate: event.target.value })}
+                  type="date"
+                  value={form.dueDate}
+                />
+                {channelOptions ? (
+                  <Select
+                    disabled={isSaving}
+                    label="Canal"
+                    onChange={(event) => setForm({ ...form, channel: event.target.value })}
+                    options={channelOptions}
+                    value={form.channel}
+                  />
+                ) : null}
+                <Select
+                  disabled={isSaving}
+                  label="Prioridade"
+                  onChange={(event) => setForm({ ...form, priority: event.target.value as TaskForm<TStatus>["priority"] })}
+                  options={[
+                    { label: "Baixa", value: "baixa" },
+                    { label: "Média", value: "media" },
+                    { label: "Alta", value: "alta" },
+                  ]}
+                  value={form.priority}
+                />
+                <Select
+                  disabled={isSaving}
+                  label="Status"
+                  onChange={(event) => setForm({ ...form, status: event.target.value as TStatus })}
+                  options={columns.map((item) => ({ label: item.label, value: item.value }))}
+                  value={form.status}
+                />
+              </div>
+
+              {!labelsAsTab ? (
+                <section className="rounded-2xl border border-blue-100 p-4">
+                  <div className="flex items-center gap-2">
+                    <Tag className="text-pegasus-primary" size={18} />
+                    <h3 className="font-black text-pegasus-navy">Etiquetas</h3>
+                  </div>
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    {form.labels.map((label) => (
+                      <button
+                        className={`rounded-full px-3 py-1 text-xs font-bold ring-1 ${labelClass(label)}`}
+                        key={label}
+                        onClick={() => removeLabel(label)}
+                        type="button"
+                      >
+                        {label} x
+                      </button>
+                    ))}
+                  </div>
+                  <div className="mt-3 flex flex-col gap-2 sm:flex-row">
+                    <Input label="Nova etiqueta" onChange={(event) => setLabelInput(event.target.value)} value={labelInput} />
+                    <Button className="sm:mt-7" onClick={addLabel} variant="secondary">
+                      Adicionar
+                    </Button>
+                  </div>
+                </section>
+              ) : null}
+
+              <section className="rounded-2xl border border-blue-100 p-4">
+                <div className="flex items-center gap-2">
+                  <MessageSquare className="text-pegasus-primary" size={18} />
+                  <h3 className="font-black text-pegasus-navy">Comentários</h3>
+                </div>
+                <div className="mt-3 space-y-2">
+                  {form.comments.map((comment) => (
+                    <div className="rounded-2xl bg-pegasus-surface p-3 text-sm" key={comment.id}>
+                      <p className="font-bold text-pegasus-navy">{comment.author || "Pegasus"}</p>
+                      <p className="mt-1 text-slate-600">{comment.text}</p>
+                    </div>
+                  ))}
+                </div>
+                <div className="mt-3 flex flex-col gap-2 sm:flex-row">
+                  <Input label="Novo comentário" onChange={(event) => setCommentInput(event.target.value)} value={commentInput} />
+                  <Button className="sm:mt-7" onClick={addComment} variant="secondary">
+                    Adicionar
+                  </Button>
+                </div>
+              </section>
+
+              <section className="rounded-2xl border border-blue-100 p-4">
+                <div className="flex items-center gap-2">
+                  <CheckSquare className="text-pegasus-primary" size={18} />
+                  <h3 className="font-black text-pegasus-navy">Checklist</h3>
+                </div>
+                <div className="mt-3 space-y-2">
+                  {form.checklist.map((item) => (
+                    <label className="flex items-center gap-3 text-sm text-slate-600" key={item.id}>
+                      <input
+                        checked={item.done}
+                        className="h-5 w-5 rounded border-blue-200 text-pegasus-primary"
+                        onChange={(event) =>
+                          setForm({
+                            ...form,
+                            checklist: form.checklist.map((check) =>
+                              check.id === item.id ? { ...check, done: event.target.checked } : check,
+                            ),
+                          })
+                        }
+                        type="checkbox"
+                      />
+                      <span className={item.done ? "line-through" : ""}>{item.text}</span>
+                      <button
+                        className="ml-auto text-xs font-bold text-rose-600"
+                        onClick={() =>
+                          setForm({ ...form, checklist: form.checklist.filter((check) => check.id !== item.id) })
+                        }
+                        type="button"
+                      >
+                        Remover
+                      </button>
+                    </label>
+                  ))}
+                </div>
+                <div className="mt-3 flex flex-col gap-2 sm:flex-row">
+                  <Input label="Novo item" onChange={(event) => setChecklistInput(event.target.value)} value={checklistInput} />
+                  <Button className="sm:mt-7" onClick={addChecklistItem} variant="secondary">
+                    Adicionar
+                  </Button>
+                </div>
+              </section>
+            </>
+          ) : null}
+
+          {labelsAsTab && formTab === "etiquetas" ? (
+            <section className="rounded-2xl border border-blue-100 p-4">
+              <div className="flex items-center gap-2">
+                <Tag className="text-pegasus-primary" size={18} />
+                <h3 className="font-black text-pegasus-navy">Etiquetas</h3>
+              </div>
+              <div className="mt-3 flex flex-wrap gap-2">
+                {form.labels.map((label) => (
                   <button
-                    className="ml-auto text-xs font-bold text-rose-600"
-                    onClick={() =>
-                      setForm({ ...form, checklist: form.checklist.filter((check) => check.id !== item.id) })
-                    }
+                    className={`rounded-full px-3 py-1 text-xs font-bold ring-1 ${labelClass(label)}`}
+                    key={label}
+                    onClick={() => removeLabel(label)}
                     type="button"
                   >
-                    Remover
+                    {label} x
                   </button>
-                </label>
-              ))}
-            </div>
-            <div className="mt-3 flex flex-col gap-2 sm:flex-row">
-              <Input label="Novo item" onChange={(event) => setChecklistInput(event.target.value)} value={checklistInput} />
-              <Button className="sm:mt-7" onClick={addChecklistItem} variant="secondary">
-                Adicionar
-              </Button>
-            </div>
-          </section>
+                ))}
+                {form.labels.length === 0 ? <p className="text-sm text-slate-500">Nenhuma etiqueta adicionada.</p> : null}
+              </div>
+              <div className="mt-4 flex flex-col gap-2 sm:flex-row">
+                <Input label="Nova etiqueta" onChange={(event) => setLabelInput(event.target.value)} value={labelInput} />
+                <Button className="sm:mt-7" onClick={addLabel} variant="secondary">
+                  Adicionar
+                </Button>
+              </div>
+            </section>
+          ) : null}
 
           <div className="flex flex-col gap-3 sm:flex-row">
             <Button disabled={isSaving} type="submit">
@@ -872,6 +998,68 @@ export function AdvancedKanban<TTask extends KanbanTaskBase, TStatus extends str
             </Button>
           </div>
         </form>
+      </Modal>
+
+      <Modal
+        isOpen={Boolean(approvalTask)}
+        onClose={() => { setApprovalTask(null); setApprovalMode(null); }}
+        title="Aprovar tarefa"
+      >
+        {approvalTask ? (
+          <div className="space-y-4">
+            <p className="text-sm text-slate-600">
+              Como deseja aprovar <strong className="text-pegasus-navy">{approvalTask.title}</strong>?
+            </p>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <button
+                className={`rounded-2xl border-2 p-4 text-left transition ${approvalMode === "publish" ? "border-pegasus-primary bg-blue-50" : "border-blue-100 hover:border-pegasus-primary"}`}
+                onClick={() => setApprovalMode("publish")}
+                type="button"
+              >
+                <p className="font-black text-pegasus-navy">Publicado</p>
+                <p className="mt-1 text-sm text-slate-500">Mover diretamente para publicado.</p>
+              </button>
+              <button
+                className={`rounded-2xl border-2 p-4 text-left transition ${approvalMode === "schedule" ? "border-pegasus-primary bg-blue-50" : "border-blue-100 hover:border-pegasus-primary"}`}
+                onClick={() => setApprovalMode("schedule")}
+                type="button"
+              >
+                <p className="font-black text-pegasus-navy">Agendado</p>
+                <p className="mt-1 text-sm text-slate-500">Definir data e hora para publicar.</p>
+              </button>
+            </div>
+            {approvalMode === "schedule" ? (
+              <div className="grid gap-3 sm:grid-cols-2">
+                <Input
+                  label="Data de publicação"
+                  min={new Date().toISOString().slice(0, 10)}
+                  onChange={(e) => setScheduledDate(e.target.value)}
+                  required
+                  type="date"
+                  value={scheduledDate}
+                />
+                <Input
+                  label="Horário"
+                  onChange={(e) => setScheduledTime(e.target.value)}
+                  type="time"
+                  value={scheduledTime}
+                />
+              </div>
+            ) : null}
+            <div className="flex flex-col gap-3 sm:flex-row">
+              <Button
+                disabled={!approvalMode || isSaving || (approvalMode === "schedule" && !scheduledDate)}
+                onClick={handleApproveConfirm}
+              >
+                {isSaving ? <Loader2 className="animate-spin" size={17} /> : null}
+                Confirmar aprovação
+              </Button>
+              <Button onClick={() => { setApprovalTask(null); setApprovalMode(null); }} variant="secondary">
+                Cancelar
+              </Button>
+            </div>
+          </div>
+        ) : null}
       </Modal>
 
       <ConfirmDialog

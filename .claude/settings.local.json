@@ -19,7 +19,10 @@
       "Bash(vercel --prod --yes)",
       "Bash(vercel --prod --yes --scope leonardo-esteves-projects)",
       "Bash(vercel link *)",
-      "Bash(vercel env *)"
+      "Bash(vercel env *)",
+      "PowerShell(head *)",
+      "Bash(npx prisma *)",
+      "Bash(npx vite *)"
     ]
   }
 }

@@ -114,6 +114,22 @@ function serializeUser(user: {
 }
 
 export const usersService = {
+  async findByRole(roleName: string) {
+    const users = await prisma.user.findMany({
+      where: {
+        active: true,
+        roles: {
+          some: {
+            role: { name: roleName },
+          },
+        },
+      },
+      orderBy: { name: "asc" },
+      include: includeRoles,
+    });
+    return users.map(serializeUser);
+  },
+
   async findAll(includeInactive = false) {
     const users = await prisma.user.findMany({
       where: includeInactive ? undefined : { active: true },

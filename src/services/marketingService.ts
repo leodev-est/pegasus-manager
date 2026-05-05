@@ -28,6 +28,8 @@ export type MarketingTask = {
   labels: string[];
   comments: MarketingComment[];
   checklist: MarketingChecklistItem[];
+  approvalStatus: string | null;
+  scheduledAt: string | null;
   createdAt: string;
   updatedAt: string;
 };
@@ -86,5 +88,15 @@ export const marketingService = {
   },
   async deleteTask(id: string) {
     await api.delete(`/tasks/${id}`);
+  },
+
+  async approveTask(id: string, action: "schedule" | "publish", scheduledAt?: string) {
+    const { data } = await api.patch<MarketingTask>(`/tasks/${id}/approve`, { action, scheduledAt });
+    return data;
+  },
+
+  async rejectTask(id: string) {
+    const { data } = await api.patch<MarketingTask>(`/tasks/${id}/reject`, {});
+    return data;
   },
 };

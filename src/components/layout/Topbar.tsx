@@ -3,8 +3,56 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../auth/AuthContext";
 import logoIcon from "../../assets/logo/logo-icon.png";
+import { api } from "../../services/api";
 import { notificationService, type Notification } from "../../services/notificationService";
 import { Button } from "../ui/Button";
+
+type SearchResult = {
+  id: string;
+  label: string;
+  sublabel?: string;
+  category: string;
+  href: string;
+};
+
+async function runGlobalSearch(query: string): Promise<SearchResult[]> {
+  if (!query.trim()) return [];
+  const q = query.trim();
+  const results: SearchResult[] = [];
+
+  try {
+    const [athletesRes, mgmtRes, mktRes] = await Promise.allSettled([
+      api.get("/athletes", { params: { search: q } }),
+      api.get("/tasks", { params: { area: "management", search: q } }),
+      api.get("/tasks", { params: { area: "marketing", search: q } }),
+    ]);
+
+    if (athletesRes.status === "fulfilled") {
+      const athletes = athletesRes.value.data as Array<{ id: string; name: string; position?: string }>;
+      athletes.slice(0, 4).forEach((a) =>
+        results.push({ id: a.id, label: a.name, sublabel: a.position ?? "Atleta", category: "Atletas", href: "/rh/atletas" }),
+      );
+    }
+
+    if (mgmtRes.status === "fulfilled") {
+      const tasks = mgmtRes.value.data as Array<{ id: string; title: string; status: string }>;
+      tasks.slice(0, 3).forEach((t) =>
+        results.push({ id: t.id, label: t.title, sublabel: t.status, category: "Gestão", href: "/gestao" }),
+      );
+    }
+
+    if (mktRes.status === "fulfilled") {
+      const tasks = mktRes.value.data as Array<{ id: string; title: string; status: string }>;
+      tasks.slice(0, 3).forEach((t) =>
+        results.push({ id: t.id, label: t.title, sublabel: t.status, category: "Marketing", href: "/marketing" }),
+      );
+    }
+  } catch {
+    // silent
+  }
+
+  return results;
+}
 
 function getInitials(name?: string) {
   if (!name) return "PM";
@@ -42,11 +90,40 @@ type TopbarProps = {
   onMenuClick: () => void;
 };
 
+const ROLE_HIERARCHY: Array<{ role: string; label: string }> = [
+  { role: "Diretor", label: "Diretor" },
+  { role: "Gestao", label: "Gestão" },
+  { role: "Gestão", label: "Gestão" },
+  { role: "MarketingLvl2", label: "Marketing 2" },
+  { role: "MarketingLvl1", label: "Marketing 1" },
+  { role: "Marketing", label: "Marketing" },
+  { role: "RH", label: "RH" },
+  { role: "Financeiro", label: "Financeiro" },
+  { role: "Tecnico", label: "Técnico" },
+  { role: "Operacional", label: "Operacional" },
+  { role: "Conselheira", label: "Conselheira" },
+  { role: "Atleta", label: "Atleta" },
+];
+
+function getHighestRole(roleLabels?: string[], roles?: string[]): string {
+  const allRoles = [...(roleLabels ?? []), ...(roles ?? [])];
+  for (const { role, label } of ROLE_HIERARCHY) {
+    if (allRoles.some((r) => r === role || r.toLowerCase() === role.toLowerCase())) {
+      return label;
+    }
+  }
+  return "Perfil";
+}
+
 export function Topbar({ onMenuClick }: TopbarProps) {
   const { logout, user } = useAuth();
   const navigate = useNavigate();
-  const userRole = user?.roleLabels?.join(" + ") ?? user?.roles.join(" + ") ?? "Perfil";
+  const userRole = getHighestRole(user?.roleLabels, user?.roles);
   const dropdownRef = useRef<HTMLDivElement | null>(null);
+  const searchRef = useRef<HTMLDivElement | null>(null);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
+  const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
   const [isLoadingNotifications, setIsLoadingNotifications] = useState(false);
@@ -72,16 +149,40 @@ export function Topbar({ onMenuClick }: TopbarProps) {
     loadNotifications();
   }, [loadNotifications]);
 
+  // Poll for new notifications every 30 seconds
+  useEffect(() => {
+    if (!user) return;
+    const interval = setInterval(loadNotifications, 30_000);
+    return () => clearInterval(interval);
+  }, [user, loadNotifications]);
+
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
         setIsNotificationsOpen(false);
+      }
+      if (searchRef.current && !searchRef.current.contains(event.target as Node)) {
+        setIsSearchOpen(false);
       }
     }
 
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
+
+  useEffect(() => {
+    if (!searchQuery.trim()) {
+      setSearchResults([]);
+      setIsSearchOpen(false);
+      return;
+    }
+    const timeout = setTimeout(async () => {
+      const results = await runGlobalSearch(searchQuery);
+      setSearchResults(results);
+      setIsSearchOpen(results.length > 0);
+    }, 350);
+    return () => clearTimeout(timeout);
+  }, [searchQuery]);
 
   function handleLogout() {
     logout();
@@ -125,13 +226,50 @@ export function Topbar({ onMenuClick }: TopbarProps) {
         </div>
 
         <div className="flex shrink-0 items-center gap-2 sm:gap-3">
-          <label className="hidden min-w-72 items-center gap-2 rounded-full border border-blue-100 bg-white px-4 py-2 text-sm text-slate-500 shadow-sm xl:flex">
-            <Search size={17} />
-            <input
-              className="w-full bg-transparent text-slate-700 outline-none placeholder:text-slate-400"
-              placeholder="Buscar no sistema"
-            />
-          </label>
+          <div className="relative hidden min-w-72 xl:block" ref={searchRef}>
+            <label className="flex items-center gap-2 rounded-full border border-blue-100 bg-white px-4 py-2 text-sm text-slate-500 shadow-sm">
+              <Search size={17} />
+              <input
+                className="w-full bg-transparent text-slate-700 outline-none placeholder:text-slate-400"
+                onChange={(e) => setSearchQuery(e.target.value)}
+                onFocus={() => searchResults.length > 0 && setIsSearchOpen(true)}
+                placeholder="Buscar no sistema"
+                value={searchQuery}
+              />
+            </label>
+            {isSearchOpen && searchResults.length > 0 ? (
+              <div className="absolute left-0 top-12 z-50 w-full overflow-hidden rounded-2xl border border-blue-100 bg-white shadow-2xl">
+                {Object.entries(
+                  searchResults.reduce<Record<string, SearchResult[]>>((acc, result) => {
+                    if (!acc[result.category]) acc[result.category] = [];
+                    acc[result.category].push(result);
+                    return acc;
+                  }, {}),
+                ).map(([category, items]) => (
+                  <div key={category}>
+                    <p className="border-b border-blue-50 bg-pegasus-surface px-4 py-2 text-xs font-black uppercase tracking-[0.12em] text-pegasus-primary">
+                      {category}
+                    </p>
+                    {items.map((result) => (
+                      <button
+                        className="block w-full px-4 py-3 text-left transition hover:bg-pegasus-ice"
+                        key={result.id}
+                        onClick={() => {
+                          navigate(result.href);
+                          setIsSearchOpen(false);
+                          setSearchQuery("");
+                        }}
+                        type="button"
+                      >
+                        <p className="font-bold text-pegasus-navy">{result.label}</p>
+                        {result.sublabel ? <p className="text-xs text-slate-500">{result.sublabel}</p> : null}
+                      </button>
+                    ))}
+                  </div>
+                ))}
+              </div>
+            ) : null}
+          </div>
 
           <div className="relative" ref={dropdownRef}>
             <button

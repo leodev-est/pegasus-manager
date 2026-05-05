@@ -3,6 +3,7 @@ import { athleteApplicationsRoutes } from "./modules/athlete-applications/athlet
 import { athletesRoutes } from "./modules/athletes/athletes.routes";
 import { attendanceRoutes } from "./modules/attendance/attendance.routes";
 import { authRoutes } from "./modules/auth/auth.routes";
+import { calendarRoutes } from "./modules/calendar/calendar.routes";
 import { financeRoutes } from "./modules/finance/finance.routes";
 import { formationsRoutes } from "./modules/formations/formations.routes";
 import { evaluationsRoutes } from "./modules/evaluations/evaluations.routes";
@@ -26,6 +27,7 @@ routes.get("/health", (_request, response) => {
 });
 
 routes.use("/auth", authRoutes);
+routes.use("/calendar", calendarRoutes);
 routes.use("/athlete-applications", athleteApplicationsRoutes);
 routes.use("/athletes", athletesRoutes);
 routes.use("/attendance", attendanceRoutes);

@@ -1,8 +1,11 @@
 export type Role =
   | "Diretor"
+  | "Gestao"
   | "RH"
   | "Financeiro"
   | "Marketing"
+  | "MarketingLvl1"
+  | "MarketingLvl2"
   | "Conselheira"
   | "Tecnico"
   | "Operacional"
@@ -32,13 +35,16 @@ export const rolePermissions: Record<Role, Permission[]> = {
     "operacional",
     "admin",
   ],
+  Gestao: ["dashboard", "gestao", "treinos"],
   RH: ["dashboard", "rh", "gestao"],
   Financeiro: ["dashboard", "financeiro", "gestao"],
   Marketing: ["dashboard", "marketing", "gestao"],
+  MarketingLvl1: ["dashboard", "marketing", "gestao"],
+  MarketingLvl2: ["dashboard", "marketing", "gestao"],
   Conselheira: ["dashboard", "gestao"],
   Tecnico: ["dashboard", "treinos", "chamada"],
   Operacional: ["dashboard", "operacional", "gestao"],
-  Atleta: ["dashboard", "atleta"],
+  Atleta: ["dashboard", "atleta", "treinos"],
 };
 
 export function getPermissionsByRoles(roles: Role[]): Permission[] {

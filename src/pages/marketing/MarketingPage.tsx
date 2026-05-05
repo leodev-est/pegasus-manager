@@ -14,6 +14,7 @@ import {
   type MarketingTask,
   type MarketingTaskPayload,
 } from "../../services/marketingService";
+import { userService } from "../../services/userService";
 
 const columns: Array<{ label: string; value: MarketingStatus }> = [
   { label: "Ideias", value: "ideas" },
@@ -75,6 +76,7 @@ export function MarketingPage() {
   const canCreate = hasPermission(["marketing:create"]);
   const canUpdate = hasPermission(["marketing:update"]);
   const canDelete = hasPermission(["marketing:delete"]);
+  const canApprove = user?.roles?.includes("MarketingLvl2") || user?.roles?.includes("Diretor") || false;
   const [tasks, setTasks] = useState<MarketingTask[]>([]);
   const [channel, setChannel] = useState("todos");
   const [assignedTo, setAssignedTo] = useState("todos");
@@ -82,6 +84,8 @@ export function MarketingPage() {
   const [activeTab, setActiveTab] = useState<MarketingTab>("kanban");
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
+  const [marketingUsers, setMarketingUsers] = useState<Array<{ label: string; value: string }>>([]);
+  const today = new Date().toISOString().slice(0, 10);
 
   const owners = useMemo(
     () => Array.from(new Set(tasks.map((task) => task.assignedTo).filter(Boolean))) as string[],
@@ -108,6 +112,12 @@ export function MarketingPage() {
   useEffect(() => {
     loadTasks();
   }, [loadTasks]);
+
+  useEffect(() => {
+    userService.getUsersByRole("Marketing")
+      .then((users) => setMarketingUsers(users.map((u) => ({ label: u.name, value: u.name }))))
+      .catch(() => setMarketingUsers([]));
+  }, []);
 
   async function saveWithFeedback(action: () => Promise<void>, message: string) {
     setIsSaving(true);
@@ -145,6 +155,8 @@ export function MarketingPage() {
       {activeTab === "kanban" ? (
       <AdvancedKanban
         areaLabel="marketing"
+        approvalColumn="review"
+        canApprove={canApprove}
         canCreate={canCreate}
         canDelete={canDelete}
         canUpdate={canUpdate}
@@ -153,6 +165,9 @@ export function MarketingPage() {
         currentUserName={user?.name}
         description="Kanban de comunicação, conteúdo e identidade visual do Projeto Pegasus."
         emptyStatus="ideas"
+        labelsAsTab
+        minDueDate={today}
+        responsibleOptions={marketingUsers}
         filters={
           <FilterBar>
             <Select
@@ -213,6 +228,18 @@ export function MarketingPage() {
           saveWithFeedback(
             () => marketingService.updateTask(task.id, buildPayload(form as MarketingForm)).then(() => undefined),
             "Tarefa de marketing atualizada com sucesso.",
+          )
+        }
+        onApprove={(task, action, scheduledAt) =>
+          saveWithFeedback(
+            () => marketingService.approveTask(task.id, action, scheduledAt).then(() => undefined),
+            action === "schedule" ? "Tarefa agendada para publicação." : "Tarefa aprovada e publicada.",
+          )
+        }
+        onReject={(task) =>
+          saveWithFeedback(
+            () => marketingService.rejectTask(task.id).then(() => undefined),
+            "Tarefa reprovada e devolvida para Produção.",
           )
         }
       />

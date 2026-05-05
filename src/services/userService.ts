@@ -25,4 +25,9 @@ export const userService = {
   async deleteUser(id: string) {
     await api.delete(`/users/${id}`);
   },
+
+  async getUsersByRole(role: string) {
+    const { data } = await api.get<Array<{ id: string; name: string }>>(`/users/by-role/${role}`);
+    return data;
+  },
 };

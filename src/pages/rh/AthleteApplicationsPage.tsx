@@ -33,7 +33,7 @@ const emptyApplication: ApplicationForm = {
   position: "",
   contribution: "",
   source: "site",
-  status: "pendente",
+  status: "em_analise",
   notes: "",
 };
 
@@ -116,12 +116,12 @@ function formatDate(value: string) {
 export function AthleteApplicationsPage() {
   const { hasPermission } = useAuth();
   const { showToast } = useToast();
-  const canCreate = hasPermission(["athletes:create"]);
-  const canUpdate = hasPermission(["athletes:update"]);
-  const canDelete = hasPermission(["athletes:delete"]);
+  const canCreate = hasPermission(["rh", "athletes:create"]);
+  const canUpdate = hasPermission(["rh", "athletes:update"]);
+  const canDelete = hasPermission(["rh", "athletes:delete"]);
   const [applications, setApplications] = useState<AthleteApplication[]>([]);
   const [search, setSearch] = useState("");
-  const [status, setStatus] = useState("pendente");
+  const [status, setStatus] = useState("em_analise");
   const [position, setPosition] = useState("todos");
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
@@ -378,19 +378,23 @@ export function AthleteApplicationsPage() {
                     <p><strong className="text-pegasus-navy">Entrada:</strong> {formatDate(application.createdAt)}</p>
                     <p className="leading-6"><strong className="text-pegasus-navy">Contribuição:</strong> {application.contribution ?? "-"}</p>
                   </div>
-                  <div className="mt-4 flex flex-wrap items-center gap-3 border-t border-blue-50 pt-3">
-                    {canCreate && application.status !== "aprovado" ? (
-                      <button className="inline-flex min-h-10 items-center gap-1 text-sm font-bold text-emerald-700" onClick={() => setApproveTarget(application)} type="button">
-                        <CheckCircle2 size={15} />
-                        Aprovar
-                      </button>
-                    ) : null}
-                    {canUpdate && application.status !== "recusado" ? (
-                      <button className="inline-flex min-h-10 items-center gap-1 text-sm font-bold text-rose-700" onClick={() => setRejectTarget(application)} type="button">
-                        <XCircle size={15} />
-                        Recusar
-                      </button>
-                    ) : null}
+                  {application.status === "em_analise" && (canCreate || canUpdate) ? (
+                    <div className="mt-4 flex gap-2 border-t border-blue-50 pt-3">
+                      {canCreate ? (
+                        <Button className="flex-1" onClick={() => setApproveTarget(application)}>
+                          <CheckCircle2 size={15} />
+                          Aprovar
+                        </Button>
+                      ) : null}
+                      {canUpdate ? (
+                        <Button className="flex-1" onClick={() => setRejectTarget(application)} variant="danger">
+                          <XCircle size={15} />
+                          Recusar
+                        </Button>
+                      ) : null}
+                    </div>
+                  ) : null}
+                  <div className="mt-3 flex flex-wrap items-center gap-3 border-t border-blue-50 pt-3">
                     <ActionButtons
                       canDelete={canDelete}
                       canEdit={canUpdate}
@@ -427,26 +431,25 @@ export function AthleteApplicationsPage() {
                     </td>
                     <td className="px-6 py-4 text-slate-600">{formatDate(application.createdAt)}</td>
                     <td className="px-6 py-4">
-                      <div className="flex flex-wrap items-center gap-3">
-                        {canCreate && application.status !== "aprovado" ? (
-                          <button
-                            className="inline-flex items-center gap-1 text-sm font-bold text-emerald-700"
+                      <div className="flex flex-wrap items-center gap-2">
+                        {application.status === "em_analise" && canCreate ? (
+                          <Button
+                            className="h-9 px-3 text-xs"
                             onClick={() => setApproveTarget(application)}
-                            type="button"
                           >
-                            <CheckCircle2 size={15} />
+                            <CheckCircle2 size={14} />
                             Aprovar
-                          </button>
+                          </Button>
                         ) : null}
-                        {canUpdate && application.status !== "recusado" ? (
-                          <button
-                            className="inline-flex items-center gap-1 text-sm font-bold text-rose-700"
+                        {application.status === "em_analise" && canUpdate ? (
+                          <Button
+                            className="h-9 px-3 text-xs"
                             onClick={() => setRejectTarget(application)}
-                            type="button"
+                            variant="danger"
                           >
-                            <XCircle size={15} />
+                            <XCircle size={14} />
                             Recusar
-                          </button>
+                          </Button>
                         ) : null}
                         <ActionButtons
                           canDelete={canDelete}
@@ -492,13 +495,15 @@ export function AthleteApplicationsPage() {
               value={form.position}
             />
             <Input disabled={isSaving} label="Categoria" onChange={(event) => setForm({ ...form, category: event.target.value })} value={form.category} />
-            <Select
-              disabled={isSaving}
-              label="Status"
-              onChange={(event) => setForm({ ...form, status: event.target.value as AthleteApplicationStatus })}
-              options={statusOptions.filter((option) => option.value !== "todos")}
-              value={form.status}
-            />
+            {editingApplication ? (
+              <Select
+                disabled={isSaving}
+                label="Status"
+                onChange={(event) => setForm({ ...form, status: event.target.value as AthleteApplicationStatus })}
+                options={statusOptions.filter((option) => option.value !== "todos")}
+                value={form.status}
+              />
+            ) : null}
           </div>
           <Textarea disabled={isSaving} label="Como pode contribuir" onChange={(event) => setForm({ ...form, contribution: event.target.value })} value={form.contribution} />
           <Textarea disabled={isSaving} label="Observações internas" onChange={(event) => setForm({ ...form, notes: event.target.value })} value={form.notes} />

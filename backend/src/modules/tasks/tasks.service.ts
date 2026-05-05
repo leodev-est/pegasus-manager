@@ -44,7 +44,7 @@ function normalizeOptional(value: string | null | undefined) {
   return trimmed.length > 0 ? trimmed : null;
 }
 
-function parseDate(value: string | null | undefined) {
+function parseDate(value: string | null | undefined, pastAllowed = true) {
   if (value === undefined) return undefined;
   if (value === null || value === "") return null;
 
@@ -52,6 +52,14 @@ function parseDate(value: string | null | undefined) {
 
   if (Number.isNaN(date.getTime())) {
     throw new AppError("Prazo inválido", 400);
+  }
+
+  if (!pastAllowed) {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    if (date < today) {
+      throw new AppError("O prazo não pode ser uma data anterior a hoje", 400);
+    }
   }
 
   return date;
@@ -166,7 +174,7 @@ function buildData(payload: TaskPayload, area: TaskArea, requireTitle: boolean) 
   if (payload.status !== undefined) data.status = payload.status;
   if (payload.area !== undefined) data.area = area;
   if (payload.assignedTo !== undefined) data.assignedTo = normalizeOptional(payload.assignedTo);
-  if (payload.dueDate !== undefined) data.dueDate = parseDate(payload.dueDate);
+  if (payload.dueDate !== undefined) data.dueDate = parseDate(payload.dueDate, area !== "marketing");
   if (payload.priority !== undefined) data.priority = payload.priority;
   if (payload.channel !== undefined) data.channel = normalizeOptional(payload.channel);
   if (payload.labels !== undefined) data.labels = normalizeStringArray(payload.labels, "Labels");
@@ -254,6 +262,50 @@ export const tasksService = {
     await this.findById(id);
     await prisma.task.delete({
       where: { id },
+    });
+  },
+
+  async approve(id: string, action: "schedule" | "publish", scheduledAt?: string) {
+    await this.findById(id);
+
+    if (action === "schedule") {
+      if (!scheduledAt) {
+        throw new AppError("scheduledAt é obrigatório para agendamento", 400);
+      }
+      const date = new Date(scheduledAt);
+      if (Number.isNaN(date.getTime())) {
+        throw new AppError("scheduledAt inválido", 400);
+      }
+      return prisma.task.update({
+        where: { id },
+        data: { approvalStatus: "approved", status: "review", scheduledAt: date },
+      });
+    }
+
+    return prisma.task.update({
+      where: { id },
+      data: { approvalStatus: "approved", status: "published", scheduledAt: null },
+    });
+  },
+
+  async reject(id: string) {
+    await this.findById(id);
+    return prisma.task.update({
+      where: { id },
+      data: { approvalStatus: "rejected", status: "production" },
+    });
+  },
+
+  async publishScheduled() {
+    const now = new Date();
+    await prisma.task.updateMany({
+      where: {
+        area: "marketing",
+        approvalStatus: "approved",
+        scheduledAt: { lte: now },
+        status: { not: "published" },
+      },
+      data: { status: "published" },
     });
   },
 };

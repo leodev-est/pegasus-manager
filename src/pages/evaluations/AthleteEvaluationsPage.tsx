@@ -1,9 +1,7 @@
-import { Loader2, Save, Search, Shield, Star, UserRound } from "lucide-react";
+import { Loader2, Save, Shield, Star, UserRound } from "lucide-react";
 import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 import { Button } from "../../components/ui/Button";
 import { EmptyState } from "../../components/ui/EmptyState";
-import { FilterBar } from "../../components/ui/FilterBar";
-import { Input } from "../../components/ui/Input";
 import { PageHeader } from "../../components/ui/PageHeader";
 import { Select } from "../../components/ui/Select";
 import { StatusBadge } from "../../components/ui/StatusBadge";
@@ -82,7 +80,6 @@ export function AthleteEvaluationsPage() {
   const { showToast } = useToast();
   const [athletes, setAthletes] = useState<Athlete[]>([]);
   const [selectedAthleteId, setSelectedAthleteId] = useState("");
-  const [search, setSearch] = useState("");
   const [evaluation, setEvaluation] = useState<AthleteEvaluation>(emptyEvaluation);
   const [form, setForm] = useState<CoachEvaluationPayload>({
     coachNotes: "",
@@ -99,17 +96,6 @@ export function AthleteEvaluationsPage() {
     () => athletes.find((athlete) => athlete.id === selectedAthleteId) ?? null,
     [athletes, selectedAthleteId],
   );
-
-  const filteredAthletes = useMemo(() => {
-    const normalizedSearch = search.trim().toLowerCase();
-    if (!normalizedSearch) return athletes;
-
-    return athletes.filter((athlete) =>
-      [athlete.name, athlete.category, athlete.position]
-        .filter(Boolean)
-        .some((value) => String(value).toLowerCase().includes(normalizedSearch)),
-    );
-  }, [athletes, search]);
 
   const loadAthletes = useCallback(async () => {
     setIsLoading(true);
@@ -184,23 +170,15 @@ export function AthleteEvaluationsPage() {
         description="Avaliação técnica estilo FIFA por atleta ativo."
       />
 
-      <FilterBar>
-        <Input
-          label="Buscar atleta"
-          onChange={(event) => setSearch(event.target.value)}
-          placeholder="Nome, categoria ou posição"
-          value={search}
-        />
-        <Select
-          label="Selecionar atleta"
-          onChange={(event) => setSelectedAthleteId(event.target.value)}
-          options={[
-            { label: "Selecione um atleta", value: "" },
-            ...filteredAthletes.map((athlete) => ({ label: athlete.name, value: athlete.id })),
-          ]}
-          value={selectedAthleteId}
-        />
-      </FilterBar>
+      <Select
+        label="Selecionar atleta"
+        onChange={(event) => setSelectedAthleteId(event.target.value)}
+        options={[
+          { label: "Selecione um atleta", value: "" },
+          ...athletes.map((athlete) => ({ label: athlete.name, value: athlete.id })),
+        ]}
+        value={selectedAthleteId}
+      />
 
       {isLoading ? (
         <section className="panel flex items-center gap-3 p-6 text-sm font-bold text-pegasus-primary">
