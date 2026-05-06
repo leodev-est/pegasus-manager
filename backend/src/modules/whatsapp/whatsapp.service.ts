@@ -87,19 +87,12 @@ class WhatsAppService {
         return { status: "connected", qrDataUrl: null, lastError: null };
       }
 
-      // Use cached QR if we already have it; otherwise fetch fresh from Evolution API.
-      // Try both known endpoints (v1: /instance/connect, v2 also accepts ?count=1).
       if (!this.cachedQr) {
-        for (const path of [
-          `/instance/connect/${INSTANCE}?count=1`,
-          `/instance/connect/${INSTANCE}`,
-        ]) {
-          try {
-            const qrRes = await evo<any>("GET", path);
-            const b64 = extractQrBase64(qrRes);
-            if (b64) { this.cachedQr = b64; break; }
-          } catch { /* not ready yet */ }
-        }
+        try {
+          const qrRes = await evo<any>("GET", `/instance/connect/${INSTANCE}`);
+          const b64 = extractQrBase64(qrRes);
+          if (b64) this.cachedQr = b64;
+        } catch { /* not ready yet */ }
       }
 
       return { status: "connecting", qrDataUrl: this.cachedQr, lastError: null };
@@ -125,37 +118,40 @@ class WhatsAppService {
     this.cachedQr = null;
 
     try {
-      // Check current state first
-      let state = "";
+      // Check current state
+      let instanceExists = false;
       try {
         const stateRes = await evo<any>("GET", `/instance/connectionState/${INSTANCE}`);
-        state = stateRes?.instance?.state ?? stateRes?.state ?? "";
+        const state = stateRes?.instance?.state ?? stateRes?.state ?? "";
+        instanceExists = true;
         console.log(`[WhatsApp] Estado atual: ${state}`);
         if (state === "open") { this.status = "connected"; return; }
-      } catch { /* instance doesn't exist yet */ }
+        // Instance exists but disconnected — logout to clear stale credentials
+        await evo("DELETE", `/instance/logout/${INSTANCE}`).catch(() => {});
+        console.log("[WhatsApp] Logout realizado, aguardando QR…");
+      } catch { /* instance doesn't exist */ }
 
-      // Delete instance completely so Evolution API generates a fresh QR.
-      // Try v2 path first, then v1 — both are no-ops if instance doesn't exist.
-      await evo("DELETE", `/instance/${INSTANCE}`).catch(() => {});
-      await evo("DELETE", `/instance/delete/${INSTANCE}`).catch(() => {});
-      console.log("[WhatsApp] Instância deletada, recriando…");
-
-      // Recreate
-      const createRes = await evo<any>("POST", "/instance/create", {
-        instanceName: INSTANCE,
-        qrcode: true,
-        integration: "WHATSAPP-BAILEYS",
-      });
-      console.log("[WhatsApp] Create keys:", Object.keys(createRes ?? {}).join(", "));
-      const b64create = extractQrBase64(createRes);
-      if (b64create) { this.cachedQr = b64create; }
-
-      // Fetch QR via connect endpoint if not already got it
-      if (!this.cachedQr) {
-        const qrRes = await evo<any>("GET", `/instance/connect/${INSTANCE}`);
-        console.log("[WhatsApp] Connect response:", JSON.stringify(qrRes).slice(0, 300));
-        const b64 = extractQrBase64(qrRes);
+      if (!instanceExists) {
+        // Create new instance
+        const createRes = await evo<any>("POST", "/instance/create", {
+          instanceName: INSTANCE,
+          qrcode: true,
+          integration: "WHATSAPP-BAILEYS",
+        });
+        console.log("[WhatsApp] Create keys:", Object.keys(createRes ?? {}).join(", "));
+        const b64 = extractQrBase64(createRes);
         if (b64) this.cachedQr = b64;
+      }
+
+      // Fetch QR — retry up to 4x with 1.5s delay if not immediately available
+      for (let i = 0; i < 4 && !this.cachedQr; i++) {
+        if (i > 0) await new Promise((r) => setTimeout(r, 1500));
+        try {
+          const qrRes = await evo<any>("GET", `/instance/connect/${INSTANCE}`);
+          console.log(`[WhatsApp] QR attempt ${i + 1}:`, JSON.stringify(qrRes).slice(0, 200));
+          const b64 = extractQrBase64(qrRes);
+          if (b64) this.cachedQr = b64;
+        } catch { break; }
       }
 
       console.log("[WhatsApp] QR obtido:", this.cachedQr ? "sim" : "não");
