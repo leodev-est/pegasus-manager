@@ -259,7 +259,7 @@ function Column<TTask extends KanbanTaskBase, TStatus extends string>({
 
   return (
     <div
-      className={`w-[84vw] max-w-sm shrink-0 rounded-2xl border p-4 transition sm:w-96 xl:w-auto xl:max-w-none ${
+      className={`w-[84vw] max-w-sm shrink-0 rounded-2xl border p-3 transition sm:w-80 xl:w-auto xl:max-w-none ${
         isOver ? "border-pegasus-sky bg-blue-100/80 shadow-md" : "border-blue-100 bg-blue-50/60"
       }`}
       ref={setNodeRef}
@@ -703,8 +703,8 @@ export function AdvancedKanban<TTask extends KanbanTaskBase, TStatus extends str
         >
           <section className="-mx-4 overflow-x-auto px-4 pb-2 sm:mx-0 sm:px-0 xl:overflow-visible">
             <div
-              className={`flex min-w-max gap-4 xl:grid xl:min-w-0 xl:gap-5 ${
-                columns.length === 4 ? "xl:grid-cols-4" : "xl:grid-cols-3"
+              className={`flex min-w-max gap-4 xl:grid xl:min-w-0 xl:gap-4 ${
+                columns.length >= 5 ? "xl:grid-cols-5" : columns.length === 4 ? "xl:grid-cols-4" : "xl:grid-cols-3"
               }`}
             >
               {columns.map((column) => (
