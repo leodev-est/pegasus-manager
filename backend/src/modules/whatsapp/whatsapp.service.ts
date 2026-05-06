@@ -1,11 +1,22 @@
-import { mkdirSync } from "fs";
-import { resolve } from "path";
-import QRCode from "qrcode";
 import { prisma } from "../../config/prisma";
 
-// Bypass TypeScript's import() → require() transform so we can load
-// the ESM-only @whiskeysockets/baileys from a CommonJS project at runtime.
-const esmImport = new Function("m", "return import(m)") as (m: string) => Promise<any>;
+const EVOLUTION_URL = (process.env.EVOLUTION_API_URL ?? "").replace(/\/$/, "");
+const EVOLUTION_KEY = process.env.EVOLUTION_API_KEY ?? "";
+const INSTANCE = process.env.EVOLUTION_INSTANCE_NAME ?? "pegasus";
+
+async function evo<T = any>(method: string, path: string, body?: unknown): Promise<T> {
+  if (!EVOLUTION_URL) throw new Error("EVOLUTION_API_URL não configurada no servidor.");
+  const res = await fetch(`${EVOLUTION_URL}${path}`, {
+    method,
+    headers: { "Content-Type": "application/json", apikey: EVOLUTION_KEY },
+    body: body != null ? JSON.stringify(body) : undefined,
+  });
+  if (!res.ok) {
+    const text = await res.text().catch(() => "");
+    throw new Error(`Evolution API ${res.status}: ${text.slice(0, 300)}`);
+  }
+  return res.json() as Promise<T>;
+}
 
 type ConnectionStatus = "disconnected" | "connecting" | "connected";
 
@@ -16,133 +27,130 @@ export type WhatsAppGroup = {
 };
 
 class WhatsAppService {
-  private socket: any = null;
   private status: ConnectionStatus = "disconnected";
-  private qrDataUrl: string | null = null;
   private lastError: string | null = null;
-  private readonly sessionPath: string;
-  private qrTimer: ReturnType<typeof setTimeout> | null = null;
-
-  constructor() {
-    this.sessionPath = resolve(process.env.WHATSAPP_SESSION_PATH ?? "./whatsapp-sessions");
-  }
 
   getStatus(): ConnectionStatus { return this.status; }
-  getQrDataUrl(): string | null { return this.qrDataUrl; }
   getLastError(): string | null { return this.lastError; }
+
+  /** Called once on startup to restore a persisted session. */
+  async init(): Promise<void> {
+    if (!EVOLUTION_URL || !EVOLUTION_KEY) {
+      console.log("[WhatsApp] Evolution API não configurada — defina EVOLUTION_API_URL e EVOLUTION_API_KEY");
+      return;
+    }
+    try {
+      const res = await evo<any>("GET", `/instance/connectionState/${INSTANCE}`);
+      const state = res?.instance?.state ?? res?.state;
+      if (state === "open") {
+        this.status = "connected";
+        console.log("[WhatsApp] Sessão restaurada pelo Evolution API — conectado");
+      }
+    } catch {
+      // Instance doesn't exist yet — fine, user will connect manually
+    }
+  }
+
+  /**
+   * Live status used by the status endpoint.
+   * When connecting, also fetches the current QR from Evolution API so the
+   * frontend can display it without storing it in memory on this side.
+   */
+  async getFullStatus(): Promise<{ status: ConnectionStatus; qrDataUrl: string | null; lastError: string | null }> {
+    if (this.status === "disconnected") {
+      return { status: "disconnected", qrDataUrl: null, lastError: this.lastError };
+    }
+
+    if (!EVOLUTION_URL || !EVOLUTION_KEY) {
+      this.status = "disconnected";
+      this.lastError = "EVOLUTION_API_URL ou EVOLUTION_API_KEY não configuradas.";
+      return { status: "disconnected", qrDataUrl: null, lastError: this.lastError };
+    }
+
+    try {
+      const stateRes = await evo<any>("GET", `/instance/connectionState/${INSTANCE}`);
+      const state = stateRes?.instance?.state ?? stateRes?.state;
+
+      if (state === "open") {
+        this.status = "connected";
+        this.lastError = null;
+        return { status: "connected", qrDataUrl: null, lastError: null };
+      }
+
+      // Still waiting for QR scan — fetch QR from Evolution API
+      let qrDataUrl: string | null = null;
+      try {
+        const qrRes = await evo<any>("GET", `/instance/connect/${INSTANCE}`);
+        const b64 = qrRes?.base64 ?? qrRes?.qrcode?.base64;
+        if (b64) {
+          qrDataUrl = b64.startsWith("data:") ? b64 : `data:image/png;base64,${b64}`;
+        }
+      } catch { /* QR not ready yet */ }
+
+      return { status: "connecting", qrDataUrl, lastError: null };
+    } catch (err: any) {
+      const msg = err?.message ?? String(err);
+      console.error("[WhatsApp] Erro ao consultar Evolution API:", msg);
+      this.status = "disconnected";
+      this.lastError = `Erro ao contatar Evolution API: ${msg}`;
+      return { status: "disconnected", qrDataUrl: null, lastError: this.lastError };
+    }
+  }
 
   async connect(): Promise<void> {
     if (this.status !== "disconnected") return;
+
+    if (!EVOLUTION_URL || !EVOLUTION_KEY) {
+      this.lastError = "Configure EVOLUTION_API_URL e EVOLUTION_API_KEY no servidor.";
+      return;
+    }
+
     this.status = "connecting";
-    this.qrDataUrl = null;
     this.lastError = null;
 
-    // 30-second timeout: if QR never arrives, surface a clear error
-    this.qrTimer = setTimeout(() => {
-      if (this.status === "connecting" && !this.qrDataUrl) {
-        console.error("[WhatsApp] Timeout: QR não gerado em 30s — verifique conectividade do servidor");
-        this.lastError = "QR Code não gerado em 30 segundos. Verifique se o servidor tem acesso à internet / ao WhatsApp.";
-        this.status = "disconnected";
-        try { this.socket?.end(undefined); } catch {}
-        this.socket = null;
-        this.qrTimer = null;
-      }
-    }, 30_000);
-
     try {
-      mkdirSync(this.sessionPath, { recursive: true });
-
-      console.log("[WhatsApp] Importando Baileys…");
-      const baileys = await esmImport("@whiskeysockets/baileys");
-      const makeWASocket = baileys.default ?? baileys.makeWASocket;
-
-      if (typeof makeWASocket !== "function") {
-        throw new Error("Baileys não carregou corretamente (makeWASocket não é uma função)");
-      }
-      console.log("[WhatsApp] Baileys carregado, inicializando socket…");
-
-      const { useMultiFileAuthState, DisconnectReason } = baileys;
-      const { state, saveCreds } = await useMultiFileAuthState(this.sessionPath);
-
-      this.socket = makeWASocket({
-        auth: state,
-        printQRInTerminal: false,
-        logger: silentLogger(),
+      // Delete any existing instance to start fresh
+      await evo("DELETE", `/instance/delete/${INSTANCE}`).catch(() => {});
+      await evo("POST", "/instance/create", {
+        instanceName: INSTANCE,
+        qrcode: true,
+        integration: "WHATSAPP-BAILEYS",
       });
-
-      this.socket.ev.on("connection.update", async (update: any) => {
-        const { connection, lastDisconnect, qr } = update;
-
-        if (qr) {
-          if (this.qrTimer) { clearTimeout(this.qrTimer); this.qrTimer = null; }
-          this.qrDataUrl = await QRCode.toDataURL(qr);
-          console.log("[WhatsApp] QR gerado — escaneie no painel admin");
-        }
-
-        if (connection === "open") {
-          if (this.qrTimer) { clearTimeout(this.qrTimer); this.qrTimer = null; }
-          this.status = "connected";
-          this.qrDataUrl = null;
-          this.lastError = null;
-          console.log("[WhatsApp] Conectado com sucesso");
-        }
-
-        if (connection === "close") {
-          if (this.qrTimer) { clearTimeout(this.qrTimer); this.qrTimer = null; }
-          const code = lastDisconnect?.error?.output?.statusCode;
-          const loggedOut = code === DisconnectReason.loggedOut;
-          const prevStatus = this.status;
-          this.status = "disconnected";
-          this.socket = null;
-          console.log(`[WhatsApp] Conexão encerrada (code: ${code})`);
-          // If we never got a QR, the connection was rejected before auth — surface the error
-          if (prevStatus === "connecting" && !this.qrDataUrl) {
-            this.lastError = `Conexão rejeitada pelo WhatsApp (código ${code ?? "desconhecido"}). O IP do servidor pode estar bloqueado. Tente novamente ou use uma VPN/proxy.`;
-            console.error(`[WhatsApp] Conexão rejeitada antes do QR (code: ${code})`);
-          }
-          // Only auto-reconnect if we were already connected (session expired etc.)
-          if (!loggedOut && prevStatus === "connected") {
-            setTimeout(() => this.connect(), 5_000);
-          }
-        }
-      });
-
-      this.socket.ev.on("creds.update", saveCreds);
+      console.log("[WhatsApp] Instância criada no Evolution API, aguardando QR…");
     } catch (err: any) {
-      if (this.qrTimer) { clearTimeout(this.qrTimer); this.qrTimer = null; }
       const msg = err?.message ?? String(err);
-      console.error("[WhatsApp] Falha ao conectar:", msg);
+      console.error("[WhatsApp] Falha ao criar instância:", msg);
       this.lastError = msg;
       this.status = "disconnected";
     }
   }
 
   async disconnect(): Promise<void> {
-    if (this.qrTimer) { clearTimeout(this.qrTimer); this.qrTimer = null; }
-    try { await this.socket?.logout(); } catch {}
-    this.socket = null;
+    try { await evo("DELETE", `/instance/logout/${INSTANCE}`); } catch {}
     this.status = "disconnected";
-    this.qrDataUrl = null;
     this.lastError = null;
   }
 
   async sendMessage(phone: string, message: string): Promise<void> {
-    if (this.status !== "connected" || !this.socket) return;
+    if (this.status !== "connected") return;
     try {
-      await this.socket.sendMessage(toJid(phone), { text: message });
+      await evo("POST", `/message/sendText/${INSTANCE}`, {
+        number: toNumber(phone),
+        text: message,
+      });
     } catch (err) {
       console.error(`[WhatsApp] Erro ao enviar para ${phone}:`, err);
     }
   }
 
   async getGroups(): Promise<WhatsAppGroup[]> {
-    if (this.status !== "connected" || !this.socket) return [];
+    if (this.status !== "connected") return [];
     try {
-      const groups = await this.socket.groupFetchAllParticipating();
-      return Object.values(groups).map((g: any) => ({
+      const groups = await evo<any[]>("GET", `/group/fetchAllGroups/${INSTANCE}?getParticipants=false`);
+      return (Array.isArray(groups) ? groups : []).map((g: any) => ({
         id: g.id as string,
         name: (g.subject ?? g.id) as string,
-        participants: (g.participants?.length ?? 0) as number,
+        participants: (g.size ?? g.participants?.length ?? 0) as number,
       }));
     } catch (err) {
       console.error("[WhatsApp] Erro ao buscar grupos:", err);
@@ -151,16 +159,12 @@ class WhatsAppService {
   }
 
   async sendBroadcast(targets: string[], message: string): Promise<{ sent: number; failed: number }> {
-    if (this.status !== "connected" || !this.socket) {
-      throw new Error("WhatsApp não está conectado.");
-    }
+    if (this.status !== "connected") throw new Error("WhatsApp não está conectado.");
     let sent = 0;
     let failed = 0;
     for (const target of targets) {
       try {
-        // target can be a JID (group ending in @g.us) or a phone number
-        const jid = target.includes("@") ? target : toJid(target);
-        await this.socket.sendMessage(jid, { text: message });
+        await evo("POST", `/message/sendText/${INSTANCE}`, { number: target, text: message });
         sent++;
         await sleep(800);
       } catch (err) {
@@ -219,24 +223,15 @@ class WhatsAppService {
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
-function toJid(phone: string): string {
+function toNumber(phone: string): string {
   const digits = phone.replace(/\D/g, "");
-  const normalized = digits.startsWith("55") && digits.length >= 12 ? digits : "55" + digits;
-  return normalized + "@s.whatsapp.net";
+  return digits.startsWith("55") && digits.length >= 12 ? digits : "55" + digits;
 }
-
 function first(name: string): string { return name.split(" ")[0]; }
 function fmtDate(dateKey: string): string {
   const [y, m, d] = dateKey.split("-");
   return `${d}/${m}/${y}`;
 }
 function sleep(ms: number): Promise<void> { return new Promise((r) => setTimeout(r, ms)); }
-
-function silentLogger() {
-  const noop = () => {};
-  const logger: any = { level: "silent", trace: noop, debug: noop, info: noop, warn: noop, error: noop, fatal: noop };
-  logger.child = () => logger;
-  return logger;
-}
 
 export const whatsAppService = new WhatsAppService();

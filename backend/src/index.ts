@@ -5,7 +5,8 @@ import { startWhatsAppScheduler } from "./modules/whatsapp/whatsapp-scheduler";
 
 const PORT = process.env.PORT || 3000;
 
-app.listen(PORT, () => {
+app.listen(PORT, async () => {
   console.log(`Pegasus Manager API running on port ${PORT}`);
+  await whatsAppService.init();
   startWhatsAppScheduler();
 });

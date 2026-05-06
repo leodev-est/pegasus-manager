@@ -2,26 +2,20 @@ import type { Request, Response } from "express";
 import { whatsAppService } from "./whatsapp.service";
 
 export const whatsAppController = {
-  getStatus(req: Request, res: Response) {
-    res.json({
-      status: whatsAppService.getStatus(),
-      qrDataUrl: whatsAppService.getQrDataUrl(),
-      lastError: whatsAppService.getLastError(),
-    });
+  async getStatus(req: Request, res: Response) {
+    const state = await whatsAppService.getFullStatus();
+    res.json(state);
   },
 
   async connect(req: Request, res: Response) {
     await whatsAppService.connect();
-    res.json({
-      status: whatsAppService.getStatus(),
-      qrDataUrl: whatsAppService.getQrDataUrl(),
-      lastError: whatsAppService.getLastError(),
-    });
+    const state = await whatsAppService.getFullStatus();
+    res.json(state);
   },
 
   async disconnect(req: Request, res: Response) {
     await whatsAppService.disconnect();
-    res.json({ status: "disconnected" });
+    res.json({ status: "disconnected", qrDataUrl: null, lastError: null });
   },
 
   async getGroups(req: Request, res: Response) {
