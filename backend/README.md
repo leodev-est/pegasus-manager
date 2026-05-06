@@ -1,18 +1,17 @@
-# Pegasus Manager Backend
+# Pegasus Manager — Backend
 
-API Node.js/Express do Pegasus Manager com TypeScript, Prisma, PostgreSQL, JWT, bcrypt e RBAC.
+API Node.js/Express do Pegasus Manager com TypeScript, Prisma, PostgreSQL, JWT e RBAC.
 
 ## Tecnologias
 
-- Node.js
+- Node.js 20
 - Express
 - TypeScript
-- Prisma
-- PostgreSQL
-- JWT
-- bcrypt
-- cors
-- dotenv
+- Prisma + PostgreSQL
+- JWT / bcrypt
+- node-cron
+- Evolution API (WhatsApp)
+- googleapis (Google Sheets)
 
 ## Instalar
 
@@ -23,117 +22,150 @@ npm install
 
 ## Configurar Ambiente
 
-Crie o arquivo `.env` a partir do exemplo:
-
 ```bash
 copy .env.example .env
 ```
 
-Conteudo esperado:
+Variáveis obrigatórias:
 
 ```env
-DATABASE_URL=
-JWT_SECRET=
-PORT=
-CORS_ORIGIN=
+DATABASE_URL=postgresql://...
+JWT_SECRET=        # openssl rand -hex 32
+PORT=3000
+CORS_ORIGIN=http://localhost:5173
 ```
 
-Garanta que o PostgreSQL esteja rodando e que o banco `pegasus_manager` exista.
+Variáveis opcionais:
+
+```env
+# WhatsApp via Evolution API
+EVOLUTION_API_URL=
+EVOLUTION_API_KEY=
+EVOLUTION_INSTANCE_NAME=pegasus
+
+# Google Sheets
+GOOGLE_SHEETS_CLIENT_EMAIL=
+GOOGLE_SHEETS_PRIVATE_KEY=
+GOOGLE_SHEETS_SPREADSHEET_ID=
+GOOGLE_SHEETS_ATHLETES_RANGE=Respostas ao formulário 1!A:Z
+GOOGLE_SHEETS_APPLICATIONS_SPREADSHEET_ID=
+GOOGLE_SHEETS_APPLICATIONS_RANGE=Respostas ao formulário 1!A:Z
+
+# Atletas
+ATHLETE_TEMP_PASSWORD=
+```
 
 ## Prisma
 
-Gerar client:
+```bash
+npm run prisma:generate   # regenerar client
+npm run prisma:migrate    # criar e aplicar migration (dev)
+npm run prisma:deploy     # aplicar migrations (produção)
+npm run prisma:seed       # popular banco com dados iniciais
+```
+
+## Rodar
 
 ```bash
-npm run prisma:generate
+npm run dev     # hot reload (ts-node-dev)
+npm run build   # compilar para dist/
+npm run start   # rodar dist/index.js (aplica migrations primeiro)
 ```
 
-Rodar migrations:
+API sobe em `http://localhost:3000`.
 
-```bash
-npm run prisma:migrate
-```
+## Schedulers
 
-Rodar migrations em produção:
+Dois jobs iniciam automaticamente com o servidor:
 
-```bash
-npm run prisma:deploy
-```
+- **WhatsApp Scheduler** — diário às 10h UTC: lembretes de treino e alertas de pagamento próximo ao vencimento.
+- **Tasks Scheduler** — todo minuto: publica cards de marketing com `scheduledAt <= now` (coluna Agendado → Publicado).
 
-Rodar seed:
+## Perfis (Roles)
 
-```bash
-npm run prisma:seed
-```
+| Role | Permissões-chave |
+|---|---|
+| Diretor | Acesso total + admin |
+| Gestao | dashboard, gestao, treinos |
+| RH | dashboard, rh, gestao |
+| Financeiro | dashboard, financeiro, gestao |
+| Marketing | dashboard, marketing, gestao — cria/edita/exclui tasks |
+| ChefeMarketing | dashboard, marketing, gestao — cria/edita/exclui tasks + aprova/agenda/publica |
+| Tecnico | dashboard, treinos, chamada |
+| Operacional | dashboard, operacional, gestao |
+| Conselheira | dashboard, gestao |
+| Atleta | dashboard, atleta, treinos |
 
-## Rodar API
+## Principais Endpoints
 
-```bash
-npm run dev
-```
-
-A API sobe em:
-
-```bash
-http://localhost:3000
-```
-
-Em produção, use:
-
-```bash
-npm run build
-npm run prisma:deploy
-npm run start
-```
-
-Healthcheck:
-
-```bash
-http://localhost:3000/health
-```
-
-## Testar Login
-
-PowerShell:
-
-```powershell
-Invoke-RestMethod http://localhost:3000/auth/login `
-  -Method POST `
-  -ContentType "application/json" `
-  -Body '{"email":"leo@pegasus.com","password":"123456"}'
-```
-
-## Usuarios Iniciais
-
-Todos usam a senha `123456`.
-
-| Nome | E-mail | Perfil |
-| --- | --- | --- |
-| Leo | `leo@pegasus.com` | Diretor |
-| Allef | `allef@pegasus.com` | Diretor |
-| Giulia | `giulia@pegasus.com` | RH + Financeiro |
-| Victoria | `victoria@pegasus.com` | Conselheiro |
-| Vito | `vito@pegasus.com` | Marketing |
-
-## Endpoints
-
+### Auth
 - `POST /auth/login`
 - `GET /auth/me`
+- `PATCH /auth/change-password`
+
+### Usuários
 - `GET /users`
 - `POST /users`
 - `PATCH /users/:id`
+- `PATCH /users/:id/roles`
 - `DELETE /users/:id`
+- `GET /users/by-role/:role`
+
+### Atletas
+- `GET /athletes`
+- `POST /athletes`
+- `PATCH /athletes/:id`
+- `DELETE /athletes/:id`
+- `POST /athletes/import/google-sheets`
+
+### Tarefas (Kanban)
+- `GET /tasks?area=marketing`
+- `POST /tasks`
+- `PATCH /tasks/:id`
+- `PATCH /tasks/:id/status`
+- `PATCH /tasks/:id/approve` — aprova ou agenda (`action: "publish"|"schedule"`, `scheduledAt: ISO string`)
+- `PATCH /tasks/:id/reject`
+- `DELETE /tasks/:id`
+
+### Financeiro
+- `GET /cash-movements`
+- `POST /cash-movements`
+- `GET /payments`
+- `PATCH /payments/:id`
+
+### Treinos e Frequência
+- `GET /trainings`
+- `POST /trainings`
+- `GET /attendance/check-in/today`
+- `POST /attendance/check-in`
+- `GET /attendance/frequency`
+- `GET /attendance/my-frequency`
+
+### WhatsApp
+- `GET /whatsapp/status`
+- `POST /whatsapp/connect`
+- `POST /whatsapp/disconnect`
+- `GET /whatsapp/groups`
+- `POST /whatsapp/broadcast`
+
+### Outros
 - `GET /roles`
-- `POST /roles`
-- `PATCH /roles/:id`
 - `GET /permissions`
+- `GET /notifications`
+- `PATCH /notifications/:id/read`
+- `GET /me/profile`
+- `PATCH /me/profile`
 
 ## RBAC
 
-O middleware `authMiddleware` valida JWT e injeta `req.user`.
+`authMiddleware` valida Bearer JWT e injeta `req.user` com `roles` e `permissions`.
 
-O middleware `permissionMiddleware(permissionKey)` valida a permissao exigida. Usuarios com role `Diretor` passam por todas as permissoes.
+`permissionMiddleware(key)` verifica a permissão exigida. Usuários com role `Diretor` passam por todas as verificações.
 
-## Observacoes
+Controllers de tasks usam `ensureAreaPermission(req, area, action)` internamente.
 
-Os models futuros (`Athlete`, `Payment`, `Task`, `Training`, `School`) ja existem no Prisma, mas seus CRUDs ainda nao foram implementados nesta etapa.
+## Deploy (Railway)
+
+O Dockerfile em `backend/Dockerfile` usa `node:20-alpine`, compila TypeScript e roda `npm start` (que executa `prisma migrate deploy` antes de subir).
+
+> Sempre rodar `railway up` a partir da **raiz do monorepo** (`/Pegasus`), nunca de dentro de `/backend`. O Railway está configurado com root directory `backend`.
