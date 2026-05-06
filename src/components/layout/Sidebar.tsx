@@ -5,6 +5,7 @@
   Landmark,
   LayoutDashboard,
   Megaphone,
+  MessageCircle,
   UserPlus,
   Users,
   UserCheck,
@@ -149,6 +150,7 @@ export const menuGroups: MenuGroup[] = [
     title: "Administração",
     items: [
       { label: "Acessos", path: "/app/admin/acessos", icon: Users, permissions: ["admin"] },
+      { label: "WhatsApp", path: "/app/admin/whatsapp", icon: MessageCircle, permissions: ["admin"] },
     ],
   },
 ];

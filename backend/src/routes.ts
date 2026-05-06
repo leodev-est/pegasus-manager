@@ -16,6 +16,7 @@ import { spreadsheetsRoutes } from "./modules/spreadsheets/spreadsheets.routes";
 import { tasksRoutes } from "./modules/tasks/tasks.routes";
 import { trainingsRoutes } from "./modules/trainings/trainings.routes";
 import { usersRoutes } from "./modules/users/users.routes";
+import { whatsAppRoutes } from "./modules/whatsapp/whatsapp.routes";
 
 export const routes = Router();
 
@@ -43,3 +44,4 @@ routes.use("/trainings", trainingsRoutes);
 routes.use("/users", usersRoutes);
 routes.use("/roles", rolesRoutes);
 routes.use("/permissions", permissionsRoutes);
+routes.use("/whatsapp", whatsAppRoutes);

@@ -1,6 +1,7 @@
 import { prisma } from "../../config/prisma";
 import { AppError } from "../../middlewares/error.middleware";
 import { notificationsService } from "../notifications/notifications.service";
+import { whatsAppService } from "../whatsapp/whatsapp.service";
 
 type SelfEvaluationPayload = {
   improvements?: string | null;
@@ -173,6 +174,8 @@ export const evaluationsService = {
       title: "Nova avaliação técnica",
       type: "avaliacao",
     });
+
+    whatsAppService.notifyEvaluationUpdated(athleteId).catch(() => {});
 
     return formatEvaluation(evaluation);
   },

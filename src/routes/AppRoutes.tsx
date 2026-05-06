@@ -2,6 +2,7 @@
 import { ProtectedRoute } from "../components/auth/ProtectedRoute";
 import { AppLayout } from "../components/layout/AppLayout";
 import { AccessControlPage } from "../pages/admin/AccessControlPage";
+import { WhatsAppPage } from "../pages/admin/WhatsAppPage";
 import { AttendanceAdminPage } from "../pages/attendance/AttendanceAdminPage";
 import { ChamadaPage } from "../pages/attendance/ChamadaPage";
 import { MyFrequencyPage } from "../pages/attendance/MyFrequencyPage";
@@ -173,6 +174,14 @@ export function AppRoutes() {
           element={
             <ProtectedRoute permissions={["admin"]}>
               <AccessControlPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="admin/whatsapp"
+          element={
+            <ProtectedRoute permissions={["admin"]}>
+              <WhatsAppPage />
             </ProtectedRoute>
           }
         />

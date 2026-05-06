@@ -3,6 +3,7 @@ import { prisma } from "../../config/prisma";
 import { AppError } from "../../middlewares/error.middleware";
 import { syncActiveAthleteUser } from "./athlete-user-sync";
 import { getMonthlyPaymentStatusForAthlete } from "./monthly-exemption";
+import { whatsAppService } from "../whatsapp/whatsapp.service";
 
 const allowedStatuses = ["ativo", "teste", "inativo"] as const;
 const allowedPaymentStatuses = ["pago", "pendente", "atrasado", "isento"] as const;
@@ -171,6 +172,7 @@ export const athletesService = {
 
   async update(id: string, payload: AthletePayload) {
     const currentAthlete = await this.findById(id);
+    const wasInTest = currentAthlete.status === "teste";
 
     const data = buildData(payload, false) as Prisma.AthleteUncheckedUpdateInput;
     const athleteName = typeof data.name === "string" ? data.name : currentAthlete.name;
@@ -194,6 +196,9 @@ export const athletesService = {
 
     if (athlete.status === "ativo") {
       await syncActiveAthleteUser(athlete);
+      if (wasInTest) {
+        whatsAppService.notifyAthleteApproved(athlete.id).catch(() => {});
+      }
     }
     return prisma.athlete.findUniqueOrThrow({
       where: { id: athlete.id },

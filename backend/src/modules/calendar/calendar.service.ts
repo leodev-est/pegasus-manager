@@ -1,4 +1,5 @@
 import { prisma } from "../../config/prisma";
+import { whatsAppService } from "../whatsapp/whatsapp.service";
 
 export const calendarService = {
   async getBlockedDates(): Promise<string[]> {
@@ -19,9 +20,12 @@ export const calendarService = {
 
   async toggleBlockedDate(date: string): Promise<string[]> {
     const current = await this.getBlockedDates();
-    const next = current.includes(date)
-      ? current.filter((d) => d !== date)
-      : [...current, date];
-    return this.setBlockedDates(next);
+    const isBlocking = !current.includes(date);
+    const next = isBlocking ? [...current, date] : current.filter((d) => d !== date);
+    const result = await this.setBlockedDates(next);
+    if (isBlocking) {
+      whatsAppService.notifyTrainingCancelled(date).catch(() => {});
+    }
+    return result;
   },
 };
