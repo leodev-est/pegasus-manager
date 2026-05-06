@@ -106,7 +106,7 @@ export const tasksController = {
   approve: (async (request, response, next) => {
     try {
       const user = request.user;
-      if (!user || (!user.roles.includes("Diretor") && !user.roles.includes("MarketingLvl2"))) {
+      if (!user || (!user.roles.includes("Diretor") && !user.roles.includes("ChefeMarketing"))) {
         next(new AppError("Apenas o responsável de marketing pode aprovar tarefas", 403));
         return;
       }
@@ -122,7 +122,7 @@ export const tasksController = {
   reject: (async (request, response, next) => {
     try {
       const user = request.user;
-      if (!user || (!user.roles.includes("Diretor") && !user.roles.includes("MarketingLvl2"))) {
+      if (!user || (!user.roles.includes("Diretor") && !user.roles.includes("ChefeMarketing"))) {
         next(new AppError("Apenas o responsável de marketing pode reprovar tarefas", 403));
         return;
       }

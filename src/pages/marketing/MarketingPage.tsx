@@ -76,7 +76,7 @@ export function MarketingPage() {
   const canCreate = hasPermission(["marketing:create"]);
   const canUpdate = hasPermission(["marketing:update"]);
   const canDelete = hasPermission(["marketing:delete"]);
-  const canApprove = user?.roles?.includes("ChefeMarketing") || user?.roles?.includes("MarketingLvl2") || user?.roles?.includes("Diretor") || false;
+  const canApprove = user?.roles?.includes("ChefeMarketing") || user?.roles?.includes("Diretor") || false;
   const [tasks, setTasks] = useState<MarketingTask[]>([]);
   const [channel, setChannel] = useState("todos");
   const [assignedTo, setAssignedTo] = useState("todos");
