@@ -113,6 +113,7 @@ type AdvancedKanbanProps<TTask extends KanbanTaskBase, TStatus extends string> =
   minDueDate?: string;
   labelsAsTab?: boolean;
   approvalColumn?: TStatus;
+  scheduledColumn?: TStatus;
   canApprove?: boolean;
   emptyStatus: TStatus;
   onCreate: (payload: TaskForm<TStatus>) => Promise<void>;
@@ -170,27 +171,21 @@ function truncate(value?: string | null) {
   return value.length > 130 ? `${value.slice(0, 130)}...` : value;
 }
 
-function countdownLabel(scheduledAt: string): string {
-  const diff = new Date(scheduledAt).getTime() - Date.now();
-  if (diff <= 0) return "publicando...";
-  const h = Math.floor(diff / 3_600_000);
-  const m = Math.floor((diff % 3_600_000) / 60_000);
-  const s = Math.floor((diff % 60_000) / 1_000);
-  if (h > 0) return `${h}h ${m}m`;
-  if (m > 0) return `${m}m ${s}s`;
-  return `${s}s`;
+function formatScheduledAt(scheduledAt: string): string {
+  return new Intl.DateTimeFormat("pt-BR", {
+    day: "2-digit",
+    month: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    timeZone: "America/Sao_Paulo",
+  }).format(new Date(scheduledAt));
 }
 
 function ScheduledBadge({ scheduledAt }: { scheduledAt: string }) {
-  const [label, setLabel] = useState(() => countdownLabel(scheduledAt));
-  useEffect(() => {
-    const id = setInterval(() => setLabel(countdownLabel(scheduledAt)), 1_000);
-    return () => clearInterval(id);
-  }, [scheduledAt]);
   return (
     <span className="inline-flex items-center gap-1 rounded-full bg-amber-50 px-3 py-1 text-xs font-bold text-amber-700 ring-1 ring-amber-200">
       <Clock size={12} />
-      Agendado · {label}
+      Agendado · {formatScheduledAt(scheduledAt)}
     </span>
   );
 }
@@ -246,6 +241,7 @@ function Column<TTask extends KanbanTaskBase, TStatus extends string>({
   column,
   icon: Icon,
   isOver,
+  locked,
   statusLabel,
   tasks,
   onCardClick,
@@ -254,6 +250,7 @@ function Column<TTask extends KanbanTaskBase, TStatus extends string>({
   column: ColumnConfig<TStatus>;
   icon: LucideIcon;
   isOver: boolean;
+  locked?: boolean;
   statusLabel: (status: string) => string;
   tasks: TTask[];
   onCardClick: (task: TTask) => void;
@@ -281,7 +278,7 @@ function Column<TTask extends KanbanTaskBase, TStatus extends string>({
           {tasks.length > 0 ? (
             tasks.map((task) => (
               <SortableTaskCard
-                canUpdate={canUpdate}
+                canUpdate={canUpdate && !locked}
                 key={task.id}
                 statusLabel={statusLabel}
                 task={task}
@@ -437,7 +434,7 @@ function TaskCard<TTask extends KanbanTaskBase>({
         </span>
       </div>
 
-      {task.approvalStatus === "approved" && task.scheduledAt && task.status !== "published" ? (
+      {task.scheduledAt && task.status === "scheduled" ? (
         <div className="mt-3">
           <ScheduledBadge scheduledAt={task.scheduledAt} />
         </div>
@@ -449,6 +446,7 @@ function TaskCard<TTask extends KanbanTaskBase>({
 export function AdvancedKanban<TTask extends KanbanTaskBase, TStatus extends string>({
   areaLabel,
   approvalColumn,
+  scheduledColumn,
   canApprove,
   canCreate,
   canDelete,
@@ -500,6 +498,15 @@ export function AdvancedKanban<TTask extends KanbanTaskBase, TStatus extends str
     [activeTaskId, tasks],
   );
 
+  // Auto-close view modal when a scheduled task gets published by the cron job
+  useEffect(() => {
+    if (!viewTask) return;
+    const updated = tasks.find((t) => t.id === viewTask.id);
+    if (updated && updated.status === "published" && viewTask.status !== "published") {
+      setViewTask(null);
+    }
+  }, [tasks, viewTask]);
+
   function statusLabel(status: string) {
     return columns.find((column) => column.value === status)?.label ?? status;
   }
@@ -530,18 +537,26 @@ export function AdvancedKanban<TTask extends KanbanTaskBase, TStatus extends str
     let scheduledAt: string | undefined;
     if (approvalMode === "schedule") {
       if (!scheduledDate) return;
-      scheduledAt = scheduledTime ? `${scheduledDate}T${scheduledTime}:00` : `${scheduledDate}T00:00:00`;
+      // Convert local datetime to UTC ISO string so Railway (UTC) gets the correct time
+      scheduledAt = new Date(`${scheduledDate}T${scheduledTime || "00:00"}:00`).toISOString();
     }
     await onApprove(approvalTask, approvalMode, scheduledAt);
     setApprovalTask(null);
     setApprovalMode(null);
     setScheduledDate("");
     setScheduledTime("");
+    setViewTask(null);
   }
 
   async function handleReject(task: TTask) {
     if (!onReject) return;
     await onReject(task);
+    setViewTask(null);
+  }
+
+  async function handlePublishNow(task: TTask) {
+    if (!onApprove) return;
+    await onApprove(task, "publish");
     setViewTask(null);
   }
 
@@ -578,6 +593,9 @@ export function AdvancedKanban<TTask extends KanbanTaskBase, TStatus extends str
       : tasks.find((task) => task.id === overId)?.status;
 
     if (!nextStatus || nextStatus === active.status) return;
+
+    // Block dragging from the scheduled column entirely
+    if (scheduledColumn && active.status === scheduledColumn) return;
 
     // Block dragging out of the approval column — must go through the approval flow
     if (approvalColumn) {
@@ -696,6 +714,7 @@ export function AdvancedKanban<TTask extends KanbanTaskBase, TStatus extends str
                   icon={Icon}
                   isOver={overColumn === column.value}
                   key={column.value}
+                  locked={scheduledColumn === column.value}
                   statusLabel={statusLabel}
                   tasks={tasks.filter((task) => task.status === column.value)}
                   onCardClick={openViewModal}
@@ -777,10 +796,18 @@ export function AdvancedKanban<TTask extends KanbanTaskBase, TStatus extends str
               </div>
             </section>
 
-            {viewTask.approvalStatus === "approved" && viewTask.scheduledAt && viewTask.status !== "published" ? (
-              <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4">
-                <p className="mb-1 text-xs font-black uppercase tracking-wide text-amber-700">Publicação agendada</p>
+            {scheduledColumn && viewTask.status === scheduledColumn && viewTask.scheduledAt ? (
+              <div className="rounded-2xl border-2 border-amber-200 bg-amber-50 p-4">
+                <p className="mb-2 text-xs font-black uppercase tracking-wide text-amber-700">Publicação agendada</p>
                 <ScheduledBadge scheduledAt={viewTask.scheduledAt} />
+                {canApprove && onApprove ? (
+                  <Button
+                    className="mt-3 w-full bg-emerald-600 hover:bg-emerald-700"
+                    onClick={() => handlePublishNow(viewTask)}
+                  >
+                    Publicar agora
+                  </Button>
+                ) : null}
               </div>
             ) : null}
 

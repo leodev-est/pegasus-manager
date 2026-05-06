@@ -1,6 +1,6 @@
 import { api } from "./api";
 
-export type MarketingStatus = "ideas" | "production" | "review" | "published";
+export type MarketingStatus = "ideas" | "production" | "review" | "scheduled" | "published";
 export type MarketingPriority = "baixa" | "media" | "alta";
 export type MarketingChannel = "Instagram" | "WhatsApp" | "Arte" | "Captacao" | "Evento";
 export type MarketingComment = {

@@ -20,6 +20,7 @@ const columns: Array<{ label: string; value: MarketingStatus }> = [
   { label: "Ideias", value: "ideas" },
   { label: "Produção", value: "production" },
   { label: "Revisão", value: "review" },
+  { label: "Agendado", value: "scheduled" },
   { label: "Publicado", value: "published" },
 ];
 
@@ -113,19 +114,28 @@ export function MarketingPage() {
     loadTasks();
   }, [loadTasks]);
 
-  // Auto-reload every minute when there are scheduled tasks pending publish
+  // Auto-reload every 60s when any task is in the scheduled column
   useEffect(() => {
-    const hasScheduled = tasks.some(
-      (t) => t.approvalStatus === "approved" && t.scheduledAt && t.status !== "published",
-    );
-    if (!hasScheduled) return;
-    const id = setInterval(loadTasks, 5_000);
+    const hasPending = tasks.some((t) => t.status === "scheduled");
+    if (!hasPending) return;
+    const id = setInterval(loadTasks, 60_000);
     return () => clearInterval(id);
   }, [tasks, loadTasks]);
 
   useEffect(() => {
-    userService.getUsersByRole("Marketing")
-      .then((users) => setMarketingUsers(users.map((u) => ({ label: u.name, value: u.name }))))
+    Promise.all([
+      userService.getUsersByRole("Marketing"),
+      userService.getUsersByRole("ChefeMarketing"),
+    ])
+      .then(([marketing, chefe]) => {
+        const seen = new Set<string>();
+        const merged = [...marketing, ...chefe].filter((u) => {
+          if (seen.has(u.id)) return false;
+          seen.add(u.id);
+          return true;
+        });
+        setMarketingUsers(merged.map((u) => ({ label: u.name, value: u.name })));
+      })
       .catch(() => setMarketingUsers([]));
   }, []);
 
@@ -166,6 +176,7 @@ export function MarketingPage() {
       <AdvancedKanban
         areaLabel="marketing"
         approvalColumn="review"
+        scheduledColumn="scheduled"
         canApprove={canApprove}
         canCreate={canCreate}
         canDelete={canDelete}

@@ -4,7 +4,7 @@ import { AppError } from "../../middlewares/error.middleware";
 
 const statusByArea = {
   management: ["todo", "doing", "done"],
-  marketing: ["ideas", "production", "review", "published"],
+  marketing: ["ideas", "production", "review", "scheduled", "published"],
 } as const;
 const allowedPriorities = ["baixa", "media", "alta"] as const;
 const allowedAreas = ["management", "marketing"] as const;
@@ -278,7 +278,7 @@ export const tasksService = {
       }
       return prisma.task.update({
         where: { id },
-        data: { approvalStatus: "approved", status: "review", scheduledAt: date },
+        data: { approvalStatus: "approved", status: "scheduled", scheduledAt: date },
       });
     }
 
@@ -303,7 +303,7 @@ export const tasksService = {
         area: "marketing",
         approvalStatus: "approved",
         scheduledAt: { lte: now },
-        status: { not: "published" },
+        status: "scheduled",
       },
       data: { status: "published" },
     });
