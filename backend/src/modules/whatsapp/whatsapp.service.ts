@@ -113,7 +113,7 @@ class WhatsAppService {
   }
 
   async connect(): Promise<void> {
-    if (this.status !== "disconnected") return;
+    if (this.status === "connected") return; // já conectado, não reconectar
 
     if (!EVOLUTION_URL || !EVOLUTION_KEY) {
       this.lastError = "Configure EVOLUTION_API_URL e EVOLUTION_API_KEY no servidor.";
