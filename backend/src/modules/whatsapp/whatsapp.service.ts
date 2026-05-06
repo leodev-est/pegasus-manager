@@ -153,26 +153,32 @@ class WhatsAppService {
         console.log("[WhatsApp] Logout realizado");
       } catch { /* instance doesn't exist */ }
 
-      const webhookPayload = WEBHOOK_URL ? {
-        url: WEBHOOK_URL,
-        webhook_by_events: false,
-        webhook_base64: true,
-        events: ["QRCODE_UPDATED", "CONNECTION_UPDATE"],
+      // Evolution API v2 webhook payload (camelCase, nested under "webhook")
+      const webhookBody = WEBHOOK_URL ? {
+        webhook: {
+          enabled: true,
+          url: WEBHOOK_URL,
+          webhookByEvents: false,
+          webhookBase64: true,
+          events: ["QRCODE_UPDATED", "CONNECTION_UPDATE"],
+        },
       } : undefined;
 
-      if (instanceExists && WEBHOOK_URL) {
-        // Update webhook on existing instance
-        await evo("POST", `/webhook/set/${INSTANCE}`, webhookPayload).catch(() => {});
-        console.log(`[WhatsApp] Webhook configurado: ${WEBHOOK_URL}`);
+      if (instanceExists && webhookBody) {
+        try {
+          await evo("POST", `/webhook/set/${INSTANCE}`, webhookBody);
+          console.log(`[WhatsApp] Webhook configurado: ${WEBHOOK_URL}`);
+        } catch (e: any) {
+          console.error(`[WhatsApp] Webhook set falhou: ${e.message}`);
+        }
       }
 
       if (!instanceExists) {
-        // Create new instance with webhook if available
         const createPayload: any = {
           instanceName: INSTANCE,
           qrcode: true,
           integration: "WHATSAPP-BAILEYS",
-          ...(webhookPayload ? { webhook: webhookPayload } : {}),
+          ...(webhookBody ?? {}),
         };
         const createRes = await evo<any>("POST", "/instance/create", createPayload);
         console.log("[WhatsApp] Instância criada, webhook:", WEBHOOK_URL || "não configurado");
