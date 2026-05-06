@@ -9,12 +9,19 @@ const esmImport = new Function("m", "return import(m)") as (m: string) => Promis
 
 type ConnectionStatus = "disconnected" | "connecting" | "connected";
 
+export type WhatsAppGroup = {
+  id: string;
+  name: string;
+  participants: number;
+};
+
 class WhatsAppService {
   private socket: any = null;
   private status: ConnectionStatus = "disconnected";
   private qrDataUrl: string | null = null;
   private lastError: string | null = null;
   private readonly sessionPath: string;
+  private qrTimer: ReturnType<typeof setTimeout> | null = null;
 
   constructor() {
     this.sessionPath = resolve(process.env.WHATSAPP_SESSION_PATH ?? "./whatsapp-sessions");
@@ -30,15 +37,29 @@ class WhatsAppService {
     this.qrDataUrl = null;
     this.lastError = null;
 
+    // 30-second timeout: if QR never arrives, surface a clear error
+    this.qrTimer = setTimeout(() => {
+      if (this.status === "connecting" && !this.qrDataUrl) {
+        console.error("[WhatsApp] Timeout: QR não gerado em 30s — verifique conectividade do servidor");
+        this.lastError = "QR Code não gerado em 30 segundos. Verifique se o servidor tem acesso à internet / ao WhatsApp.";
+        this.status = "disconnected";
+        try { this.socket?.end(undefined); } catch {}
+        this.socket = null;
+        this.qrTimer = null;
+      }
+    }, 30_000);
+
     try {
       mkdirSync(this.sessionPath, { recursive: true });
 
+      console.log("[WhatsApp] Importando Baileys…");
       const baileys = await esmImport("@whiskeysockets/baileys");
       const makeWASocket = baileys.default ?? baileys.makeWASocket;
 
       if (typeof makeWASocket !== "function") {
         throw new Error("Baileys não carregou corretamente (makeWASocket não é uma função)");
       }
+      console.log("[WhatsApp] Baileys carregado, inicializando socket…");
 
       const { useMultiFileAuthState, DisconnectReason } = baileys;
       const { state, saveCreds } = await useMultiFileAuthState(this.sessionPath);
@@ -53,11 +74,13 @@ class WhatsAppService {
         const { connection, lastDisconnect, qr } = update;
 
         if (qr) {
+          if (this.qrTimer) { clearTimeout(this.qrTimer); this.qrTimer = null; }
           this.qrDataUrl = await QRCode.toDataURL(qr);
           console.log("[WhatsApp] QR gerado — escaneie no painel admin");
         }
 
         if (connection === "open") {
+          if (this.qrTimer) { clearTimeout(this.qrTimer); this.qrTimer = null; }
           this.status = "connected";
           this.qrDataUrl = null;
           this.lastError = null;
@@ -65,17 +88,23 @@ class WhatsAppService {
         }
 
         if (connection === "close") {
+          if (this.qrTimer) { clearTimeout(this.qrTimer); this.qrTimer = null; }
           const code = lastDisconnect?.error?.output?.statusCode;
           const loggedOut = code === DisconnectReason.loggedOut;
+          const prevStatus = this.status;
           this.status = "disconnected";
           this.socket = null;
           console.log(`[WhatsApp] Conexão encerrada (code: ${code})`);
-          if (!loggedOut) setTimeout(() => this.connect(), 5_000);
+          // Only auto-reconnect if we were already connected (session expired etc.)
+          if (!loggedOut && prevStatus === "connected") {
+            setTimeout(() => this.connect(), 5_000);
+          }
         }
       });
 
       this.socket.ev.on("creds.update", saveCreds);
     } catch (err: any) {
+      if (this.qrTimer) { clearTimeout(this.qrTimer); this.qrTimer = null; }
       const msg = err?.message ?? String(err);
       console.error("[WhatsApp] Falha ao conectar:", msg);
       this.lastError = msg;
@@ -84,6 +113,7 @@ class WhatsAppService {
   }
 
   async disconnect(): Promise<void> {
+    if (this.qrTimer) { clearTimeout(this.qrTimer); this.qrTimer = null; }
     try { await this.socket?.logout(); } catch {}
     this.socket = null;
     this.status = "disconnected";
@@ -98,6 +128,42 @@ class WhatsAppService {
     } catch (err) {
       console.error(`[WhatsApp] Erro ao enviar para ${phone}:`, err);
     }
+  }
+
+  async getGroups(): Promise<WhatsAppGroup[]> {
+    if (this.status !== "connected" || !this.socket) return [];
+    try {
+      const groups = await this.socket.groupFetchAllParticipating();
+      return Object.values(groups).map((g: any) => ({
+        id: g.id as string,
+        name: (g.subject ?? g.id) as string,
+        participants: (g.participants?.length ?? 0) as number,
+      }));
+    } catch (err) {
+      console.error("[WhatsApp] Erro ao buscar grupos:", err);
+      return [];
+    }
+  }
+
+  async sendBroadcast(targets: string[], message: string): Promise<{ sent: number; failed: number }> {
+    if (this.status !== "connected" || !this.socket) {
+      throw new Error("WhatsApp não está conectado.");
+    }
+    let sent = 0;
+    let failed = 0;
+    for (const target of targets) {
+      try {
+        // target can be a JID (group ending in @g.us) or a phone number
+        const jid = target.includes("@") ? target : toJid(target);
+        await this.socket.sendMessage(jid, { text: message });
+        sent++;
+        await sleep(800);
+      } catch (err) {
+        console.error(`[WhatsApp] Erro ao enviar para ${target}:`, err);
+        failed++;
+      }
+    }
+    return { sent, failed };
   }
 
   // ── Notification helpers ──────────────────────────────────────────────────

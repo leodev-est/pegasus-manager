@@ -1,6 +1,6 @@
 -- CreateRole: ChefeMarketing
-INSERT INTO "Role" (id, name, description)
-VALUES (gen_random_uuid(), 'ChefeMarketing', 'Chefe de Marketing')
+INSERT INTO "Role" (id, name, description, "createdAt", "updatedAt")
+VALUES (gen_random_uuid(), 'ChefeMarketing', 'Chefe de Marketing', NOW(), NOW())
 ON CONFLICT (name) DO NOTHING;
 
 -- Assign permissions to ChefeMarketing

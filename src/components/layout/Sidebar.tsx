@@ -6,6 +6,7 @@
   LayoutDashboard,
   Megaphone,
   MessageCircle,
+  Radio,
   UserPlus,
   Users,
   UserCheck,
@@ -52,6 +53,7 @@ export const menuGroups: MenuGroup[] = [
       { label: "Atletas", path: "/app/rh/atletas", icon: Users, permissions: ["rh"] },
       { label: "Testes", path: "/app/rh/testes", icon: ClipboardList, permissions: ["rh"] },
       { label: "Inscrições", path: "/app/rh/inscricoes", icon: UserPlus, permissions: ["rh"] },
+      { label: "Comunicados", path: "/app/rh/comunicados", icon: Radio, permissions: ["rh"] },
     ],
   },
   {

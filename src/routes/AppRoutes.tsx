@@ -20,6 +20,7 @@ import { LandingPage } from "../pages/public/LandingPage";
 import { NotFoundPage } from "../pages/public/NotFoundPage";
 import { AthleteApplicationsPage } from "../pages/rh/AthleteApplicationsPage";
 import { AthletesPage } from "../pages/rh/AthletesPage";
+import { ComunicadosPage } from "../pages/rh/ComunicadosPage";
 import { TestesPage } from "../pages/rh/TestesPage";
 import { TacticalCourtPage } from "../pages/tactical/TacticalCourtPage";
 import { TrainingCalendarPage } from "../pages/trainings/TrainingCalendarPage";
@@ -61,6 +62,14 @@ export function AppRoutes() {
           element={
             <ProtectedRoute permissions={["rh"]}>
               <AthletesPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="rh/comunicados"
+          element={
+            <ProtectedRoute permissions={["rh"]}>
+              <ComunicadosPage />
             </ProtectedRoute>
           }
         />

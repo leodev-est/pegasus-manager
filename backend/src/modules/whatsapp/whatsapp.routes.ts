@@ -6,8 +6,12 @@ import { whatsAppController } from "./whatsapp.controller";
 export const whatsAppRoutes = Router();
 
 whatsAppRoutes.use(authMiddleware);
-whatsAppRoutes.use(permissionMiddleware("users:delete")); // Diretor only
 
-whatsAppRoutes.get("/status", whatsAppController.getStatus);
-whatsAppRoutes.post("/connect", whatsAppController.connect);
-whatsAppRoutes.post("/disconnect", whatsAppController.disconnect);
+// Admin-only: manage connection
+whatsAppRoutes.get("/status", permissionMiddleware("users:delete"), whatsAppController.getStatus);
+whatsAppRoutes.post("/connect", permissionMiddleware("users:delete"), whatsAppController.connect);
+whatsAppRoutes.post("/disconnect", permissionMiddleware("users:delete"), whatsAppController.disconnect);
+
+// RH+: list groups and send broadcasts (Diretor also has rh permission via seed)
+whatsAppRoutes.get("/groups", permissionMiddleware("rh"), whatsAppController.getGroups);
+whatsAppRoutes.post("/broadcast", permissionMiddleware("rh"), whatsAppController.sendBroadcast);
