@@ -259,9 +259,9 @@ export function MyProfilePage() {
 
       <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
         {[
-          { icon: TrendingUp, label: "Frequência do mês", value: `${profile.frequency?.percentage ?? 0}%` },
-          { icon: CalendarDays, label: "Presenças", value: profile.frequency?.presences ?? 0 },
-          { icon: CalendarDays, label: "Faltas", value: profile.frequency?.absences ?? 0 },
+          { icon: TrendingUp, label: "Frequência total", value: `${profile.totalFrequency?.percentage ?? 0}%` },
+          { icon: CalendarDays, label: "Presenças totais", value: profile.totalFrequency?.presences ?? 0 },
+          { icon: CalendarDays, label: "Faltas totais", value: profile.totalFrequency?.absences ?? 0 },
           { icon: CreditCard, label: "Mensalidade", value: athlete?.monthlyPaymentStatus ? statusLabel(athlete.monthlyPaymentStatus) : statusLabel(currentPayment?.status) },
           { icon: CalendarDays, label: "Próximo treino", value: profile.upcomingTrainings[0] ? formatDate(profile.upcomingTrainings[0].date) : "-" },
         ].map((card) => {

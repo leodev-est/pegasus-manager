@@ -359,6 +359,45 @@ export const attendanceService = {
     };
   },
 
+  async getMyTotalFrequency(userId: string) {
+    const athlete = await getAthleteForUser(userId);
+    const todayKey = getBrazilDateKey();
+
+    const [startYear, startMonthNum] = OFFICIAL_TRAINING_START_DATE.split("-").map(Number);
+    const now = new Date();
+    const endYear = now.getFullYear();
+    const endMonth = now.getMonth() + 1;
+
+    const allDateKeySet = new Set<string>();
+    let curYear = startYear;
+    let curMonth = startMonthNum;
+
+    while (curYear < endYear || (curYear === endYear && curMonth <= endMonth)) {
+      const monthDates = await getTrainingDatesForMonth(curYear, curMonth);
+      for (const dateKey of monthDates) {
+        if (dateKey <= todayKey) allDateKeySet.add(dateKey);
+      }
+      curMonth++;
+      if (curMonth > 12) { curMonth = 1; curYear++; }
+    }
+
+    const allDateKeys = Array.from(allDateKeySet).sort();
+
+    const attendances = await prisma.trainingAttendance.findMany({
+      where: { athleteId: athlete.id },
+      include: { training: { select: { date: true } } },
+      orderBy: { checkedInAt: "asc" },
+    });
+
+    const athleteDateKeys = getAthleteTrainingDates(allDateKeys, athlete);
+    const attendanceDateKeys = attendances
+      .map((a) => toTrainingDateKey(a.training.date))
+      .filter((key) => allDateKeys.includes(key));
+    const mergedDateKeys = Array.from(new Set([...athleteDateKeys, ...attendanceDateKeys])).sort();
+
+    return summarizeDetails(mergedDateKeys, attendances);
+  },
+
   async getFrequency(filters: FrequencyFilters) {
     const { month, year } = parseMonthYear(filters.month, filters.year);
     const dateKeys = await getTrainingDatesForMonth(year, month);

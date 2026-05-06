@@ -547,6 +547,13 @@ export function AdvancedKanban<TTask extends KanbanTaskBase, TStatus extends str
 
     if (!nextStatus || nextStatus === active.status) return;
 
+    // Block dragging out of the approval column — must go through the approval flow
+    if (approvalColumn) {
+      const approvalIdx = columns.findIndex((c) => c.value === approvalColumn);
+      const nextIdx = columns.findIndex((c) => c.value === nextStatus);
+      if (active.status === approvalColumn && nextIdx > approvalIdx) return;
+    }
+
     await onMove(active, nextStatus as TStatus);
   }
 

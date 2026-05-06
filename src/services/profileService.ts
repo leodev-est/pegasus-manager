@@ -16,9 +16,7 @@ export type MyProfile = {
   };
   athlete: Athlete | null;
   payments: Payment[];
-  frequency: {
-    month: number;
-    year: number;
+  totalFrequency: {
     totalTrainings: number;
     presences: number;
     absences: number;

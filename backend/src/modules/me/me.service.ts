@@ -11,14 +11,6 @@ function normalizeOptional(value: string | null | undefined) {
   return trimmed.length > 0 ? trimmed : null;
 }
 
-function monthYearNow() {
-  const now = new Date();
-  return {
-    month: now.getMonth() + 1,
-    year: now.getFullYear(),
-  };
-}
-
 function startOfToday() {
   const now = new Date();
   return new Date(Date.UTC(now.getFullYear(), now.getMonth(), now.getDate()));
@@ -80,8 +72,7 @@ export const meService = {
     }
 
     const athlete = user.athlete;
-    const { month, year } = monthYearNow();
-    const [payments, upcomingTrainings, frequency] = await Promise.all([
+    const [payments, upcomingTrainings, totalFrequency] = await Promise.all([
       athlete
         ? prisma.payment.findMany({
             where: { athleteId: athlete.id },
@@ -98,26 +89,19 @@ export const meService = {
         orderBy: { date: "asc" },
         take: 5,
       }),
-      athlete
-        ? attendanceService.getMyFrequency(userId, {
-            month: String(month),
-            year: String(year),
-          })
-        : null,
+      athlete ? attendanceService.getMyTotalFrequency(userId) : null,
     ]);
 
     return {
       athlete,
       evaluation: formatEvaluation(athlete?.evaluation ?? null),
-      frequency: frequency
+      totalFrequency: totalFrequency
         ? {
-            absences: frequency.faltas,
-            justified: frequency.justificadas,
-            month: frequency.month,
-            percentage: frequency.percentual,
-            presences: frequency.presencas,
-            totalTrainings: frequency.totalTreinos,
-            year: frequency.year,
+            absences: totalFrequency.faltas,
+            justified: totalFrequency.justificadas,
+            percentage: totalFrequency.percentual,
+            presences: totalFrequency.presencas,
+            totalTrainings: totalFrequency.totalTreinos,
           }
         : null,
       payments: payments.map((payment) => ({
