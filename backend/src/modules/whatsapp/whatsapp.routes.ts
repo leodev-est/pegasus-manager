@@ -5,6 +5,10 @@ import { whatsAppController } from "./whatsapp.controller";
 
 export const whatsAppRoutes = Router();
 
+// Webhook called by Evolution API — no auth (Evolution API is the caller)
+whatsAppRoutes.post("/webhook", whatsAppController.webhook);
+
+// All other routes require authentication
 whatsAppRoutes.use(authMiddleware);
 
 // Admin-only: manage connection

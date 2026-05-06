@@ -5,6 +5,11 @@ const EVOLUTION_URL = raw && !raw.startsWith("http") ? `https://${raw}` : raw;
 const EVOLUTION_KEY = process.env.EVOLUTION_API_KEY ?? "";
 const INSTANCE = process.env.EVOLUTION_INSTANCE_NAME ?? "pegasus";
 
+// Backend's own public URL (used to configure Evolution API webhook)
+const rawBackend = (process.env.BACKEND_URL ?? process.env.RAILWAY_PUBLIC_DOMAIN ?? "").replace(/\/$/, "");
+const BACKEND_URL = rawBackend && !rawBackend.startsWith("http") ? `https://${rawBackend}` : rawBackend;
+const WEBHOOK_URL = BACKEND_URL ? `${BACKEND_URL}/whatsapp/webhook` : "";
+
 async function evo<T = any>(method: string, path: string, body?: unknown): Promise<T> {
   if (!EVOLUTION_URL) throw new Error("EVOLUTION_API_URL não configurada no servidor.");
   const res = await fetch(`${EVOLUTION_URL}${path}`, {
@@ -46,6 +51,23 @@ class WhatsAppService {
 
   getStatus(): ConnectionStatus { return this.status; }
   getLastError(): string | null { return this.lastError; }
+
+  /** Called by the webhook handler when Evolution API sends a QR event. */
+  setQr(base64: string): void {
+    this.cachedQr = base64.startsWith("data:") ? base64 : `data:image/png;base64,${base64}`;
+    this.status = "connecting";
+  }
+
+  setConnected(): void {
+    this.status = "connected";
+    this.cachedQr = null;
+    this.lastError = null;
+  }
+
+  setDisconnected(): void {
+    this.status = "disconnected";
+    this.cachedQr = null;
+  }
 
   /** Called once on startup to restore a persisted session. */
   async init(): Promise<void> {
@@ -126,35 +148,49 @@ class WhatsAppService {
         instanceExists = true;
         console.log(`[WhatsApp] Estado atual: ${state}`);
         if (state === "open") { this.status = "connected"; return; }
-        // Instance exists but disconnected — logout to clear stale credentials
+        // Logout to clear stale credentials so Evolution API generates a fresh QR
         await evo("DELETE", `/instance/logout/${INSTANCE}`).catch(() => {});
-        console.log("[WhatsApp] Logout realizado, aguardando QR…");
+        console.log("[WhatsApp] Logout realizado");
       } catch { /* instance doesn't exist */ }
 
+      const webhookPayload = WEBHOOK_URL ? {
+        url: WEBHOOK_URL,
+        webhook_by_events: false,
+        webhook_base64: true,
+        events: ["QRCODE_UPDATED", "CONNECTION_UPDATE"],
+      } : undefined;
+
+      if (instanceExists && WEBHOOK_URL) {
+        // Update webhook on existing instance
+        await evo("POST", `/webhook/set/${INSTANCE}`, webhookPayload).catch(() => {});
+        console.log(`[WhatsApp] Webhook configurado: ${WEBHOOK_URL}`);
+      }
+
       if (!instanceExists) {
-        // Create new instance
-        const createRes = await evo<any>("POST", "/instance/create", {
+        // Create new instance with webhook if available
+        const createPayload: any = {
           instanceName: INSTANCE,
           qrcode: true,
           integration: "WHATSAPP-BAILEYS",
-        });
-        console.log("[WhatsApp] Create response:", JSON.stringify(createRes).slice(0, 600));
+          ...(webhookPayload ? { webhook: webhookPayload } : {}),
+        };
+        const createRes = await evo<any>("POST", "/instance/create", createPayload);
+        console.log("[WhatsApp] Instância criada, webhook:", WEBHOOK_URL || "não configurado");
         const b64 = extractQrBase64(createRes);
         if (b64) this.cachedQr = b64;
       }
 
-      // Fetch QR — retry up to 6x with 3s delay (Evolution API may take up to ~15s to generate QR)
-      for (let i = 0; i < 6 && !this.cachedQr; i++) {
-        if (i > 0) await new Promise((r) => setTimeout(r, 3000));
-        try {
-          const qrRes = await evo<any>("GET", `/instance/connect/${INSTANCE}`);
-          console.log(`[WhatsApp] QR attempt ${i + 1}:`, JSON.stringify(qrRes).slice(0, 200));
-          const b64 = extractQrBase64(qrRes);
-          if (b64) this.cachedQr = b64;
-        } catch { break; }
+      // Trigger QR generation — QR arrives via webhook; this call also starts the connection
+      const qrRes = await evo<any>("GET", `/instance/connect/${INSTANCE}`).catch(() => null);
+      if (qrRes) {
+        console.log("[WhatsApp] Connect triggered:", JSON.stringify(qrRes).slice(0, 150));
+        const b64 = extractQrBase64(qrRes);
+        if (b64) this.cachedQr = b64;
       }
 
-      console.log("[WhatsApp] QR obtido:", this.cachedQr ? "sim" : "não");
+      if (!WEBHOOK_URL) {
+        console.log("[WhatsApp] BACKEND_URL não configurado — QR via polling HTTP (pode ser lento)");
+      }
     } catch (err: any) {
       const msg = err?.message ?? String(err);
       console.error("[WhatsApp] Falha ao conectar:", msg);
