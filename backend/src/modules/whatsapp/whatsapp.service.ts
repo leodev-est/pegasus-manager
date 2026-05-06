@@ -138,14 +138,14 @@ class WhatsAppService {
           qrcode: true,
           integration: "WHATSAPP-BAILEYS",
         });
-        console.log("[WhatsApp] Create keys:", Object.keys(createRes ?? {}).join(", "));
+        console.log("[WhatsApp] Create response:", JSON.stringify(createRes).slice(0, 600));
         const b64 = extractQrBase64(createRes);
         if (b64) this.cachedQr = b64;
       }
 
-      // Fetch QR — retry up to 4x with 1.5s delay if not immediately available
-      for (let i = 0; i < 4 && !this.cachedQr; i++) {
-        if (i > 0) await new Promise((r) => setTimeout(r, 1500));
+      // Fetch QR — retry up to 6x with 3s delay (Evolution API may take up to ~15s to generate QR)
+      for (let i = 0; i < 6 && !this.cachedQr; i++) {
+        if (i > 0) await new Promise((r) => setTimeout(r, 3000));
         try {
           const qrRes = await evo<any>("GET", `/instance/connect/${INSTANCE}`);
           console.log(`[WhatsApp] QR attempt ${i + 1}:`, JSON.stringify(qrRes).slice(0, 200));
