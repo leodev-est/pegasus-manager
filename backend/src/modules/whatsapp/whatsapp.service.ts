@@ -95,6 +95,11 @@ class WhatsAppService {
           this.status = "disconnected";
           this.socket = null;
           console.log(`[WhatsApp] Conexão encerrada (code: ${code})`);
+          // If we never got a QR, the connection was rejected before auth — surface the error
+          if (prevStatus === "connecting" && !this.qrDataUrl) {
+            this.lastError = `Conexão rejeitada pelo WhatsApp (código ${code ?? "desconhecido"}). O IP do servidor pode estar bloqueado. Tente novamente ou use uma VPN/proxy.`;
+            console.error(`[WhatsApp] Conexão rejeitada antes do QR (code: ${code})`);
+          }
           // Only auto-reconnect if we were already connected (session expired etc.)
           if (!loggedOut && prevStatus === "connected") {
             setTimeout(() => this.connect(), 5_000);
