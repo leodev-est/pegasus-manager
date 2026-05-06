@@ -125,17 +125,18 @@ class WhatsAppService {
     this.cachedQr = null;
 
     try {
-      // Check if instance already exists before trying to create
       let instanceExists = false;
       try {
         const stateRes = await evo<any>("GET", `/instance/connectionState/${INSTANCE}`);
         const state = stateRes?.instance?.state ?? stateRes?.state;
         instanceExists = true;
+        console.log(`[WhatsApp] Instância existente, estado: ${state}`);
         if (state === "open") {
           this.status = "connected";
           return;
         }
-        console.log("[WhatsApp] Instância existente encontrada, buscando QR…");
+        // Clear stale session so QR generation triggers fresh
+        await evo("DELETE", `/instance/logout/${INSTANCE}`).catch(() => {});
       } catch {
         // Instance doesn't exist yet
       }
@@ -146,10 +147,20 @@ class WhatsAppService {
           qrcode: true,
           integration: "WHATSAPP-BAILEYS",
         });
+        console.log("[WhatsApp] Create response keys:", Object.keys(createRes ?? {}).join(", "));
         const b64 = extractQrBase64(createRes);
         if (b64) this.cachedQr = b64;
-        console.log("[WhatsApp] Instância criada no Evolution API, aguardando QR…");
       }
+
+      // Always call /instance/connect to trigger QR generation and capture it
+      if (!this.cachedQr) {
+        const qrRes = await evo<any>("GET", `/instance/connect/${INSTANCE}`);
+        console.log("[WhatsApp] Connect response keys:", Object.keys(qrRes ?? {}).join(", "));
+        const b64 = extractQrBase64(qrRes);
+        if (b64) this.cachedQr = b64;
+      }
+
+      console.log("[WhatsApp] QR obtido no connect:", this.cachedQr ? "sim" : "não");
     } catch (err: any) {
       const msg = err?.message ?? String(err);
       console.error("[WhatsApp] Falha ao conectar:", msg);
