@@ -113,6 +113,16 @@ export function MarketingPage() {
     loadTasks();
   }, [loadTasks]);
 
+  // Auto-reload every minute when there are scheduled tasks pending publish
+  useEffect(() => {
+    const hasScheduled = tasks.some(
+      (t) => t.approvalStatus === "approved" && t.scheduledAt && t.status !== "published",
+    );
+    if (!hasScheduled) return;
+    const id = setInterval(loadTasks, 60_000);
+    return () => clearInterval(id);
+  }, [tasks, loadTasks]);
+
   useEffect(() => {
     userService.getUsersByRole("Marketing")
       .then((users) => setMarketingUsers(users.map((u) => ({ label: u.name, value: u.name }))))

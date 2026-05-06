@@ -1,5 +1,6 @@
 import "dotenv/config";
 import { app } from "./app";
+import { startTasksScheduler } from "./modules/tasks/tasks-scheduler";
 import { whatsAppService } from "./modules/whatsapp/whatsapp.service";
 import { startWhatsAppScheduler } from "./modules/whatsapp/whatsapp-scheduler";
 
@@ -9,4 +10,5 @@ app.listen(PORT, async () => {
   console.log(`Pegasus Manager API running on port ${PORT}`);
   await whatsAppService.init();
   startWhatsAppScheduler();
+  startTasksScheduler();
 });

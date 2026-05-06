@@ -19,6 +19,7 @@ import { CSS } from "@dnd-kit/utilities";
 import {
   CalendarClock,
   CheckSquare,
+  Clock,
   GripVertical,
   Loader2,
   MessageSquare,
@@ -28,7 +29,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import type { CSSProperties, FormEvent, ReactNode } from "react";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Button } from "../ui/Button";
 import { ConfirmDialog } from "../ui/ConfirmDialog";
 import { EmptyState } from "../ui/EmptyState";
@@ -167,6 +168,31 @@ function isOverdue(value?: string | null) {
 function truncate(value?: string | null) {
   if (!value) return "Sem descrição.";
   return value.length > 130 ? `${value.slice(0, 130)}...` : value;
+}
+
+function countdownLabel(scheduledAt: string): string {
+  const diff = new Date(scheduledAt).getTime() - Date.now();
+  if (diff <= 0) return "publicando...";
+  const h = Math.floor(diff / 3_600_000);
+  const m = Math.floor((diff % 3_600_000) / 60_000);
+  const s = Math.floor((diff % 60_000) / 1_000);
+  if (h > 0) return `${h}h ${m}m`;
+  if (m > 0) return `${m}m ${s}s`;
+  return `${s}s`;
+}
+
+function ScheduledBadge({ scheduledAt }: { scheduledAt: string }) {
+  const [label, setLabel] = useState(() => countdownLabel(scheduledAt));
+  useEffect(() => {
+    const id = setInterval(() => setLabel(countdownLabel(scheduledAt)), 1_000);
+    return () => clearInterval(id);
+  }, [scheduledAt]);
+  return (
+    <span className="inline-flex items-center gap-1 rounded-full bg-amber-50 px-3 py-1 text-xs font-bold text-amber-700 ring-1 ring-amber-200">
+      <Clock size={12} />
+      Agendado · {label}
+    </span>
+  );
 }
 
 function normalizeList<T>(value?: T[]) {
@@ -410,6 +436,12 @@ function TaskCard<TTask extends KanbanTaskBase>({
           {doneItems}/{checklist.length}
         </span>
       </div>
+
+      {task.approvalStatus === "approved" && task.scheduledAt && task.status !== "published" ? (
+        <div className="mt-3">
+          <ScheduledBadge scheduledAt={task.scheduledAt} />
+        </div>
+      ) : null}
     </article>
   );
 }
@@ -744,6 +776,13 @@ export function AdvancedKanban<TTask extends KanbanTaskBase, TStatus extends str
                 ))}
               </div>
             </section>
+
+            {viewTask.approvalStatus === "approved" && viewTask.scheduledAt && viewTask.status !== "published" ? (
+              <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4">
+                <p className="mb-1 text-xs font-black uppercase tracking-wide text-amber-700">Publicação agendada</p>
+                <ScheduledBadge scheduledAt={viewTask.scheduledAt} />
+              </div>
+            ) : null}
 
             {canApprove && approvalColumn && viewTask.status === approvalColumn && onApprove && onReject ? (
               <div className="rounded-2xl border-2 border-amber-200 bg-amber-50 p-4">
