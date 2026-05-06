@@ -27,9 +27,22 @@ export type WhatsAppGroup = {
   participants: number;
 };
 
+/** Extract base64 QR from any known Evolution API response shape. */
+function extractQrBase64(res: any): string | null {
+  const b64 =
+    res?.base64 ??
+    res?.qrcode?.base64 ??
+    res?.hash?.qrcode?.base64 ??
+    res?.instance?.qrcode?.base64 ??
+    res?.data?.qrcode?.base64;
+  if (!b64) return null;
+  return b64.startsWith("data:") ? b64 : `data:image/png;base64,${b64}`;
+}
+
 class WhatsAppService {
   private status: ConnectionStatus = "disconnected";
   private lastError: string | null = null;
+  private cachedQr: string | null = null;
 
   getStatus(): ConnectionStatus { return this.status; }
   getLastError(): string | null { return this.lastError; }
@@ -52,11 +65,6 @@ class WhatsAppService {
     }
   }
 
-  /**
-   * Live status used by the status endpoint.
-   * When connecting, also fetches the current QR from Evolution API so the
-   * frontend can display it without storing it in memory on this side.
-   */
   async getFullStatus(): Promise<{ status: ConnectionStatus; qrDataUrl: string | null; lastError: string | null }> {
     if (this.status === "disconnected") {
       return { status: "disconnected", qrDataUrl: null, lastError: this.lastError };
@@ -75,20 +83,26 @@ class WhatsAppService {
       if (state === "open") {
         this.status = "connected";
         this.lastError = null;
+        this.cachedQr = null;
         return { status: "connected", qrDataUrl: null, lastError: null };
       }
 
-      // Still waiting for QR scan — fetch QR from Evolution API
-      let qrDataUrl: string | null = null;
-      try {
-        const qrRes = await evo<any>("GET", `/instance/connect/${INSTANCE}`);
-        const b64 = qrRes?.base64 ?? qrRes?.qrcode?.base64;
-        if (b64) {
-          qrDataUrl = b64.startsWith("data:") ? b64 : `data:image/png;base64,${b64}`;
+      // Use cached QR if we already have it; otherwise fetch fresh from Evolution API.
+      // Try both known endpoints (v1: /instance/connect, v2 also accepts ?count=1).
+      if (!this.cachedQr) {
+        for (const path of [
+          `/instance/connect/${INSTANCE}?count=1`,
+          `/instance/connect/${INSTANCE}`,
+        ]) {
+          try {
+            const qrRes = await evo<any>("GET", path);
+            const b64 = extractQrBase64(qrRes);
+            if (b64) { this.cachedQr = b64; break; }
+          } catch { /* not ready yet */ }
         }
-      } catch { /* QR not ready yet */ }
+      }
 
-      return { status: "connecting", qrDataUrl, lastError: null };
+      return { status: "connecting", qrDataUrl: this.cachedQr, lastError: null };
     } catch (err: any) {
       const msg = err?.message ?? String(err);
       console.error("[WhatsApp] Erro ao consultar Evolution API:", msg);
@@ -108,15 +122,18 @@ class WhatsAppService {
 
     this.status = "connecting";
     this.lastError = null;
+    this.cachedQr = null;
 
     try {
-      // Delete any existing instance to start fresh
       await evo("DELETE", `/instance/delete/${INSTANCE}`).catch(() => {});
-      await evo("POST", "/instance/create", {
+      const createRes = await evo<any>("POST", "/instance/create", {
         instanceName: INSTANCE,
         qrcode: true,
         integration: "WHATSAPP-BAILEYS",
       });
+      // Evolution API v2 returns the initial QR in the create response
+      const b64 = extractQrBase64(createRes);
+      if (b64) this.cachedQr = b64;
       console.log("[WhatsApp] Instância criada no Evolution API, aguardando QR…");
     } catch (err: any) {
       const msg = err?.message ?? String(err);
@@ -128,6 +145,7 @@ class WhatsAppService {
 
   async disconnect(): Promise<void> {
     try { await evo("DELETE", `/instance/logout/${INSTANCE}`); } catch {}
+    this.cachedQr = null;
     this.status = "disconnected";
     this.lastError = null;
   }

@@ -33,7 +33,9 @@ export function WhatsAppPage() {
   const [state, setState] = useState<WhatsAppState>(EMPTY);
   const [isLoading, setIsLoading] = useState(true);
   const [isActing, setIsActing] = useState(false);
+  const [qrTimeout, setQrTimeout] = useState(false);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const load = useCallback(async () => {
     try {
@@ -52,14 +54,24 @@ export function WhatsAppPage() {
   // Poll every 3s while connecting (QR not yet scanned)
   useEffect(() => {
     if (pollRef.current) clearInterval(pollRef.current);
+    if (timeoutRef.current) clearTimeout(timeoutRef.current);
     if (state.status === "connecting") {
+      setQrTimeout(false);
       pollRef.current = setInterval(load, 3_000);
+      // Show "retry" hint if QR doesn't appear within 30s
+      if (!state.qrDataUrl) {
+        timeoutRef.current = setTimeout(() => setQrTimeout(true), 30_000);
+      }
     }
-    return () => { if (pollRef.current) clearInterval(pollRef.current); };
-  }, [state.status, load]);
+    return () => {
+      if (pollRef.current) clearInterval(pollRef.current);
+      if (timeoutRef.current) clearTimeout(timeoutRef.current);
+    };
+  }, [state.status, state.qrDataUrl, load]);
 
   async function handleConnect() {
     setIsActing(true);
+    setQrTimeout(false);
     try {
       await whatsappService.connect();
       // Poll immediately then let the 3s interval take over
@@ -69,6 +81,12 @@ export function WhatsAppPage() {
     } finally {
       setIsActing(false);
     }
+  }
+
+  async function handleRetryConnect() {
+    setState(EMPTY);
+    setQrTimeout(false);
+    await handleConnect();
   }
 
   async function handleDisconnect() {
@@ -171,11 +189,25 @@ export function WhatsAppPage() {
         )}
 
         {state.status === "connecting" && !state.qrDataUrl && !isLoading && (
-          <div className="mt-4 flex items-center gap-3 rounded-2xl bg-amber-50 p-4">
-            <Loader2 className="animate-spin text-amber-600" size={18} />
-            <p className="text-sm font-semibold text-amber-700">
-              Inicializando conexão… O QR code aparecerá em instantes.
-            </p>
+          <div className="mt-4 rounded-2xl bg-amber-50 p-4">
+            {!qrTimeout ? (
+              <div className="flex items-center gap-3">
+                <Loader2 className="animate-spin text-amber-600" size={18} />
+                <p className="text-sm font-semibold text-amber-700">
+                  Inicializando conexão… O QR code aparecerá em instantes.
+                </p>
+              </div>
+            ) : (
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <p className="text-sm font-semibold text-amber-700">
+                  O QR code não foi gerado. Tente conectar novamente.
+                </p>
+                <Button onClick={handleRetryConnect} disabled={isActing} variant="secondary">
+                  {isActing ? <Loader2 size={16} className="animate-spin" /> : <RefreshCw size={16} />}
+                  Tentar novamente
+                </Button>
+              </div>
+            )}
           </div>
         )}
 
