@@ -119,7 +119,7 @@ export function MarketingPage() {
       (t) => t.approvalStatus === "approved" && t.scheduledAt && t.status !== "published",
     );
     if (!hasScheduled) return;
-    const id = setInterval(loadTasks, 60_000);
+    const id = setInterval(loadTasks, 5_000);
     return () => clearInterval(id);
   }, [tasks, loadTasks]);
 
