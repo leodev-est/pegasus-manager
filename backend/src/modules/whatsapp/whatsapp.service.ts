@@ -125,42 +125,40 @@ class WhatsAppService {
     this.cachedQr = null;
 
     try {
-      let instanceExists = false;
+      // Check current state first
+      let state = "";
       try {
         const stateRes = await evo<any>("GET", `/instance/connectionState/${INSTANCE}`);
-        const state = stateRes?.instance?.state ?? stateRes?.state;
-        instanceExists = true;
-        console.log(`[WhatsApp] Instância existente, estado: ${state}`);
-        if (state === "open") {
-          this.status = "connected";
-          return;
-        }
-        // Clear stale session so QR generation triggers fresh
-        await evo("DELETE", `/instance/logout/${INSTANCE}`).catch(() => {});
-      } catch {
-        // Instance doesn't exist yet
-      }
+        state = stateRes?.instance?.state ?? stateRes?.state ?? "";
+        console.log(`[WhatsApp] Estado atual: ${state}`);
+        if (state === "open") { this.status = "connected"; return; }
+      } catch { /* instance doesn't exist yet */ }
 
-      if (!instanceExists) {
-        const createRes = await evo<any>("POST", "/instance/create", {
-          instanceName: INSTANCE,
-          qrcode: true,
-          integration: "WHATSAPP-BAILEYS",
-        });
-        console.log("[WhatsApp] Create response keys:", Object.keys(createRes ?? {}).join(", "));
-        const b64 = extractQrBase64(createRes);
-        if (b64) this.cachedQr = b64;
-      }
+      // Delete instance completely so Evolution API generates a fresh QR.
+      // Try v2 path first, then v1 — both are no-ops if instance doesn't exist.
+      await evo("DELETE", `/instance/${INSTANCE}`).catch(() => {});
+      await evo("DELETE", `/instance/delete/${INSTANCE}`).catch(() => {});
+      console.log("[WhatsApp] Instância deletada, recriando…");
 
-      // Always call /instance/connect to trigger QR generation and capture it
+      // Recreate
+      const createRes = await evo<any>("POST", "/instance/create", {
+        instanceName: INSTANCE,
+        qrcode: true,
+        integration: "WHATSAPP-BAILEYS",
+      });
+      console.log("[WhatsApp] Create keys:", Object.keys(createRes ?? {}).join(", "));
+      const b64create = extractQrBase64(createRes);
+      if (b64create) { this.cachedQr = b64create; }
+
+      // Fetch QR via connect endpoint if not already got it
       if (!this.cachedQr) {
         const qrRes = await evo<any>("GET", `/instance/connect/${INSTANCE}`);
-        console.log("[WhatsApp] Connect response keys:", Object.keys(qrRes ?? {}).join(", "));
+        console.log("[WhatsApp] Connect response:", JSON.stringify(qrRes).slice(0, 300));
         const b64 = extractQrBase64(qrRes);
         if (b64) this.cachedQr = b64;
       }
 
-      console.log("[WhatsApp] QR obtido no connect:", this.cachedQr ? "sim" : "não");
+      console.log("[WhatsApp] QR obtido:", this.cachedQr ? "sim" : "não");
     } catch (err: any) {
       const msg = err?.message ?? String(err);
       console.error("[WhatsApp] Falha ao conectar:", msg);
