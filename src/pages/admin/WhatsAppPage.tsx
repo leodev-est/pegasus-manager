@@ -1,8 +1,9 @@
-import { Loader2, MessageCircle, PhoneOff, RefreshCw, Wifi, WifiOff } from "lucide-react";
+import { AlertCircle, Loader2, MessageCircle, PhoneOff, RefreshCw, Wifi, WifiOff } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Button } from "../../components/ui/Button";
 import { PageHeader } from "../../components/ui/PageHeader";
 import { StatusBadge } from "../../components/ui/StatusBadge";
+import { useToast } from "../../components/ui/Toast";
 import { whatsappService, type WhatsAppState } from "../../services/whatsappService";
 
 const STATUS_LABEL: Record<string, string> = {
@@ -19,14 +20,17 @@ const STATUS_TONE: Record<string, "success" | "warning" | "danger"> = {
 
 const FEATURES = [
   { emoji: "🏐", title: "Lembrete de treino", description: "Enviado às 07:00 do dia anterior para todos os atletas ativos com telefone cadastrado." },
-  { emoji: "💳", title: "Alerta de mensalidade", description: "Enviado às 07:00 quando a mensalidade vence hoje ou em 3 dias (status pendente ou atrasado)." },
-  { emoji: "❌", title: "Treino cancelado", description: "Enviado imediatamente para todos os atletas ativos ao bloquear uma data no Calendário." },
+  { emoji: "💳", title: "Alerta de mensalidade", description: "Enviado às 07:00 quando a mensalidade vence hoje ou em 3 dias." },
+  { emoji: "❌", title: "Treino cancelado", description: "Enviado imediatamente ao bloquear uma data no Calendário." },
   { emoji: "🎉", title: "Atleta aprovado", description: "Enviado ao atleta quando seu status muda de Teste para Ativo." },
   { emoji: "📊", title: "Avaliação atualizada", description: "Enviado ao atleta quando o técnico salva uma avaliação técnica." },
 ];
 
+const EMPTY: WhatsAppState = { status: "disconnected", qrDataUrl: null, lastError: null };
+
 export function WhatsAppPage() {
-  const [state, setState] = useState<WhatsAppState>({ status: "disconnected", qrDataUrl: null });
+  const { showToast } = useToast();
+  const [state, setState] = useState<WhatsAppState>(EMPTY);
   const [isLoading, setIsLoading] = useState(true);
   const [isActing, setIsActing] = useState(false);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -35,7 +39,7 @@ export function WhatsAppPage() {
     try {
       setState(await whatsappService.getStatus());
     } catch {
-      // silent
+      // silent — keep previous state
     } finally {
       setIsLoading(false);
     }
@@ -45,12 +49,11 @@ export function WhatsAppPage() {
     load();
   }, [load]);
 
-  // Poll every 3s while connecting (waiting for QR scan)
+  // Poll every 3s while connecting (QR not yet scanned)
   useEffect(() => {
+    if (pollRef.current) clearInterval(pollRef.current);
     if (state.status === "connecting") {
       pollRef.current = setInterval(load, 3_000);
-    } else {
-      if (pollRef.current) clearInterval(pollRef.current);
     }
     return () => { if (pollRef.current) clearInterval(pollRef.current); };
   }, [state.status, load]);
@@ -58,9 +61,11 @@ export function WhatsAppPage() {
   async function handleConnect() {
     setIsActing(true);
     try {
-      setState(await whatsappService.connect());
-    } catch {
-      // silent
+      await whatsappService.connect();
+      // Poll immediately then let the 3s interval take over
+      await load();
+    } catch (err: any) {
+      showToast(err?.message ?? "Erro ao conectar", "error");
     } finally {
       setIsActing(false);
     }
@@ -70,7 +75,8 @@ export function WhatsAppPage() {
     setIsActing(true);
     try {
       await whatsappService.disconnect();
-      setState({ status: "disconnected", qrDataUrl: null });
+      setState(EMPTY);
+      showToast("WhatsApp desconectado.", "success");
     } catch {
       // silent
     } finally {
@@ -96,13 +102,18 @@ export function WhatsAppPage() {
               {isLoading ? (
                 <Loader2 className="mt-1 animate-spin text-pegasus-primary" size={16} />
               ) : (
-                <div className="mt-1 flex items-center gap-2">
+                <div className="mt-1 flex flex-wrap items-center gap-2">
                   <StatusBadge
                     label={STATUS_LABEL[state.status] ?? state.status}
                     tone={STATUS_TONE[state.status] ?? "neutral"}
                   />
-                  {state.status === "connecting" && (
-                    <span className="text-xs text-slate-500">Escaneie o QR code abaixo</span>
+                  {state.status === "connecting" && !state.qrDataUrl && (
+                    <span className="flex items-center gap-1 text-xs text-slate-500">
+                      <Loader2 size={12} className="animate-spin" /> Gerando QR code…
+                    </span>
+                  )}
+                  {state.status === "connecting" && state.qrDataUrl && (
+                    <span className="text-xs text-amber-600 font-semibold">Escaneie o QR abaixo</span>
                   )}
                 </div>
               )}
@@ -110,7 +121,7 @@ export function WhatsAppPage() {
           </div>
 
           <div className="flex gap-2">
-            <Button onClick={load} variant="secondary" disabled={isLoading}>
+            <Button onClick={load} variant="secondary" disabled={isLoading || isActing}>
               <RefreshCw size={16} className={isLoading ? "animate-spin" : ""} />
               Atualizar
             </Button>
@@ -120,7 +131,10 @@ export function WhatsAppPage() {
                 Desconectar
               </Button>
             ) : (
-              <Button onClick={handleConnect} disabled={isActing || state.status === "connecting"}>
+              <Button
+                onClick={handleConnect}
+                disabled={isActing || state.status === "connecting"}
+              >
                 {isActing ? <Loader2 size={16} className="animate-spin" /> : <Wifi size={16} />}
                 {state.status === "connecting" ? "Aguardando QR…" : "Conectar"}
               </Button>
@@ -128,6 +142,18 @@ export function WhatsAppPage() {
           </div>
         </div>
 
+        {/* Error banner */}
+        {state.lastError && state.status === "disconnected" && (
+          <div className="mt-4 flex items-start gap-3 rounded-2xl border border-rose-200 bg-rose-50 p-4">
+            <AlertCircle className="mt-0.5 shrink-0 text-rose-600" size={18} />
+            <div>
+              <p className="text-sm font-bold text-rose-700">Falha ao conectar</p>
+              <p className="mt-1 font-mono text-xs text-rose-600">{state.lastError}</p>
+            </div>
+          </div>
+        )}
+
+        {/* QR code */}
         {state.status === "connecting" && state.qrDataUrl && (
           <div className="mt-6 flex flex-col items-center gap-4 rounded-2xl border border-blue-100 bg-pegasus-surface p-6">
             <p className="text-sm font-bold text-pegasus-navy">
@@ -138,7 +164,18 @@ export function WhatsAppPage() {
               className="h-56 w-56 rounded-xl border border-blue-100 bg-white p-2 shadow-sm"
               src={state.qrDataUrl}
             />
-            <p className="text-xs text-slate-500">O QR code expira em 60 segundos. Se expirar, clique em "Conectar" novamente.</p>
+            <p className="text-xs text-slate-500">
+              O QR code expira em ~60 segundos. Se expirar, clique em "Conectar" novamente.
+            </p>
+          </div>
+        )}
+
+        {state.status === "connecting" && !state.qrDataUrl && !isLoading && (
+          <div className="mt-4 flex items-center gap-3 rounded-2xl bg-amber-50 p-4">
+            <Loader2 className="animate-spin text-amber-600" size={18} />
+            <p className="text-sm font-semibold text-amber-700">
+              Inicializando conexão… O QR code aparecerá em instantes.
+            </p>
           </div>
         )}
 
@@ -151,7 +188,7 @@ export function WhatsAppPage() {
           </div>
         )}
 
-        {state.status === "disconnected" && !isLoading && (
+        {state.status === "disconnected" && !state.lastError && !isLoading && (
           <div className="mt-4 flex items-center gap-2 rounded-2xl bg-slate-50 p-4">
             <WifiOff className="shrink-0 text-slate-400" size={18} />
             <p className="text-sm text-slate-500">

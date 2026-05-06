@@ -7,6 +7,5 @@ const PORT = process.env.PORT || 3000;
 
 app.listen(PORT, () => {
   console.log(`Pegasus Manager API running on port ${PORT}`);
-  whatsAppService.connect().catch((err) => console.error("[WhatsApp] init error:", err));
   startWhatsAppScheduler();
 });

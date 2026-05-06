@@ -56,6 +56,7 @@ const rolePermissions: Record<string, string[]> = {
   Marketing: ["marketing:read", "marketing:create", "marketing:update", "marketing:delete", "management:read"],
   MarketingLvl1: ["marketing:read", "marketing:create", "marketing:update", "management:read"],
   MarketingLvl2: ["marketing:read", "marketing:create", "marketing:update", "marketing:delete", "management:read"],
+  ChefeMarketing: ["marketing:read", "marketing:create", "marketing:update", "marketing:delete", "management:read"],
   Conselheiro: ["management:read"],
   Tecnico: ["trainings:read", "trainings:create", "trainings:update", "trainings:delete"],
   Treinador: ["trainings:read", "trainings:create", "trainings:update", "trainings:delete"],
@@ -74,7 +75,7 @@ const users = [
   { name: "Allef", username: "allef", roles: ["Diretor", "Gestao", "Atleta"] },
   { name: "Giulia", username: "giulia", roles: ["RH", "Financeiro", "Gestao", "Atleta"] },
   { name: "Victoria", username: "victoria", roles: ["Conselheiro", "Operacional", "Gestao", "Atleta"] },
-  { name: "Vito", username: "vito", roles: ["Marketing", "MarketingLvl2", "Gestao", "Atleta"] },
+  { name: "Vito", username: "vito", roles: ["Marketing", "ChefeMarketing", "Gestao", "Atleta"] },
 ];
 
 async function main() {

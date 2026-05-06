@@ -94,6 +94,7 @@ const ROLE_HIERARCHY: Array<{ role: string; label: string }> = [
   { role: "Diretor", label: "Diretor" },
   { role: "Gestao", label: "Gestão" },
   { role: "Gestão", label: "Gestão" },
+  { role: "ChefeMarketing", label: "Chefe Marketing" },
   { role: "MarketingLvl2", label: "Marketing 2" },
   { role: "MarketingLvl1", label: "Marketing 1" },
   { role: "Marketing", label: "Marketing" },

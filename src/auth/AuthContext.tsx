@@ -52,6 +52,8 @@ const roleAliases: Record<string, Role> = {
   MarketingLvl1: "MarketingLvl1",
   MARKETINGLVL2: "MarketingLvl2",
   MarketingLvl2: "MarketingLvl2",
+  CHEFEMARKETING: "ChefeMarketing",
+  ChefeMarketing: "ChefeMarketing",
   CONSELHEIRA: "Conselheira",
   Conselheira: "Conselheira",
   CONSELHEIRO: "Conselheira",

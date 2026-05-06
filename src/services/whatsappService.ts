@@ -5,6 +5,7 @@ export type WhatsAppStatus = "disconnected" | "connecting" | "connected";
 export type WhatsAppState = {
   status: WhatsAppStatus;
   qrDataUrl: string | null;
+  lastError: string | null;
 };
 
 export const whatsappService = {

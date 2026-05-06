@@ -6,6 +6,7 @@ export type Role =
   | "Marketing"
   | "MarketingLvl1"
   | "MarketingLvl2"
+  | "ChefeMarketing"
   | "Conselheira"
   | "Tecnico"
   | "Operacional"
@@ -41,6 +42,7 @@ export const rolePermissions: Record<Role, Permission[]> = {
   Marketing: ["dashboard", "marketing", "gestao"],
   MarketingLvl1: ["dashboard", "marketing", "gestao"],
   MarketingLvl2: ["dashboard", "marketing", "gestao"],
+  ChefeMarketing: ["dashboard", "marketing", "gestao"],
   Conselheira: ["dashboard", "gestao"],
   Tecnico: ["dashboard", "treinos", "chamada"],
   Operacional: ["dashboard", "operacional", "gestao"],

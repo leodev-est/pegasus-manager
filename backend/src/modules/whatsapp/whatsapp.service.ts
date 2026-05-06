@@ -1,3 +1,5 @@
+import { mkdirSync } from "fs";
+import { resolve } from "path";
 import QRCode from "qrcode";
 import { prisma } from "../../config/prisma";
 
@@ -11,23 +13,33 @@ class WhatsAppService {
   private socket: any = null;
   private status: ConnectionStatus = "disconnected";
   private qrDataUrl: string | null = null;
+  private lastError: string | null = null;
   private readonly sessionPath: string;
 
   constructor() {
-    this.sessionPath = process.env.WHATSAPP_SESSION_PATH ?? "./whatsapp-sessions";
+    this.sessionPath = resolve(process.env.WHATSAPP_SESSION_PATH ?? "./whatsapp-sessions");
   }
 
   getStatus(): ConnectionStatus { return this.status; }
   getQrDataUrl(): string | null { return this.qrDataUrl; }
+  getLastError(): string | null { return this.lastError; }
 
   async connect(): Promise<void> {
     if (this.status !== "disconnected") return;
     this.status = "connecting";
     this.qrDataUrl = null;
+    this.lastError = null;
 
     try {
+      mkdirSync(this.sessionPath, { recursive: true });
+
       const baileys = await esmImport("@whiskeysockets/baileys");
       const makeWASocket = baileys.default ?? baileys.makeWASocket;
+
+      if (typeof makeWASocket !== "function") {
+        throw new Error("Baileys não carregou corretamente (makeWASocket não é uma função)");
+      }
+
       const { useMultiFileAuthState, DisconnectReason } = baileys;
       const { state, saveCreds } = await useMultiFileAuthState(this.sessionPath);
 
@@ -42,13 +54,14 @@ class WhatsAppService {
 
         if (qr) {
           this.qrDataUrl = await QRCode.toDataURL(qr);
-          console.log("[WhatsApp] QR code generated — scan in admin panel");
+          console.log("[WhatsApp] QR gerado — escaneie no painel admin");
         }
 
         if (connection === "open") {
           this.status = "connected";
           this.qrDataUrl = null;
-          console.log("[WhatsApp] Connected");
+          this.lastError = null;
+          console.log("[WhatsApp] Conectado com sucesso");
         }
 
         if (connection === "close") {
@@ -56,14 +69,16 @@ class WhatsAppService {
           const loggedOut = code === DisconnectReason.loggedOut;
           this.status = "disconnected";
           this.socket = null;
-          console.log(`[WhatsApp] Closed (code: ${code})`);
+          console.log(`[WhatsApp] Conexão encerrada (code: ${code})`);
           if (!loggedOut) setTimeout(() => this.connect(), 5_000);
         }
       });
 
       this.socket.ev.on("creds.update", saveCreds);
-    } catch (err) {
-      console.error("[WhatsApp] Failed to connect:", err);
+    } catch (err: any) {
+      const msg = err?.message ?? String(err);
+      console.error("[WhatsApp] Falha ao conectar:", msg);
+      this.lastError = msg;
       this.status = "disconnected";
     }
   }
@@ -73,6 +88,7 @@ class WhatsAppService {
     this.socket = null;
     this.status = "disconnected";
     this.qrDataUrl = null;
+    this.lastError = null;
   }
 
   async sendMessage(phone: string, message: string): Promise<void> {
@@ -80,7 +96,7 @@ class WhatsAppService {
     try {
       await this.socket.sendMessage(toJid(phone), { text: message });
     } catch (err) {
-      console.error(`[WhatsApp] send error to ${phone}:`, err);
+      console.error(`[WhatsApp] Erro ao enviar para ${phone}:`, err);
     }
   }
 
@@ -138,18 +154,12 @@ function toJid(phone: string): string {
   return normalized + "@s.whatsapp.net";
 }
 
-function first(name: string): string {
-  return name.split(" ")[0];
-}
-
+function first(name: string): string { return name.split(" ")[0]; }
 function fmtDate(dateKey: string): string {
   const [y, m, d] = dateKey.split("-");
   return `${d}/${m}/${y}`;
 }
-
-function sleep(ms: number): Promise<void> {
-  return new Promise((r) => setTimeout(r, ms));
-}
+function sleep(ms: number): Promise<void> { return new Promise((r) => setTimeout(r, ms)); }
 
 function silentLogger() {
   const noop = () => {};

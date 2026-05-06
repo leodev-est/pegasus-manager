@@ -6,6 +6,7 @@ export const whatsAppController = {
     res.json({
       status: whatsAppService.getStatus(),
       qrDataUrl: whatsAppService.getQrDataUrl(),
+      lastError: whatsAppService.getLastError(),
     });
   },
 
