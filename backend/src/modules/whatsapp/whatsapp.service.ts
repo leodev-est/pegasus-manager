@@ -1,6 +1,7 @@
 import { prisma } from "../../config/prisma";
 
-const EVOLUTION_URL = (process.env.EVOLUTION_API_URL ?? "").replace(/\/$/, "");
+const raw = (process.env.EVOLUTION_API_URL ?? "").replace(/\/$/, "");
+const EVOLUTION_URL = raw && !raw.startsWith("http") ? `https://${raw}` : raw;
 const EVOLUTION_KEY = process.env.EVOLUTION_API_KEY ?? "";
 const INSTANCE = process.env.EVOLUTION_INSTANCE_NAME ?? "pegasus";
 
