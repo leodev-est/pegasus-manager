@@ -125,26 +125,44 @@ class WhatsAppService {
     this.cachedQr = null;
 
     try {
-      await evo("DELETE", `/instance/delete/${INSTANCE}`).catch(() => {});
-      const createRes = await evo<any>("POST", "/instance/create", {
-        instanceName: INSTANCE,
-        qrcode: true,
-        integration: "WHATSAPP-BAILEYS",
-      });
-      // Evolution API v2 returns the initial QR in the create response
-      const b64 = extractQrBase64(createRes);
-      if (b64) this.cachedQr = b64;
-      console.log("[WhatsApp] Instância criada no Evolution API, aguardando QR…");
+      // Check if instance already exists before trying to create
+      let instanceExists = false;
+      try {
+        const stateRes = await evo<any>("GET", `/instance/connectionState/${INSTANCE}`);
+        const state = stateRes?.instance?.state ?? stateRes?.state;
+        instanceExists = true;
+        if (state === "open") {
+          this.status = "connected";
+          return;
+        }
+        console.log("[WhatsApp] Instância existente encontrada, buscando QR…");
+      } catch {
+        // Instance doesn't exist yet
+      }
+
+      if (!instanceExists) {
+        const createRes = await evo<any>("POST", "/instance/create", {
+          instanceName: INSTANCE,
+          qrcode: true,
+          integration: "WHATSAPP-BAILEYS",
+        });
+        const b64 = extractQrBase64(createRes);
+        if (b64) this.cachedQr = b64;
+        console.log("[WhatsApp] Instância criada no Evolution API, aguardando QR…");
+      }
     } catch (err: any) {
       const msg = err?.message ?? String(err);
-      console.error("[WhatsApp] Falha ao criar instância:", msg);
+      console.error("[WhatsApp] Falha ao conectar:", msg);
       this.lastError = msg;
       this.status = "disconnected";
     }
   }
 
   async disconnect(): Promise<void> {
-    try { await evo("DELETE", `/instance/logout/${INSTANCE}`); } catch {}
+    // Try multiple delete endpoints (v1 and v2 Evolution API path formats)
+    await evo("DELETE", `/instance/logout/${INSTANCE}`).catch(() => {});
+    await evo("DELETE", `/instance/delete/${INSTANCE}`).catch(() => {});
+    await evo("DELETE", `/instance/${INSTANCE}`).catch(() => {});
     this.cachedQr = null;
     this.status = "disconnected";
     this.lastError = null;
