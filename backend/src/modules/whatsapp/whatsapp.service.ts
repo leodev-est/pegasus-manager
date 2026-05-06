@@ -48,6 +48,7 @@ class WhatsAppService {
   private status: ConnectionStatus = "disconnected";
   private lastError: string | null = null;
   private cachedQr: string | null = null;
+  private connectStartedAt = 0; // timestamp to suppress stale disconnect events
 
   getStatus(): ConnectionStatus { return this.status; }
   getLastError(): string | null { return this.lastError; }
@@ -65,6 +66,12 @@ class WhatsAppService {
   }
 
   setDisconnected(): void {
+    // Ignore disconnect events for 20s after connect() starts — the intentional
+    // logout fires a 'close' event that would otherwise reset status mid-connect.
+    if (Date.now() - this.connectStartedAt < 20_000) {
+      console.log("[WhatsApp] Ignorando disconnect durante connect ativo");
+      return;
+    }
     this.status = "disconnected";
     this.cachedQr = null;
   }
@@ -138,6 +145,7 @@ class WhatsAppService {
     this.status = "connecting";
     this.lastError = null;
     this.cachedQr = null;
+    this.connectStartedAt = Date.now();
 
     try {
       // Check current state

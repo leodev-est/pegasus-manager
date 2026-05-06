@@ -7,19 +7,26 @@ export const whatsAppController = {
   async webhook(req: Request, res: Response) {
     res.sendStatus(200); // respond immediately so Evolution API doesn't retry
     const body = req.body ?? {};
-    const event: string = (body.event ?? "").toLowerCase();
+    const event: string = body.event ?? "";
     const data = body.data ?? {};
+    const state: string = data?.state ?? data?.connection ?? "";
 
-    if (event === "qrcode.updated") {
+    // Log every event for diagnostics
+    console.log(`[WH] event="${event}" state="${state}" keys=${Object.keys(data).join(",")}`);
+
+    const ev = event.toLowerCase();
+
+    if (ev === "qrcode.updated" || ev === "qrcode_updated") {
       const b64: string | undefined = data?.qrcode?.base64 ?? data?.base64;
       if (b64) {
         whatsAppService.setQr(b64);
         console.log("[WhatsApp] QR recebido via webhook");
+      } else {
+        console.log("[WhatsApp] QR event sem base64:", JSON.stringify(data).slice(0, 200));
       }
     }
 
-    if (event === "connection.update") {
-      const state: string = data?.state ?? data?.connection ?? "";
+    if (ev === "connection.update" || ev === "connection_update") {
       if (state === "open") {
         whatsAppService.setConnected();
         console.log("[WhatsApp] Conectado via webhook");
