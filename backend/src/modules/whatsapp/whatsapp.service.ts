@@ -262,13 +262,21 @@ class WhatsAppService {
       for (const path of paths) {
         try {
           const res = await evo<any>("GET", path);
+          // Log full response on first two attempts so we can diagnose format issues
+          if (attempt <= 2) {
+            console.log(`[WhatsApp] Poll ${path} resposta:`, JSON.stringify(res).slice(0, 500));
+          }
           const b64 = extractQrBase64(res);
           if (b64) {
             this.cachedQr = b64;
             console.log(`[WhatsApp] QR obtido via polling ${path} (tentativa ${attempt})`);
             return;
           }
-        } catch { /* endpoint may not exist */ }
+        } catch (e: any) {
+          if (attempt <= 2) {
+            console.log(`[WhatsApp] Poll ${path} erro:`, e.message);
+          }
+        }
       }
       if (attempt % 5 === 0) {
         console.log(`[WhatsApp] QR poll tentativa ${attempt}/20 — sem QR ainda`);
