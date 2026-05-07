@@ -383,7 +383,8 @@ class WhatsAppService {
     const number = toNumber(phone);
     console.log(`[WhatsApp] Solicitando pairing code para ${number} na instância ${inst}`);
     try {
-      const res = await evo<any>("POST", `/instance/pairing-code/${inst}`, { number });
+      // Evolution API v2 uses camelCase endpoint; body accepts both "number" and "phoneNumber"
+      const res = await evo<any>("POST", `/instance/pairingCode/${inst}`, { number, phoneNumber: number });
       console.log("[WhatsApp] Pairing code resposta:", JSON.stringify(res).slice(0, 400));
       const code = res?.pairingCode ?? res?.pairing_code ?? res?.code ?? res?.data?.pairingCode ?? res?.data?.code;
       if (!code || typeof code !== "string") {
