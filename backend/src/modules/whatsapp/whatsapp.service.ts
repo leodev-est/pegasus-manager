@@ -34,16 +34,22 @@ export type WhatsAppGroup = {
 
 /** Extract base64 QR from any known Evolution API response shape. */
 function extractQrBase64(res: any): string | null {
+  // "code" field is used by Evolution API v2 in GET /instance/connect response
   const b64 =
+    res?.code ??
     res?.base64 ??
     res?.qrcode?.base64 ??
     res?.hash?.qrcode?.base64 ??
     res?.instance?.qrcode?.base64 ??
     res?.data?.qrcode?.base64 ??
+    res?.data?.code ??
     res?.qrcode ??
     res?.instance?.qrcode;
   if (!b64 || typeof b64 !== "string") return null;
-  return b64.startsWith("data:") ? b64 : `data:image/png;base64,${b64}`;
+  if (b64.startsWith("data:")) return b64;
+  // raw base64 without prefix
+  if (/^[A-Za-z0-9+/=]{20,}$/.test(b64)) return `data:image/png;base64,${b64}`;
+  return null;
 }
 
 /** Generate a short unique suffix — timestamp + random component so concurrent calls never collide. */
@@ -222,12 +228,15 @@ class WhatsAppService {
         }
       }
 
-      // Trigger QR generation (Baileys needs a moment to initialize — wait 2s first)
-      await sleep(2000);
+      // Trigger QR generation (Baileys needs a moment to initialize — wait 5s first)
+      await sleep(5000);
       if (!this.cachedQr) {
-        const qrRes = await evo<any>("GET", `/instance/connect/${newInstance}`).catch(() => null);
+        const qrRes = await evo<any>("GET", `/instance/connect/${newInstance}`).catch((e: any) => {
+          console.log("[WhatsApp] /instance/connect erro:", e.message);
+          return null;
+        });
         if (qrRes) {
-          console.log("[WhatsApp] /instance/connect resposta:", JSON.stringify(qrRes).slice(0, 300));
+          console.log("[WhatsApp] /instance/connect resposta:", JSON.stringify(qrRes).slice(0, 500));
           const b64 = extractQrBase64(qrRes);
           if (b64) {
             this.cachedQr = b64;
@@ -262,10 +271,8 @@ class WhatsAppService {
       for (const path of paths) {
         try {
           const res = await evo<any>("GET", path);
-          // Log full response on first two attempts so we can diagnose format issues
-          if (attempt <= 2) {
-            console.log(`[WhatsApp] Poll ${path} resposta:`, JSON.stringify(res).slice(0, 500));
-          }
+          // Log every response so we can see if the format or count ever changes
+          console.log(`[WhatsApp] Poll #${attempt} ${path}:`, JSON.stringify(res).slice(0, 300));
           const b64 = extractQrBase64(res);
           if (b64) {
             this.cachedQr = b64;
@@ -273,9 +280,7 @@ class WhatsAppService {
             return;
           }
         } catch (e: any) {
-          if (attempt <= 2) {
-            console.log(`[WhatsApp] Poll ${path} erro:`, e.message);
-          }
+          console.log(`[WhatsApp] Poll #${attempt} ${path} erro:`, e.message.slice(0, 150));
         }
       }
       if (attempt % 5 === 0) {
