@@ -71,6 +71,7 @@ export type PublicApplicationPayload = {
   motivation: string;
   howFound: string;
   referral?: string;
+  contribution?: string;
 };
 
 export type AthleteApplicationImportSummary = {

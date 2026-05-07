@@ -23,6 +23,7 @@ type FormData = {
   motivation: string;
   howFound: string;
   referral: string;
+  contribution: string;
 };
 
 const EMPTY: FormData = {
@@ -39,6 +40,7 @@ const EMPTY: FormData = {
   motivation: "",
   howFound: "",
   referral: "",
+  contribution: "",
 };
 
 // ── Componentes de campo reutilizáveis ─────────────────────────────────────────
@@ -240,6 +242,7 @@ export function InscricaoPage() {
         motivation: form.motivation.trim(),
         howFound: form.howFound.trim(),
         referral: form.referral.trim() || undefined,
+        contribution: form.contribution.trim() || undefined,
       };
 
       await athleteApplicationService.submitPublic(payload);
@@ -468,6 +471,14 @@ export function InscricaoPage() {
                 required
                 rows={3}
                 value={form.howFound}
+              />
+              <TextareaInput
+                disabled={isSubmitting}
+                label="Você tem alguma habilidade fora de quadra que pode contribuir com o time?"
+                onChange={(v) => set("contribution", v)}
+                placeholder="Ex: edição de vídeo, fotografia, design, gestão de redes sociais, RH, organização de eventos... (opcional)"
+                rows={3}
+                value={form.contribution}
               />
               <TextInput
                 disabled={isSubmitting}
