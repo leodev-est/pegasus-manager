@@ -283,6 +283,8 @@ class WhatsAppService {
   /** Deletes all Evolution API instances whose name starts with INSTANCE_PREFIX. */
   private async deleteAllPegasusInstances(): Promise<void> {
     const namesToDelete = new Set<string>();
+    // Root prefix: "pegasus" regardless of env-var suffix (e.g. "pegasus-new" → "pegasus")
+    const rootPrefix = INSTANCE_PREFIX.split("-")[0];
 
     // List all instances and log them so we know what's alive
     try {
@@ -292,15 +294,17 @@ class WhatsAppService {
       console.log(`[WhatsApp] Instâncias na Evolution API: ${allNames.join(", ") || "(nenhuma)"}`);
       for (const item of list) {
         const name: string = item?.instance?.instanceName ?? item?.instanceName ?? "";
-        if (name.startsWith(INSTANCE_PREFIX)) namesToDelete.add(name);
+        // Match any instance that starts with the root prefix (e.g. "pegasus")
+        if (name.startsWith(rootPrefix)) namesToDelete.add(name);
       }
     } catch (e: any) {
       console.log("[WhatsApp] fetchInstances falhou:", e.message);
     }
 
-    // Always include tracked instance and bare prefix
+    // Always include tracked instance, configured prefix, and root prefix
     namesToDelete.add(this.activeInstance);
     namesToDelete.add(INSTANCE_PREFIX);
+    namesToDelete.add(rootPrefix);
     console.log(`[WhatsApp] Para deletar: ${[...namesToDelete].join(", ")}`);
 
     for (const name of namesToDelete) {
