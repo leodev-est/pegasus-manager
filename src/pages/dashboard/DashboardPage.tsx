@@ -6,6 +6,7 @@ import {
   School,
   UserCheck,
   UserPlus,
+  Users,
   WalletCards,
   type LucideIcon,
 } from "lucide-react";
@@ -169,6 +170,7 @@ export function DashboardPage() {
   const nextTraining = upcomingTrainings[0];
   const trainingsThisWeek = data.trainings.filter((training) => isThisWeek(training.date)).length;
   const activeAthletes = countByStatus(data.athletes, "ativo");
+  const testeAthletes = countByStatus(data.athletes, "teste");
   const pendingApplications = countByStatus(data.applications, "pendente");
   const activeTasks = [
     ...data.managementTasks.filter((task) => task.status !== "done"),
@@ -183,6 +185,14 @@ export function DashboardPage() {
           icon: UserCheck,
           label: "Atletas ativos",
           value: String(activeAthletes),
+        }
+      : null,
+    canSeeRh
+      ? {
+          helper: "Aguardando aprovacao para ativo",
+          icon: Users,
+          label: "Atletas em teste",
+          value: String(testeAthletes),
         }
       : null,
     canSeeTrainings
