@@ -369,6 +369,21 @@ class WhatsAppService {
     this.activeInstance = INSTANCE_PREFIX;
   }
 
+  /** Requests a pairing code for phone-number-based linking (alternative to QR). */
+  async getPairingCode(phone: string): Promise<string> {
+    if (this.status !== "connecting") {
+      throw new Error("Inicie a conexão antes de gerar o código de pareamento.");
+    }
+    const number = toNumber(phone);
+    const res = await evo<any>("POST", `/instance/pairing-code/${this.activeInstance}`, { number });
+    console.log("[WhatsApp] Pairing code resposta:", JSON.stringify(res).slice(0, 300));
+    const code = res?.pairingCode ?? res?.pairing_code ?? res?.code ?? res?.data?.pairingCode ?? res?.data?.code;
+    if (!code || typeof code !== "string") {
+      throw new Error(`Código de pareamento não retornado. Resposta: ${JSON.stringify(res).slice(0, 200)}`);
+    }
+    return String(code);
+  }
+
   async sendMessage(phone: string, message: string): Promise<void> {
     if (this.status !== "connected") return;
     try {

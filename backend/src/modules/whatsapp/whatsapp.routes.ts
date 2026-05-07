@@ -15,6 +15,7 @@ whatsAppRoutes.use(authMiddleware);
 whatsAppRoutes.get("/status", permissionMiddleware("users:delete"), whatsAppController.getStatus);
 whatsAppRoutes.post("/connect", permissionMiddleware("users:delete"), whatsAppController.connect);
 whatsAppRoutes.post("/disconnect", permissionMiddleware("users:delete"), whatsAppController.disconnect);
+whatsAppRoutes.post("/pairing-code", permissionMiddleware("users:delete"), whatsAppController.pairingCode);
 
 // RH+: list groups and send broadcasts (Diretor also has rh permission via seed)
 whatsAppRoutes.get("/groups", permissionMiddleware("rh"), whatsAppController.getGroups);

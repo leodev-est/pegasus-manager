@@ -34,6 +34,11 @@ export const whatsappService = {
     return data;
   },
 
+  async getPairingCode(phone: string): Promise<string> {
+    const { data } = await api.post<{ code: string }>("/whatsapp/pairing-code", { phone });
+    return data.code;
+  },
+
   async sendBroadcast(targets: string[], message: string): Promise<{ sent: number; failed: number }> {
     const { data } = await api.post<{ sent: number; failed: number }>("/whatsapp/broadcast", { targets, message });
     return data;

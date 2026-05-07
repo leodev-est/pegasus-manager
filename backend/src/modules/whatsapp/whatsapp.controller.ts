@@ -68,6 +68,20 @@ export const whatsAppController = {
     res.json({ status: "disconnected", qrDataUrl: null, lastError: null });
   },
 
+  async pairingCode(req: Request, res: Response) {
+    const { phone } = req.body as { phone?: string };
+    if (!phone?.trim()) {
+      res.status(400).json({ error: "Número de telefone é obrigatório." });
+      return;
+    }
+    try {
+      const code = await whatsAppService.getPairingCode(phone.trim());
+      res.json({ code });
+    } catch (err: any) {
+      res.status(400).json({ error: err.message ?? "Erro ao gerar código de pareamento." });
+    }
+  },
+
   async getGroups(req: Request, res: Response) {
     const groups = await whatsAppService.getGroups();
     res.json({ groups, status: whatsAppService.getStatus() });

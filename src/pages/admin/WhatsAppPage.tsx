@@ -1,6 +1,7 @@
-import { AlertCircle, Loader2, MessageCircle, PhoneOff, RefreshCw, Wifi, WifiOff } from "lucide-react";
+import { AlertCircle, Hash, Loader2, MessageCircle, Phone, PhoneOff, RefreshCw, Wifi, WifiOff } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Button } from "../../components/ui/Button";
+import { Input } from "../../components/ui/Input";
 import { PageHeader } from "../../components/ui/PageHeader";
 import { StatusBadge } from "../../components/ui/StatusBadge";
 import { useToast } from "../../components/ui/Toast";
@@ -8,7 +9,7 @@ import { whatsappService, type WhatsAppState } from "../../services/whatsappServ
 
 const STATUS_LABEL: Record<string, string> = {
   connected: "Conectado",
-  connecting: "Aguardando QR",
+  connecting: "Conectando",
   disconnected: "Desconectado",
 };
 
@@ -33,13 +34,17 @@ export function WhatsAppPage() {
   const [state, setState] = useState<WhatsAppState>(EMPTY);
   const [isLoading, setIsLoading] = useState(true);
   const [isActing, setIsActing] = useState(false);
-  const [qrTimeout, setQrTimeout] = useState(false);
+  // Pairing code flow
+  const [phone, setPhone] = useState("");
+  const [pairingCode, setPairingCode] = useState<string | null>(null);
+  const [isPairing, setIsPairing] = useState(false);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const load = useCallback(async () => {
     try {
-      setState(await whatsappService.getStatus());
+      const next = await whatsappService.getStatus();
+      setState(next);
+      if (next.status === "connected") setPairingCode(null);
     } catch {
       // silent — keep previous state
     } finally {
@@ -47,34 +52,22 @@ export function WhatsAppPage() {
     }
   }, []);
 
-  useEffect(() => {
-    load();
-  }, [load]);
+  useEffect(() => { load(); }, [load]);
 
-  // Poll every 3s while connecting (QR not yet scanned)
+  // Poll every 3s while connecting
   useEffect(() => {
     if (pollRef.current) clearInterval(pollRef.current);
-    if (timeoutRef.current) clearTimeout(timeoutRef.current);
     if (state.status === "connecting") {
-      setQrTimeout(false);
       pollRef.current = setInterval(load, 3_000);
-      // Show "retry" hint if QR doesn't appear within 30s
-      if (!state.qrDataUrl) {
-        timeoutRef.current = setTimeout(() => setQrTimeout(true), 30_000);
-      }
     }
-    return () => {
-      if (pollRef.current) clearInterval(pollRef.current);
-      if (timeoutRef.current) clearTimeout(timeoutRef.current);
-    };
-  }, [state.status, state.qrDataUrl, load]);
+    return () => { if (pollRef.current) clearInterval(pollRef.current); };
+  }, [state.status, load]);
 
   async function handleConnect() {
     setIsActing(true);
-    setQrTimeout(false);
+    setPairingCode(null);
     try {
       await whatsappService.connect();
-      // Poll immediately then let the 3s interval take over
       await load();
     } catch (err: any) {
       showToast(err?.message ?? "Erro ao conectar", "error");
@@ -83,14 +76,9 @@ export function WhatsAppPage() {
     }
   }
 
-  async function handleRetryConnect() {
-    setState(EMPTY);
-    setQrTimeout(false);
-    await handleConnect();
-  }
-
   async function handleDisconnect() {
     setIsActing(true);
+    setPairingCode(null);
     try {
       await whatsappService.disconnect();
       setState(EMPTY);
@@ -99,6 +87,19 @@ export function WhatsAppPage() {
       // silent
     } finally {
       setIsActing(false);
+    }
+  }
+
+  async function handlePairingCode() {
+    if (!phone.trim()) { showToast("Digite o número de telefone.", "error"); return; }
+    setIsPairing(true);
+    try {
+      const code = await whatsappService.getPairingCode(phone.trim());
+      setPairingCode(code);
+    } catch (err: any) {
+      showToast(err?.message ?? "Erro ao gerar código.", "error");
+    } finally {
+      setIsPairing(false);
     }
   }
 
@@ -125,14 +126,6 @@ export function WhatsAppPage() {
                     label={STATUS_LABEL[state.status] ?? state.status}
                     tone={STATUS_TONE[state.status] ?? "neutral"}
                   />
-                  {state.status === "connecting" && !state.qrDataUrl && (
-                    <span className="flex items-center gap-1 text-xs text-slate-500">
-                      <Loader2 size={12} className="animate-spin" /> Gerando QR code…
-                    </span>
-                  )}
-                  {state.status === "connecting" && state.qrDataUrl && (
-                    <span className="text-xs text-amber-600 font-semibold">Escaneie o QR abaixo</span>
-                  )}
                 </div>
               )}
             </div>
@@ -149,12 +142,9 @@ export function WhatsAppPage() {
                 Desconectar
               </Button>
             ) : (
-              <Button
-                onClick={handleConnect}
-                disabled={isActing || state.status === "connecting"}
-              >
+              <Button onClick={handleConnect} disabled={isActing || state.status === "connecting"}>
                 {isActing ? <Loader2 size={16} className="animate-spin" /> : <Wifi size={16} />}
-                {state.status === "connecting" ? "Aguardando QR…" : "Conectar"}
+                {state.status === "connecting" ? "Conectando…" : "Conectar"}
               </Button>
             )}
           </div>
@@ -171,41 +161,69 @@ export function WhatsAppPage() {
           </div>
         )}
 
-        {/* QR code */}
+        {/* QR code (if available) */}
         {state.status === "connecting" && state.qrDataUrl && (
           <div className="mt-6 flex flex-col items-center gap-4 rounded-2xl border border-blue-100 bg-pegasus-surface p-6">
             <p className="text-sm font-bold text-pegasus-navy">
-              Abra o WhatsApp no celular → Dispositivos conectados → Conectar dispositivo
+              Abra o WhatsApp → Dispositivos conectados → Conectar dispositivo → Escaneie o QR
             </p>
             <img
               alt="QR Code WhatsApp"
               className="h-56 w-56 rounded-xl border border-blue-100 bg-white p-2 shadow-sm"
               src={state.qrDataUrl}
             />
-            <p className="text-xs text-slate-500">
-              O QR code expira em ~60 segundos. Se expirar, clique em "Conectar" novamente.
-            </p>
           </div>
         )}
 
-        {state.status === "connecting" && !state.qrDataUrl && !isLoading && (
-          <div className="mt-4 rounded-2xl bg-amber-50 p-4">
-            {!qrTimeout ? (
-              <div className="flex items-center gap-3">
-                <Loader2 className="animate-spin text-amber-600" size={18} />
-                <p className="text-sm font-semibold text-amber-700">
-                  Inicializando conexão… O QR code aparecerá em instantes.
-                </p>
+        {/* Pairing code flow (primary method when QR not available) */}
+        {state.status === "connecting" && !state.qrDataUrl && (
+          <div className="mt-5 space-y-4 rounded-2xl border border-blue-100 bg-pegasus-surface p-5">
+            <div>
+              <p className="font-bold text-pegasus-navy">Vincular com código de telefone</p>
+              <p className="mt-1 text-sm text-slate-500">
+                Digite o número do WhatsApp que será vinculado ao Pegasus e clique em Gerar código.
+              </p>
+            </div>
+
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
+              <div className="flex-1">
+                <Input
+                  label="Número do WhatsApp (com DDD)"
+                  placeholder="Ex: 11999999999"
+                  value={phone}
+                  onChange={(e) => setPhone(e.target.value)}
+                  disabled={isPairing}
+                />
               </div>
-            ) : (
-              <div className="flex flex-wrap items-center justify-between gap-3">
-                <p className="text-sm font-semibold text-amber-700">
-                  O QR code não foi gerado. Tente conectar novamente.
+              <Button onClick={handlePairingCode} disabled={isPairing || !phone.trim()}>
+                {isPairing ? <Loader2 size={16} className="animate-spin" /> : <Phone size={16} />}
+                Gerar código
+              </Button>
+            </div>
+
+            {pairingCode && (
+              <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-5">
+                <div className="flex items-center gap-2">
+                  <Hash size={18} className="shrink-0 text-emerald-600" />
+                  <p className="font-bold text-emerald-800">Código de pareamento</p>
+                </div>
+                <p className="mt-3 text-center font-mono text-4xl font-black tracking-[0.3em] text-emerald-700">
+                  {pairingCode}
                 </p>
-                <Button onClick={handleRetryConnect} disabled={isActing} variant="secondary">
-                  {isActing ? <Loader2 size={16} className="animate-spin" /> : <RefreshCw size={16} />}
-                  Tentar novamente
-                </Button>
+                <ol className="mt-4 list-inside list-decimal space-y-1 text-sm text-emerald-700">
+                  <li>Abra o WhatsApp no celular com o número <strong>{phone}</strong></li>
+                  <li>Toque em <strong>Aparelhos conectados</strong></li>
+                  <li>Toque em <strong>Conectar com número de telefone</strong></li>
+                  <li>Digite o código acima</li>
+                </ol>
+                <p className="mt-3 text-xs text-emerald-600">O código expira em ~60 segundos. Se expirar, clique em Gerar código novamente.</p>
+              </div>
+            )}
+
+            {!pairingCode && (
+              <div className="flex items-center gap-2 text-sm text-slate-500">
+                <Loader2 size={14} className="animate-spin" />
+                Aguardando vinculação…
               </div>
             )}
           </div>
@@ -224,7 +242,7 @@ export function WhatsAppPage() {
           <div className="mt-4 flex items-center gap-2 rounded-2xl bg-slate-50 p-4">
             <WifiOff className="shrink-0 text-slate-400" size={18} />
             <p className="text-sm text-slate-500">
-              WhatsApp desconectado. Clique em "Conectar" e escaneie o QR code para ativar as notificações.
+              WhatsApp desconectado. Clique em "Conectar" e use o código de pareamento para ativar.
             </p>
           </div>
         )}
@@ -250,7 +268,7 @@ export function WhatsAppPage() {
         <p className="text-sm font-bold text-amber-800">Importante</p>
         <ul className="mt-2 list-inside list-disc space-y-1 text-sm text-amber-700">
           <li>Use um número secundário dedicado ao Pegasus — não o seu número pessoal.</li>
-          <li>A sessão fica salva no servidor. Após um novo deploy, será necessário escanear novamente.</li>
+          <li>A sessão fica salva no servidor. Após um novo deploy, será necessário conectar novamente.</li>
           <li>Os atletas precisam ter telefone cadastrado no sistema para receber mensagens.</li>
         </ul>
       </section>
