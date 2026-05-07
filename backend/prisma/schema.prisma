@@ -85,18 +85,28 @@ model Athlete {
 }
 
 model AthleteApplication {
-  id           String   @id @default(uuid())
-  name         String
-  email        String?
-  phone        String?
-  category     String?
-  position     String?
-  contribution String?
-  source       String   @default("site")
-  status       String   @default("pendente")
-  notes        String?
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  id                 String    @id @default(uuid())
+  name               String
+  email              String?
+  phone              String?
+  birthDate          DateTime?
+  category           String?
+  position           String?
+  availableSaturdays Boolean?
+  currentTeam        Boolean?
+  currentTeamName    String?
+  experienceTime     String?
+  level              String?
+  willingToCompete   Boolean?
+  motivation         String?
+  howFound           String?
+  referral           String?
+  contribution       String?
+  source             String    @default("site")
+  status             String    @default("pendente")
+  notes              String?
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
 }
 
 model Payment {

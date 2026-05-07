@@ -3,7 +3,7 @@ import { prisma } from "../../config/prisma";
 const raw = (process.env.EVOLUTION_API_URL ?? "").replace(/\/$/, "");
 const EVOLUTION_URL = raw && !raw.startsWith("http") ? `https://${raw}` : raw;
 const EVOLUTION_KEY = process.env.EVOLUTION_API_KEY ?? "";
-const INSTANCE = process.env.EVOLUTION_INSTANCE_NAME ?? "pegasus";
+const INSTANCE_PREFIX = process.env.EVOLUTION_INSTANCE_NAME ?? "pegasus";
 
 // Backend's own public URL (used to configure Evolution API webhook)
 const rawBackend = (process.env.BACKEND_URL ?? process.env.RAILWAY_PUBLIC_DOMAIN ?? "").replace(/\/$/, "");
@@ -39,21 +39,29 @@ function extractQrBase64(res: any): string | null {
     res?.qrcode?.base64 ??
     res?.hash?.qrcode?.base64 ??
     res?.instance?.qrcode?.base64 ??
-    res?.data?.qrcode?.base64;
-  if (!b64) return null;
+    res?.data?.qrcode?.base64 ??
+    res?.qrcode ??
+    res?.instance?.qrcode;
+  if (!b64 || typeof b64 !== "string") return null;
   return b64.startsWith("data:") ? b64 : `data:image/png;base64,${b64}`;
+}
+
+/** Generate a short unique suffix to avoid DB credential reuse on Evolution API. */
+function uniqueSuffix(): string {
+  return Date.now().toString(36);
 }
 
 class WhatsAppService {
   private status: ConnectionStatus = "disconnected";
   private lastError: string | null = null;
   private cachedQr: string | null = null;
-  private connectStartedAt = 0; // timestamp to suppress stale disconnect events
+  private connectStartedAt = 0;
+  // Tracks the currently active instance name (changes on each connect())
+  private activeInstance: string = INSTANCE_PREFIX;
 
   getStatus(): ConnectionStatus { return this.status; }
   getLastError(): string | null { return this.lastError; }
 
-  /** Called by the webhook handler when Evolution API sends a QR event. */
   setQr(base64: string): void {
     this.cachedQr = base64.startsWith("data:") ? base64 : `data:image/png;base64,${base64}`;
     this.status = "connecting";
@@ -82,15 +90,30 @@ class WhatsAppService {
       console.log("[WhatsApp] Evolution API não configurada — defina EVOLUTION_API_URL e EVOLUTION_API_KEY");
       return;
     }
+    // Try to find any open pegasus-* instance
     try {
-      const res = await evo<any>("GET", `/instance/connectionState/${INSTANCE}`);
-      const state = res?.instance?.state ?? res?.state;
-      if (state === "open") {
-        this.status = "connected";
-        console.log("[WhatsApp] Sessão restaurada pelo Evolution API — conectado");
+      const instances: any[] = await evo<any[]>("GET", "/instance/fetchInstances").catch(() => []);
+      const list = Array.isArray(instances) ? instances : [];
+      for (const item of list) {
+        const name: string = item?.instance?.instanceName ?? item?.instanceName ?? "";
+        const state: string = item?.instance?.state ?? item?.state ?? "";
+        if (name.startsWith(INSTANCE_PREFIX) && state === "open") {
+          this.activeInstance = name;
+          this.status = "connected";
+          console.log(`[WhatsApp] Sessão restaurada: ${name}`);
+          return;
+        }
       }
     } catch {
-      // Instance doesn't exist yet — fine, user will connect manually
+      // fetchInstances not available — fall back to direct check
+      try {
+        const res = await evo<any>("GET", `/instance/connectionState/${this.activeInstance}`);
+        const state = res?.instance?.state ?? res?.state;
+        if (state === "open") {
+          this.status = "connected";
+          console.log("[WhatsApp] Sessão restaurada (direct check)");
+        }
+      } catch { /* instance doesn't exist */ }
     }
   }
 
@@ -105,8 +128,9 @@ class WhatsAppService {
       return { status: "disconnected", qrDataUrl: null, lastError: this.lastError };
     }
 
+    const inst = this.activeInstance;
     try {
-      const stateRes = await evo<any>("GET", `/instance/connectionState/${INSTANCE}`);
+      const stateRes = await evo<any>("GET", `/instance/connectionState/${inst}`);
       const state = stateRes?.instance?.state ?? stateRes?.state;
 
       if (state === "open") {
@@ -117,11 +141,21 @@ class WhatsAppService {
       }
 
       if (!this.cachedQr) {
-        try {
-          const qrRes = await evo<any>("GET", `/instance/connect/${INSTANCE}`);
-          const b64 = extractQrBase64(qrRes);
-          if (b64) this.cachedQr = b64;
-        } catch { /* not ready yet */ }
+        for (const path of [
+          `/instance/qrcode/${inst}`,
+          `/instance/qrcode/${inst}?image=false`,
+          `/instance/connect/${inst}`,
+        ]) {
+          try {
+            const qrRes = await evo<any>("GET", path);
+            const b64 = extractQrBase64(qrRes);
+            if (b64) {
+              this.cachedQr = b64;
+              console.log(`[WhatsApp] QR obtido via ${path}`);
+              break;
+            }
+          } catch { /* endpoint may not exist */ }
+        }
       }
 
       return { status: "connecting", qrDataUrl: this.cachedQr, lastError: null };
@@ -135,7 +169,7 @@ class WhatsAppService {
   }
 
   async connect(): Promise<void> {
-    if (this.status === "connected") return; // já conectado, não reconectar
+    if (this.status === "connected") return;
 
     if (!EVOLUTION_URL || !EVOLUTION_KEY) {
       this.lastError = "Configure EVOLUTION_API_URL e EVOLUTION_API_KEY no servidor.";
@@ -147,63 +181,56 @@ class WhatsAppService {
     this.cachedQr = null;
     this.connectStartedAt = Date.now();
 
+    const webhookBody = WEBHOOK_URL ? {
+      webhook: {
+        enabled: true,
+        url: WEBHOOK_URL,
+        webhookByEvents: false,
+        webhookBase64: true,
+        events: ["QRCODE_UPDATED", "CONNECTION_UPDATE"],
+      },
+    } : undefined;
+
     try {
-      // Check current state
-      let instanceExists = false;
-      try {
-        const stateRes = await evo<any>("GET", `/instance/connectionState/${INSTANCE}`);
-        const state = stateRes?.instance?.state ?? stateRes?.state ?? "";
-        instanceExists = true;
-        console.log(`[WhatsApp] Estado atual: ${state}`);
-        if (state === "open") { this.status = "connected"; return; }
-        // Logout to clear stale credentials so Evolution API generates a fresh QR
-        await evo("DELETE", `/instance/logout/${INSTANCE}`).catch(() => {});
-        console.log("[WhatsApp] Logout realizado");
-      } catch { /* instance doesn't exist */ }
+      // Delete ALL existing pegasus-* instances so there are no stale DB credentials.
+      // Evolution API reuses stored credentials when the same name is created again,
+      // causing Baileys to reconnect instead of generating a fresh QR.
+      await this.deleteAllPegasusInstances();
 
-      // Evolution API v2 webhook payload (camelCase, nested under "webhook")
-      const webhookBody = WEBHOOK_URL ? {
-        webhook: {
-          enabled: true,
-          url: WEBHOOK_URL,
-          webhookByEvents: false,
-          webhookBase64: true,
-          events: ["QRCODE_UPDATED", "CONNECTION_UPDATE"],
-        },
-      } : undefined;
+      // New unique name guarantees no existing credentials in Evolution API's DB
+      const newInstance = `${INSTANCE_PREFIX}-${uniqueSuffix()}`;
+      this.activeInstance = newInstance;
+      console.log(`[WhatsApp] Criando instância fresca: ${newInstance}`);
 
-      if (instanceExists && webhookBody) {
-        try {
-          await evo("POST", `/webhook/set/${INSTANCE}`, webhookBody);
-          console.log(`[WhatsApp] Webhook configurado: ${WEBHOOK_URL}`);
-        } catch (e: any) {
-          console.error(`[WhatsApp] Webhook set falhou: ${e.message}`);
-        }
+      const createPayload: any = {
+        instanceName: newInstance,
+        qrcode: true,
+        integration: "WHATSAPP-BAILEYS",
+        ...(webhookBody ?? {}),
+      };
+      const createRes = await evo<any>("POST", "/instance/create", createPayload);
+      console.log("[WhatsApp] Instância criada, webhook:", WEBHOOK_URL || "não configurado");
+      const b64create = extractQrBase64(createRes);
+      if (b64create) this.cachedQr = b64create;
+
+      // Belt-and-suspenders: explicitly set webhook after creation
+      if (webhookBody) {
+        await evo("POST", `/webhook/set/${newInstance}`, webhookBody).catch((e: any) =>
+          console.error("[WhatsApp] Webhook set falhou:", e.message),
+        );
+        console.log("[WhatsApp] Webhook confirmado:", WEBHOOK_URL);
       }
 
-      if (!instanceExists) {
-        const createPayload: any = {
-          instanceName: INSTANCE,
-          qrcode: true,
-          integration: "WHATSAPP-BAILEYS",
-          ...(webhookBody ?? {}),
-        };
-        const createRes = await evo<any>("POST", "/instance/create", createPayload);
-        console.log("[WhatsApp] Instância criada, webhook:", WEBHOOK_URL || "não configurado");
-        const b64 = extractQrBase64(createRes);
-        if (b64) this.cachedQr = b64;
-      }
-
-      // Trigger QR generation — QR arrives via webhook; this call also starts the connection
-      const qrRes = await evo<any>("GET", `/instance/connect/${INSTANCE}`).catch(() => null);
+      // Trigger QR generation — QR arrives via QRCODE_UPDATED webhook or polling
+      const qrRes = await evo<any>("GET", `/instance/connect/${newInstance}`).catch(() => null);
       if (qrRes) {
-        console.log("[WhatsApp] Connect triggered:", JSON.stringify(qrRes).slice(0, 150));
+        console.log("[WhatsApp] Connect triggered:", JSON.stringify(qrRes).slice(0, 200));
         const b64 = extractQrBase64(qrRes);
         if (b64) this.cachedQr = b64;
       }
 
       if (!WEBHOOK_URL) {
-        console.log("[WhatsApp] BACKEND_URL não configurado — QR via polling HTTP (pode ser lento)");
+        console.log("[WhatsApp] BACKEND_URL não configurado — QR via polling HTTP");
       }
     } catch (err: any) {
       const msg = err?.message ?? String(err);
@@ -213,20 +240,52 @@ class WhatsAppService {
     }
   }
 
+  /** Deletes all Evolution API instances whose name starts with INSTANCE_PREFIX. */
+  private async deleteAllPegasusInstances(): Promise<void> {
+    const namesToDelete = new Set<string>();
+
+    // Find by listing
+    try {
+      const instances: any[] = await evo<any[]>("GET", "/instance/fetchInstances");
+      if (Array.isArray(instances)) {
+        for (const item of instances) {
+          const name: string = item?.instance?.instanceName ?? item?.instanceName ?? "";
+          if (name.startsWith(INSTANCE_PREFIX)) namesToDelete.add(name);
+        }
+      }
+    } catch { /* fetchInstances may not exist */ }
+
+    // Always try the currently tracked name and the bare prefix
+    namesToDelete.add(this.activeInstance);
+    namesToDelete.add(INSTANCE_PREFIX);
+
+    for (const name of namesToDelete) {
+      await evo("DELETE", `/instance/logout/${name}`).catch(() => {});
+      await sleep(300);
+      const deleted =
+        await evo("DELETE", `/instance/delete/${name}`)
+          .then(() => true)
+          .catch(() => false) ||
+        await evo("DELETE", `/instance/${name}`)
+          .then(() => true)
+          .catch(() => false);
+      if (deleted) console.log(`[WhatsApp] Instância removida: ${name}`);
+    }
+    await sleep(500);
+  }
+
   async disconnect(): Promise<void> {
-    // Try multiple delete endpoints (v1 and v2 Evolution API path formats)
-    await evo("DELETE", `/instance/logout/${INSTANCE}`).catch(() => {});
-    await evo("DELETE", `/instance/delete/${INSTANCE}`).catch(() => {});
-    await evo("DELETE", `/instance/${INSTANCE}`).catch(() => {});
+    await this.deleteAllPegasusInstances();
     this.cachedQr = null;
     this.status = "disconnected";
     this.lastError = null;
+    this.activeInstance = INSTANCE_PREFIX;
   }
 
   async sendMessage(phone: string, message: string): Promise<void> {
     if (this.status !== "connected") return;
     try {
-      await evo("POST", `/message/sendText/${INSTANCE}`, {
+      await evo("POST", `/message/sendText/${this.activeInstance}`, {
         number: toNumber(phone),
         text: message,
       });
@@ -238,7 +297,7 @@ class WhatsAppService {
   async getGroups(): Promise<WhatsAppGroup[]> {
     if (this.status !== "connected") return [];
     try {
-      const groups = await evo<any[]>("GET", `/group/fetchAllGroups/${INSTANCE}?getParticipants=false`);
+      const groups = await evo<any[]>("GET", `/group/fetchAllGroups/${this.activeInstance}?getParticipants=false`);
       return (Array.isArray(groups) ? groups : []).map((g: any) => ({
         id: g.id as string,
         name: (g.subject ?? g.id) as string,
@@ -256,7 +315,7 @@ class WhatsAppService {
     let failed = 0;
     for (const target of targets) {
       try {
-        await evo("POST", `/message/sendText/${INSTANCE}`, { number: target, text: message });
+        await evo("POST", `/message/sendText/${this.activeInstance}`, { number: target, text: message });
         sent++;
         await sleep(800);
       } catch (err) {

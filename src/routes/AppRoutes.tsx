@@ -16,6 +16,8 @@ import { MarketingPage } from "../pages/marketing/MarketingPage";
 import { SchoolsPage } from "../pages/operational/SchoolsPage";
 import { SpreadsheetsPage } from "../pages/operational/SpreadsheetsPage";
 import { MyProfilePage } from "../pages/profile/MyProfilePage";
+import { InscricaoEnviadaPage } from "../pages/public/InscricaoEnviadaPage";
+import { InscricaoPage } from "../pages/public/InscricaoPage";
 import { LandingPage } from "../pages/public/LandingPage";
 import { NotFoundPage } from "../pages/public/NotFoundPage";
 import { AthleteApplicationsPage } from "../pages/rh/AthleteApplicationsPage";
@@ -30,6 +32,8 @@ export function AppRoutes() {
   return (
     <Routes>
       <Route path="/" element={<LandingPage />} />
+      <Route path="/inscricao" element={<InscricaoPage />} />
+      <Route path="/inscricao/enviada" element={<InscricaoEnviadaPage />} />
       <Route path="/login" element={<LoginPage />} />
       <Route path="/primeiro-acesso" element={<FirstAccessPage />} />
       <Route

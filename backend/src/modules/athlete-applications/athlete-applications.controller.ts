@@ -44,6 +44,19 @@ export const athleteApplicationsController = {
     }
   }) satisfies RequestHandler,
 
+  publicCreate: (async (request, response, next) => {
+    try {
+      const application = await athleteApplicationsService.create({
+        ...request.body,
+        source: "form_publico",
+        status: "pendente",
+      });
+      response.status(201).json(application);
+    } catch (error) {
+      next(error);
+    }
+  }) satisfies RequestHandler,
+
   importFromGoogleSheets: (async (_request, response, next) => {
     try {
       const result = await athleteApplicationsImportService.importFromGoogleSheets();

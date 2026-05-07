@@ -1,4 +1,4 @@
-﻿import { Prisma } from "@prisma/client";
+import { Prisma } from "@prisma/client";
 import { prisma } from "../../config/prisma";
 import { AppError } from "../../middlewares/error.middleware";
 import { getMonthlyPaymentStatusForAthlete } from "../athletes/monthly-exemption";
@@ -17,8 +17,18 @@ export type AthleteApplicationPayload = {
   name?: string;
   email?: string | null;
   phone?: string | null;
+  birthDate?: string | null;
   category?: string | null;
   position?: string | null;
+  availableSaturdays?: boolean | null;
+  currentTeam?: boolean | null;
+  currentTeamName?: string | null;
+  experienceTime?: string | null;
+  level?: string | null;
+  willingToCompete?: boolean | null;
+  motivation?: string | null;
+  howFound?: string | null;
+  referral?: string | null;
   contribution?: string | null;
   source?: string | null;
   status?: ApplicationStatus;
@@ -28,7 +38,6 @@ export type AthleteApplicationPayload = {
 function normalizeOptional(value: string | null | undefined) {
   if (value === undefined) return undefined;
   if (value === null) return null;
-
   const trimmed = value.trim();
   return trimmed.length > 0 ? trimmed : null;
 }
@@ -44,13 +53,13 @@ function buildWhere(filters: ApplicationFilters) {
 
   if (filters.search) {
     const search = filters.search.trim();
-
     if (search) {
       where.OR = [
         { name: { contains: search, mode: "insensitive" } },
         { email: { contains: search, mode: "insensitive" } },
         { phone: { contains: search, mode: "insensitive" } },
         { contribution: { contains: search, mode: "insensitive" } },
+        { motivation: { contains: search, mode: "insensitive" } },
       ];
     }
   }
@@ -78,11 +87,7 @@ function buildData(payload: AthleteApplicationPayload, requireName: boolean) {
 
   if (payload.name !== undefined) {
     const name = payload.name.trim();
-
-    if (!name) {
-      throw new AppError("Nome da inscrição é obrigatório", 400);
-    }
-
+    if (!name) throw new AppError("Nome da inscrição é obrigatório", 400);
     data.name = name;
   }
 
@@ -90,11 +95,21 @@ function buildData(payload: AthleteApplicationPayload, requireName: boolean) {
 
   if (payload.email !== undefined) data.email = normalizeOptional(payload.email);
   if (payload.phone !== undefined) data.phone = normalizeOptional(payload.phone);
+  if (payload.birthDate !== undefined) {
+    data.birthDate = payload.birthDate ? new Date(payload.birthDate) : null;
+  }
   if (payload.category !== undefined) data.category = normalizeOptional(payload.category);
   if (payload.position !== undefined) data.position = normalizeOptional(payload.position);
-  if (payload.contribution !== undefined) {
-    data.contribution = normalizeOptional(payload.contribution);
-  }
+  if (payload.availableSaturdays !== undefined) data.availableSaturdays = payload.availableSaturdays;
+  if (payload.currentTeam !== undefined) data.currentTeam = payload.currentTeam;
+  if (payload.currentTeamName !== undefined) data.currentTeamName = normalizeOptional(payload.currentTeamName);
+  if (payload.experienceTime !== undefined) data.experienceTime = normalizeOptional(payload.experienceTime);
+  if (payload.level !== undefined) data.level = normalizeOptional(payload.level);
+  if (payload.willingToCompete !== undefined) data.willingToCompete = payload.willingToCompete;
+  if (payload.motivation !== undefined) data.motivation = normalizeOptional(payload.motivation);
+  if (payload.howFound !== undefined) data.howFound = normalizeOptional(payload.howFound);
+  if (payload.referral !== undefined) data.referral = normalizeOptional(payload.referral);
+  if (payload.contribution !== undefined) data.contribution = normalizeOptional(payload.contribution);
   if (payload.source !== undefined) data.source = normalizeOptional(payload.source) ?? "site";
   if (payload.status !== undefined) data.status = payload.status;
   if (payload.notes !== undefined) data.notes = normalizeOptional(payload.notes);
@@ -111,46 +126,29 @@ export const athleteApplicationsService = {
   },
 
   async findById(id: string) {
-    const application = await prisma.athleteApplication.findUnique({
-      where: { id },
-    });
-
-    if (!application) {
-      throw new AppError("Inscrição não encontrada", 404);
-    }
-
+    const application = await prisma.athleteApplication.findUnique({ where: { id } });
+    if (!application) throw new AppError("Inscrição não encontrada", 404);
     return application;
   },
 
   async create(payload: AthleteApplicationPayload) {
     const data = buildData(payload, true) as Prisma.AthleteApplicationUncheckedCreateInput;
-
-    return prisma.athleteApplication.create({
-      data,
-    });
+    return prisma.athleteApplication.create({ data });
   },
 
   async update(id: string, payload: AthleteApplicationPayload) {
     await this.findById(id);
     const data = buildData(payload, false) as Prisma.AthleteApplicationUncheckedUpdateInput;
-
-    return prisma.athleteApplication.update({
-      where: { id },
-      data,
-    });
+    return prisma.athleteApplication.update({ where: { id }, data });
   },
 
   async delete(id: string) {
     await this.findById(id);
-
-    await prisma.athleteApplication.delete({
-      where: { id },
-    });
+    await prisma.athleteApplication.delete({ where: { id } });
   },
 
   async approve(id: string) {
     const application = await this.findById(id);
-
     if (application.status === "aprovado") {
       throw new AppError("Esta inscrição já foi aprovada", 400);
     }
@@ -176,12 +174,7 @@ export const athleteApplicationsService = {
         data: { status: "aprovado" },
       });
 
-      return {
-        application: updatedApplication,
-        athlete,
-      };
+      return { application: updatedApplication, athlete };
     });
   },
 };
-
-

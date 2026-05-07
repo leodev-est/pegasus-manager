@@ -16,6 +16,10 @@ export const whatsAppController = {
 
     const ev = event.toLowerCase();
 
+    if (ev.includes("qr")) {
+      console.log("[WH] QR-like event body:", JSON.stringify(body).slice(0, 400));
+    }
+
     if (ev === "qrcode.updated" || ev === "qrcode_updated") {
       const b64: string | undefined = data?.qrcode?.base64 ?? data?.base64;
       if (b64) {
@@ -27,6 +31,17 @@ export const whatsAppController = {
     }
 
     if (ev === "connection.update" || ev === "connection_update") {
+      // Some Evolution API versions embed QR inside connection.update
+      const qrInUpdate: string | undefined =
+        data?.qrcode?.base64 ?? data?.qr?.base64 ?? (typeof data?.qr === "string" ? data.qr : undefined);
+      if (qrInUpdate) {
+        whatsAppService.setQr(qrInUpdate);
+        console.log("[WhatsApp] QR recebido via connection.update");
+      } else if (state === "connecting") {
+        // Log full data to diagnose missing QR
+        console.log("[WH] connection.update connecting data:", JSON.stringify(data).slice(0, 300));
+      }
+
       if (state === "open") {
         whatsAppService.setConnected();
         console.log("[WhatsApp] Conectado via webhook");

@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import logoFull from "../../assets/logo/logo-full.png";
 import { InstallPwaButton } from "../../components/pwa/InstallPwaButton";
 
+
 type LandingSection = { title: string; text: string; icon: LucideIcon };
 
 const landingSections: LandingSection[] = [
@@ -37,9 +38,6 @@ const landingSections: LandingSection[] = [
     icon: Users,
   },
 ];
-
-const PUBLIC_REGISTRATION_FORM_URL =
-  "https://docs.google.com/forms/d/e/1FAIpQLScEitglNJVRgXHJBvBi6uELuqLouUD95BBG4Z2e67d2d2Ha2A/viewform";
 
 export function LandingPage() {
   return (
@@ -84,20 +82,18 @@ export function LandingPage() {
               disciplina, acolhimento e impacto comunitário através do voleibol.
             </p>
             <div className="mt-8 flex flex-col gap-3 sm:flex-row">
-              <a
-                href={PUBLIC_REGISTRATION_FORM_URL}
+              <Link
+                to="/inscricao"
                 className="focus-ring inline-flex min-h-12 items-center justify-center gap-2 rounded-full bg-pegasus-sky px-6 py-3 font-bold text-pegasus-navy shadow-lg"
-                rel="noopener noreferrer"
-                target="_blank"
               >
                 Quero me inscrever
                 <ArrowRight size={18} />
-              </a>
+              </Link>
               <Link
                 to="/login"
                 className="focus-ring inline-flex min-h-12 items-center justify-center gap-2 rounded-full border border-white/30 px-6 py-3 font-bold text-white hover:bg-white/10"
-            >
-              Sou Atleta
+              >
+                Sou Atleta
               </Link>
               <InstallPwaButton className="min-h-12 rounded-full px-6 py-3" label="Instalar app" />
             </div>
@@ -154,15 +150,13 @@ export function LandingPage() {
             </p>
           </div>
           <div className="flex w-full flex-col gap-3 sm:w-auto sm:flex-row">
-            <a
-              href={PUBLIC_REGISTRATION_FORM_URL}
+            <Link
+              to="/inscricao"
               className="focus-ring inline-flex min-h-12 items-center justify-center gap-2 rounded-full bg-white px-6 py-3 font-bold text-pegasus-primary"
-              rel="noopener noreferrer"
-              target="_blank"
             >
-              Quero participar
+              Fazer inscrição
               <ArrowRight size={18} />
-            </a>
+            </Link>
             <Link
               to="/login"
               className="focus-ring inline-flex min-h-12 items-center justify-center gap-2 rounded-full border border-white/30 px-6 py-3 font-bold text-white hover:bg-white/10"
