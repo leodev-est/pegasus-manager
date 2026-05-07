@@ -371,17 +371,29 @@ class WhatsAppService {
 
   /** Requests a pairing code for phone-number-based linking (alternative to QR). */
   async getPairingCode(phone: string): Promise<string> {
-    if (this.status !== "connecting") {
-      throw new Error("Inicie a conexão antes de gerar o código de pareamento.");
+    if (!EVOLUTION_URL || !EVOLUTION_KEY) {
+      throw new Error("Evolution API não configurada.");
     }
+    // Ensure we have an active instance — if status lapsed, reconnect silently
+    if (this.status !== "connecting" && this.status !== "connected") {
+      await this.connect();
+      await sleep(3000); // give Baileys a moment to initialize
+    }
+    const inst = this.activeInstance;
     const number = toNumber(phone);
-    const res = await evo<any>("POST", `/instance/pairing-code/${this.activeInstance}`, { number });
-    console.log("[WhatsApp] Pairing code resposta:", JSON.stringify(res).slice(0, 300));
-    const code = res?.pairingCode ?? res?.pairing_code ?? res?.code ?? res?.data?.pairingCode ?? res?.data?.code;
-    if (!code || typeof code !== "string") {
-      throw new Error(`Código de pareamento não retornado. Resposta: ${JSON.stringify(res).slice(0, 200)}`);
+    console.log(`[WhatsApp] Solicitando pairing code para ${number} na instância ${inst}`);
+    try {
+      const res = await evo<any>("POST", `/instance/pairing-code/${inst}`, { number });
+      console.log("[WhatsApp] Pairing code resposta:", JSON.stringify(res).slice(0, 400));
+      const code = res?.pairingCode ?? res?.pairing_code ?? res?.code ?? res?.data?.pairingCode ?? res?.data?.code;
+      if (!code || typeof code !== "string") {
+        throw new Error(`Código não encontrado na resposta: ${JSON.stringify(res).slice(0, 300)}`);
+      }
+      return String(code);
+    } catch (err: any) {
+      console.error("[WhatsApp] Pairing code erro:", err.message);
+      throw err;
     }
-    return String(code);
   }
 
   async sendMessage(phone: string, message: string): Promise<void> {
