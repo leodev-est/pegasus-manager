@@ -46,9 +46,9 @@ function extractQrBase64(res: any): string | null {
   return b64.startsWith("data:") ? b64 : `data:image/png;base64,${b64}`;
 }
 
-/** Generate a short unique suffix to avoid DB credential reuse on Evolution API. */
+/** Generate a short unique suffix — timestamp + random component so concurrent calls never collide. */
 function uniqueSuffix(): string {
-  return Date.now().toString(36);
+  return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`;
 }
 
 class WhatsAppService {
@@ -189,6 +189,8 @@ class WhatsAppService {
       events: ["QRCODE_UPDATED", "CONNECTION_UPDATE", "MESSAGES_UPSERT"],
     } : undefined;
 
+    console.log(`[WhatsApp] WEBHOOK_URL: ${WEBHOOK_URL || "(não configurada)"}`);
+
     try {
       await this.deleteAllPegasusInstances();
 
@@ -212,9 +214,12 @@ class WhatsAppService {
 
       // Set webhook explicitly — Evolution API v2 expects the flat structure (no "webhook" wrapper)
       if (webhookConfig) {
-        await evo("POST", `/webhook/set/${newInstance}`, webhookConfig).catch((e: any) =>
-          console.log("[WhatsApp] Webhook set (ignorado):", e.message),
-        );
+        try {
+          const whRes = await evo<any>("POST", `/webhook/set/${newInstance}`, webhookConfig);
+          console.log("[WhatsApp] Webhook set OK:", JSON.stringify(whRes).slice(0, 200));
+        } catch (e: any) {
+          console.log("[WhatsApp] Webhook set falhou:", e.message);
+        }
       }
 
       // Trigger QR generation (Baileys needs a moment to initialize — wait 2s first)
@@ -279,34 +284,64 @@ class WhatsAppService {
   private async deleteAllPegasusInstances(): Promise<void> {
     const namesToDelete = new Set<string>();
 
-    // Find by listing
+    // List all instances and log them so we know what's alive
     try {
       const instances: any[] = await evo<any[]>("GET", "/instance/fetchInstances");
-      if (Array.isArray(instances)) {
-        for (const item of instances) {
-          const name: string = item?.instance?.instanceName ?? item?.instanceName ?? "";
-          if (name.startsWith(INSTANCE_PREFIX)) namesToDelete.add(name);
-        }
+      const list = Array.isArray(instances) ? instances : [];
+      const allNames = list.map((i: any) => i?.instance?.instanceName ?? i?.instanceName ?? "?");
+      console.log(`[WhatsApp] Instâncias na Evolution API: ${allNames.join(", ") || "(nenhuma)"}`);
+      for (const item of list) {
+        const name: string = item?.instance?.instanceName ?? item?.instanceName ?? "";
+        if (name.startsWith(INSTANCE_PREFIX)) namesToDelete.add(name);
       }
-    } catch { /* fetchInstances may not exist */ }
+    } catch (e: any) {
+      console.log("[WhatsApp] fetchInstances falhou:", e.message);
+    }
 
-    // Always try the currently tracked name and the bare prefix
+    // Always include tracked instance and bare prefix
     namesToDelete.add(this.activeInstance);
     namesToDelete.add(INSTANCE_PREFIX);
+    console.log(`[WhatsApp] Para deletar: ${[...namesToDelete].join(", ")}`);
 
     for (const name of namesToDelete) {
-      await evo("DELETE", `/instance/logout/${name}`).catch(() => {});
-      await sleep(300);
-      const deleted =
-        await evo("DELETE", `/instance/delete/${name}`)
-          .then(() => true)
-          .catch(() => false) ||
-        await evo("DELETE", `/instance/${name}`)
-          .then(() => true)
-          .catch(() => false);
-      if (deleted) console.log(`[WhatsApp] Instância removida: ${name}`);
+      // Step 1: logout — clears Baileys session credentials so next create starts fresh
+      try {
+        const logoutRes = await evo<any>("DELETE", `/instance/logout/${name}`);
+        console.log(`[WhatsApp] Logout ${name} OK:`, JSON.stringify(logoutRes).slice(0, 200));
+      } catch (e: any) {
+        console.log(`[WhatsApp] Logout ${name} falhou:`, e.message);
+      }
+      await sleep(1500); // give Evolution API time to clear session state
+
+      // Step 2: delete instance — try two known endpoint variants
+      let deleted = false;
+      for (const path of [`/instance/delete/${name}`, `/instance/${name}`]) {
+        try {
+          const delRes = await evo<any>("DELETE", path);
+          console.log(`[WhatsApp] Delete ${name} via ${path} OK:`, JSON.stringify(delRes).slice(0, 200));
+          deleted = true;
+          break;
+        } catch (e: any) {
+          console.log(`[WhatsApp] Delete ${name} via ${path} falhou:`, e.message);
+        }
+      }
+      if (!deleted) console.log(`[WhatsApp] AVISO: não conseguiu deletar ${name}`);
+      await sleep(800);
     }
-    await sleep(500);
+
+    // Verify — confirm no pegasus instances remain
+    await sleep(1500);
+    try {
+      const remaining: any[] = await evo<any[]>("GET", "/instance/fetchInstances").catch(() => []);
+      const alive = (Array.isArray(remaining) ? remaining : [])
+        .map((i: any) => i?.instance?.instanceName ?? i?.instanceName ?? "")
+        .filter((n: string) => n.startsWith(INSTANCE_PREFIX));
+      if (alive.length > 0) {
+        console.log(`[WhatsApp] AVISO: ainda vivas após delete: ${alive.join(", ")}`);
+      } else {
+        console.log("[WhatsApp] Verificação pós-delete: nenhuma instância pegasus ativa");
+      }
+    } catch { /* ignore */ }
   }
 
   async disconnect(): Promise<void> {
