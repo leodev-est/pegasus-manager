@@ -429,34 +429,48 @@ class WhatsAppService {
       return String(code);
     }
 
-    // Instance created with status "close" — need to call /instance/connect to start Baileys.
-    // When phoneNumber is set, Baileys calls requestPairingCode() and returns it via connect response.
-    console.log("[WhatsApp] Pairing code não retornado no create — chamando /instance/connect para iniciar Baileys...");
+    // Instance created with status "close".
+    // Call /instance/connect?number=... to start Baileys in pairing-code mode.
+    // Baileys connects to WhatsApp WebSocket, then calls requestPairingCode(number).
+    // The pairing code is stored in instance.qrCode.pairingCode — but it takes a few seconds.
+    // Strategy: trigger connect, wait 8s for WhatsApp to respond, then poll /instance/connect
+    // (which returns current qrCode when state is 'connecting').
+    console.log("[WhatsApp] Chamando /instance/connect para iniciar Baileys (modo pairing code)...");
     await sleep(2000);
 
+    // First call: triggers Baileys start (state: close → connectToWhatsapp)
     try {
-      const connectRes = await evo<any>("GET", `/instance/connect/${newInstance}`);
-      console.log("[WhatsApp] /instance/connect resposta completa:", JSON.stringify(connectRes));
-      const c =
-        connectRes?.pairingCode ?? connectRes?.pairing_code ?? connectRes?.code ??
-        connectRes?.data?.pairingCode ?? connectRes?.data?.code ?? connectRes?.hash?.pairingCode;
-      if (c && typeof c === "string") {
-        console.log("[WhatsApp] Pairing code obtido via /instance/connect:", c);
-        return String(c);
-      }
+      const r1 = await evo<any>("GET", `/instance/connect/${newInstance}?number=${number}`);
+      console.log("[WhatsApp] /instance/connect #1:", JSON.stringify(r1));
+      const c = r1?.pairingCode ?? r1?.data?.pairingCode;
+      if (c && typeof c === "string") return String(c);
     } catch (e: any) {
-      console.log("[WhatsApp] /instance/connect erro:", e.message.slice(0, 200));
+      console.log("[WhatsApp] /instance/connect #1 erro:", e.message.slice(0, 200));
     }
 
-    // Wait for webhook to deliver the pairing code (some Evolution API versions deliver via event)
-    console.log("[WhatsApp] Aguardando pairing code via webhook (até 15s)...");
-    for (let i = 0; i < 15; i++) {
-      await sleep(1000);
+    // Poll for up to 30s — each call returns current qrCode (pairingCode populated once WA responds)
+    console.log("[WhatsApp] Aguardando WhatsApp gerar pairing code (até 30s)...");
+    for (let i = 1; i <= 10; i++) {
+      await sleep(3000);
+
+      // Check webhook cache first
       if (this.cachedPairingCode) {
         const c = this.cachedPairingCode;
         this.cachedPairingCode = null;
         console.log("[WhatsApp] Pairing code obtido via webhook:", c);
         return c;
+      }
+
+      try {
+        const r = await evo<any>("GET", `/instance/connect/${newInstance}`);
+        console.log(`[WhatsApp] Poll pairing #${i}:`, JSON.stringify(r));
+        const c = r?.pairingCode ?? r?.data?.pairingCode;
+        if (c && typeof c === "string") {
+          console.log("[WhatsApp] Pairing code obtido via poll:", c);
+          return String(c);
+        }
+      } catch (e: any) {
+        console.log(`[WhatsApp] Poll pairing #${i} erro:`, e.message.slice(0, 150));
       }
     }
 
