@@ -61,12 +61,15 @@ class WhatsAppService {
   private status: ConnectionStatus = "disconnected";
   private lastError: string | null = null;
   private cachedQr: string | null = null;
+  private cachedPairingCode: string | null = null;
   private connectStartedAt = 0;
   // Tracks the currently active instance name (changes on each connect())
   private activeInstance: string = INSTANCE_PREFIX;
 
   getStatus(): ConnectionStatus { return this.status; }
   getLastError(): string | null { return this.lastError; }
+
+  setPairingCode(code: string): void { this.cachedPairingCode = code; }
 
   setQr(base64: string): void {
     this.cachedQr = base64.startsWith("data:") ? base64 : `data:image/png;base64,${base64}`;
@@ -426,30 +429,34 @@ class WhatsAppService {
       return String(code);
     }
 
-    // If not in create response, wait and try /instance/connect which may return it
-    console.log("[WhatsApp] Pairing code não retornado no create — tentando /instance/connect...");
-    await sleep(3000);
+    // Instance created with status "close" — need to call /instance/connect to start Baileys.
+    // When phoneNumber is set, Baileys calls requestPairingCode() and returns it via connect response.
+    console.log("[WhatsApp] Pairing code não retornado no create — chamando /instance/connect para iniciar Baileys...");
+    await sleep(2000);
 
-    // Try multiple endpoint variants (Evolution API v2 inconsistencies)
-    const endpoints = [
-      { method: "GET", path: `/instance/connect/${newInstance}` },
-      { method: "POST", path: `/instance/pairingCode/${newInstance}`, body: { phoneNumber: number, number } },
-      { method: "POST", path: `/instance/pairing-code/${newInstance}`, body: { phoneNumber: number, number } },
-    ];
+    try {
+      const connectRes = await evo<any>("GET", `/instance/connect/${newInstance}`);
+      console.log("[WhatsApp] /instance/connect resposta completa:", JSON.stringify(connectRes));
+      const c =
+        connectRes?.pairingCode ?? connectRes?.pairing_code ?? connectRes?.code ??
+        connectRes?.data?.pairingCode ?? connectRes?.data?.code ?? connectRes?.hash?.pairingCode;
+      if (c && typeof c === "string") {
+        console.log("[WhatsApp] Pairing code obtido via /instance/connect:", c);
+        return String(c);
+      }
+    } catch (e: any) {
+      console.log("[WhatsApp] /instance/connect erro:", e.message.slice(0, 200));
+    }
 
-    for (const ep of endpoints) {
-      try {
-        const res = await evo<any>(ep.method, ep.path, (ep as any).body);
-        console.log(`[WhatsApp] ${ep.method} ${ep.path} resposta:`, JSON.stringify(res).slice(0, 400));
-        const c =
-          res?.pairingCode ?? res?.pairing_code ?? res?.code ??
-          res?.data?.pairingCode ?? res?.data?.code ?? res?.hash?.pairingCode;
-        if (c && typeof c === "string") {
-          console.log(`[WhatsApp] Pairing code obtido via ${ep.path}:`, c);
-          return String(c);
-        }
-      } catch (e: any) {
-        console.log(`[WhatsApp] ${ep.method} ${ep.path} erro:`, e.message.slice(0, 150));
+    // Wait for webhook to deliver the pairing code (some Evolution API versions deliver via event)
+    console.log("[WhatsApp] Aguardando pairing code via webhook (até 15s)...");
+    for (let i = 0; i < 15; i++) {
+      await sleep(1000);
+      if (this.cachedPairingCode) {
+        const c = this.cachedPairingCode;
+        this.cachedPairingCode = null;
+        console.log("[WhatsApp] Pairing code obtido via webhook:", c);
+        return c;
       }
     }
 

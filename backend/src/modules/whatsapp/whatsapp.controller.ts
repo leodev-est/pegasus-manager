@@ -20,6 +20,14 @@ export const whatsAppController = {
       console.log("[WH] QR-like event body:", JSON.stringify(body).slice(0, 400));
     }
 
+    if (ev === "pairing.code" || ev === "pairing_code" || ev === "pairingcode") {
+      const code: string | undefined = data?.pairingCode ?? data?.pairing_code ?? data?.code;
+      if (code) {
+        whatsAppService.setPairingCode(code);
+        console.log("[WhatsApp] Pairing code recebido via webhook:", code);
+      }
+    }
+
     if (ev === "qrcode.updated" || ev === "qrcode_updated") {
       const b64: string | undefined = data?.qrcode?.base64 ?? data?.base64;
       if (b64) {
