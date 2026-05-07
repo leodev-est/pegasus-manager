@@ -222,7 +222,7 @@ export function AthleteApplicationsPage() {
   const canDelete = hasPermission(["rh", "athletes:delete"]);
   const [applications, setApplications] = useState<AthleteApplication[]>([]);
   const [search, setSearch] = useState("");
-  const [status, setStatus] = useState("em_analise");
+  const [status, setStatus] = useState("pendente");
   const [position, setPosition] = useState("todos");
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
