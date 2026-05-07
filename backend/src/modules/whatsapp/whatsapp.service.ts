@@ -181,23 +181,17 @@ class WhatsAppService {
     this.cachedQr = null;
     this.connectStartedAt = Date.now();
 
-    const webhookBody = WEBHOOK_URL ? {
-      webhook: {
-        enabled: true,
-        url: WEBHOOK_URL,
-        webhookByEvents: false,
-        webhookBase64: true,
-        events: ["QRCODE_UPDATED", "CONNECTION_UPDATE"],
-      },
+    const webhookConfig = WEBHOOK_URL ? {
+      enabled: true,
+      url: WEBHOOK_URL,
+      webhookByEvents: false,
+      webhookBase64: true,
+      events: ["QRCODE_UPDATED", "CONNECTION_UPDATE", "MESSAGES_UPSERT"],
     } : undefined;
 
     try {
-      // Delete ALL existing pegasus-* instances so there are no stale DB credentials.
-      // Evolution API reuses stored credentials when the same name is created again,
-      // causing Baileys to reconnect instead of generating a fresh QR.
       await this.deleteAllPegasusInstances();
 
-      // New unique name guarantees no existing credentials in Evolution API's DB
       const newInstance = `${INSTANCE_PREFIX}-${uniqueSuffix()}`;
       this.activeInstance = newInstance;
       console.log(`[WhatsApp] Criando instância fresca: ${newInstance}`);
@@ -206,37 +200,78 @@ class WhatsAppService {
         instanceName: newInstance,
         qrcode: true,
         integration: "WHATSAPP-BAILEYS",
-        ...(webhookBody ?? {}),
+        ...(webhookConfig ? { webhook: webhookConfig } : {}),
       };
       const createRes = await evo<any>("POST", "/instance/create", createPayload);
-      console.log("[WhatsApp] Instância criada, webhook:", WEBHOOK_URL || "não configurado");
+      console.log("[WhatsApp] Instância criada:", JSON.stringify(createRes).slice(0, 300));
       const b64create = extractQrBase64(createRes);
-      if (b64create) this.cachedQr = b64create;
+      if (b64create) {
+        this.cachedQr = b64create;
+        console.log("[WhatsApp] QR obtido direto do create");
+      }
 
-      // Belt-and-suspenders: explicitly set webhook after creation
-      if (webhookBody) {
-        await evo("POST", `/webhook/set/${newInstance}`, webhookBody).catch((e: any) =>
-          console.error("[WhatsApp] Webhook set falhou:", e.message),
+      // Set webhook explicitly — Evolution API v2 expects the flat structure (no "webhook" wrapper)
+      if (webhookConfig) {
+        await evo("POST", `/webhook/set/${newInstance}`, webhookConfig).catch((e: any) =>
+          console.log("[WhatsApp] Webhook set (ignorado):", e.message),
         );
-        console.log("[WhatsApp] Webhook confirmado:", WEBHOOK_URL);
       }
 
-      // Trigger QR generation — QR arrives via QRCODE_UPDATED webhook or polling
-      const qrRes = await evo<any>("GET", `/instance/connect/${newInstance}`).catch(() => null);
-      if (qrRes) {
-        console.log("[WhatsApp] Connect triggered:", JSON.stringify(qrRes).slice(0, 200));
-        const b64 = extractQrBase64(qrRes);
-        if (b64) this.cachedQr = b64;
+      // Trigger QR generation (Baileys needs a moment to initialize — wait 2s first)
+      await sleep(2000);
+      if (!this.cachedQr) {
+        const qrRes = await evo<any>("GET", `/instance/connect/${newInstance}`).catch(() => null);
+        if (qrRes) {
+          console.log("[WhatsApp] /instance/connect resposta:", JSON.stringify(qrRes).slice(0, 300));
+          const b64 = extractQrBase64(qrRes);
+          if (b64) {
+            this.cachedQr = b64;
+            console.log("[WhatsApp] QR obtido via /instance/connect");
+          }
+        }
       }
 
-      if (!WEBHOOK_URL) {
-        console.log("[WhatsApp] BACKEND_URL não configurado — QR via polling HTTP");
-      }
+      // Background polling: Baileys pode demorar até 15s para gerar o QR.
+      // Tenta a cada 3s por até 60s, mesmo que o webhook não chegue.
+      void this.pollForQR(newInstance);
     } catch (err: any) {
       const msg = err?.message ?? String(err);
       console.error("[WhatsApp] Falha ao conectar:", msg);
       this.lastError = msg;
       this.status = "disconnected";
+    }
+  }
+
+  /** Polls Evolution API for QR every 3s for up to 60s. Runs in background. */
+  private async pollForQR(instance: string): Promise<void> {
+    const paths = [
+      `/instance/connect/${instance}`,
+      `/instance/qrcode/${instance}?image=true`,
+      `/instance/qrcode/${instance}`,
+    ];
+    for (let attempt = 1; attempt <= 20; attempt++) {
+      await sleep(3000);
+      if (this.activeInstance !== instance || this.status !== "connecting") return;
+      if (this.cachedQr) return; // webhook already delivered it
+
+      for (const path of paths) {
+        try {
+          const res = await evo<any>("GET", path);
+          const b64 = extractQrBase64(res);
+          if (b64) {
+            this.cachedQr = b64;
+            console.log(`[WhatsApp] QR obtido via polling ${path} (tentativa ${attempt})`);
+            return;
+          }
+        } catch { /* endpoint may not exist */ }
+      }
+      if (attempt % 5 === 0) {
+        console.log(`[WhatsApp] QR poll tentativa ${attempt}/20 — sem QR ainda`);
+      }
+    }
+    console.log("[WhatsApp] QR não obtido após 60s de polling — timeout");
+    if (!this.cachedQr && this.status === "connecting") {
+      this.lastError = "QR não gerado — tente desconectar e conectar novamente.";
     }
   }
 
