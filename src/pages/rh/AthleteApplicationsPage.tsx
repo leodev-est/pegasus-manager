@@ -1,4 +1,4 @@
-import { CheckCircle2, Download, Loader2, Plus, UserPlus, XCircle } from "lucide-react";
+import { ArrowRightCircle, Download, Loader2, Plus, UserPlus, XCircle } from "lucide-react";
 import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 import { useAuth } from "../../auth/AuthContext";
 import { ActionButtons } from "../../components/ui/ActionButtons";
@@ -317,7 +317,7 @@ export function AthleteApplicationsPage() {
     setIsSaving(true);
     try {
       await athleteApplicationService.approve(approveTarget.id);
-      showToast("Inscrição aprovada e atleta criado em RH / Atletas.", "success");
+      showToast(`${approveTarget.name} enviado para Testes. Acesse RH / Testes para avaliar.`, "success");
       setApproveTarget(null);
       await loadApplications();
     } catch (error) {
@@ -464,11 +464,11 @@ export function AthleteApplicationsPage() {
                     <p><strong className="text-pegasus-navy">Campeonatos:</strong> {boolLabel(application.willingToCompete)}</p>
                     <p className="col-span-2"><strong className="text-pegasus-navy">Entrada:</strong> {formatDate(application.createdAt)}</p>
                   </div>
-                  {application.status === "em_analise" && (canCreate || canUpdate) ? (
+                  {(application.status === "pendente" || application.status === "em_analise") && (canCreate || canUpdate) ? (
                     <div className="mt-3 flex gap-2 border-t border-blue-50 pt-3">
                       {canCreate ? (
                         <Button className="flex-1" onClick={() => setApproveTarget(application)}>
-                          <CheckCircle2 size={15} />Aprovar
+                          <ArrowRightCircle size={15} />Mandar para Testes
                         </Button>
                       ) : null}
                       {canUpdate ? (
@@ -531,12 +531,12 @@ export function AthleteApplicationsPage() {
                         <Button className="h-8 px-3 text-xs" onClick={() => setDetailApplication(application)} variant="secondary">
                           Detalhes
                         </Button>
-                        {application.status === "em_analise" && canCreate ? (
+                        {(application.status === "pendente" || application.status === "em_analise") && canCreate ? (
                           <Button className="h-8 px-3 text-xs" onClick={() => setApproveTarget(application)}>
-                            <CheckCircle2 size={13} />Aprovar
+                            <ArrowRightCircle size={13} />Testes
                           </Button>
                         ) : null}
-                        {application.status === "em_analise" && canUpdate ? (
+                        {(application.status === "pendente" || application.status === "em_analise") && canUpdate ? (
                           <Button className="h-8 px-3 text-xs" onClick={() => setRejectTarget(application)} variant="danger">
                             <XCircle size={13} />Recusar
                           </Button>
@@ -623,12 +623,12 @@ export function AthleteApplicationsPage() {
       <ApplicationDetailModal application={detailApplication} onClose={() => setDetailApplication(null)} />
 
       <ConfirmDialog
-        confirmLabel={isSaving ? "Aprovando..." : "Aprovar e criar atleta"}
-        description={`Aprovar ${approveTarget?.name ?? "esta inscrição"} e criar atleta em RH?`}
+        confirmLabel={isSaving ? "Enviando..." : "Mandar para Testes"}
+        description={`Mandar ${approveTarget?.name ?? "esta pessoa"} para o período de testes? Um registro de atleta será criado com status "Em teste".`}
         isOpen={Boolean(approveTarget)}
         onClose={() => setApproveTarget(null)}
         onConfirm={confirmApprove}
-        title="Confirmar aprovação"
+        title="Mandar para Testes"
       />
       <ConfirmDialog
         confirmLabel={isSaving ? "Recusando..." : "Recusar inscrição"}
