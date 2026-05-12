@@ -1,7 +1,8 @@
 import { Prisma } from "@prisma/client";
 import { prisma } from "../../config/prisma";
 import { AppError } from "../../middlewares/error.middleware";
-import { getMonthlyPaymentStatusForAthlete } from "../athletes/monthly-exemption";
+import { notificationsService } from "../notifications/notifications.service";
+import { whatsAppService } from "../whatsapp/whatsapp.service";
 
 const allowedStatuses = ["pendente", "em_analise", "aprovado", "recusado"] as const;
 
@@ -133,7 +134,17 @@ export const athleteApplicationsService = {
 
   async create(payload: AthleteApplicationPayload) {
     const data = buildData(payload, true) as Prisma.AthleteApplicationUncheckedCreateInput;
-    return prisma.athleteApplication.create({ data });
+    const application = await prisma.athleteApplication.create({ data });
+
+    notificationsService
+      .notifyByRoles(["RH", "Diretor", "Gestao"], {
+        title: "Nova inscrição recebida",
+        message: `${application.name} se inscreveu pelo site e aguarda análise.`,
+        type: "sistema",
+      })
+      .catch(() => {});
+
+    return application;
   },
 
   async update(id: string, payload: AthleteApplicationPayload) {
@@ -165,7 +176,7 @@ export const athleteApplicationsService = {
             ? `${application.contribution}${application.notes ? `\n\n${application.notes}` : ""}`
             : application.notes,
           status: "teste",
-          monthlyPaymentStatus: getMonthlyPaymentStatusForAthlete(application.name),
+          monthlyPaymentStatus: "pendente",
         },
       });
 
@@ -176,5 +187,29 @@ export const athleteApplicationsService = {
 
       return { application: updatedApplication, athlete };
     });
+  },
+
+  async reject(id: string) {
+    const application = await this.findById(id);
+    if (application.status === "recusado") {
+      throw new AppError("Esta inscrição já foi recusada", 400);
+    }
+
+    const updated = await prisma.athleteApplication.update({
+      where: { id },
+      data: { status: "recusado" },
+    });
+
+    if (application.phone) {
+      const firstName = application.name.split(" ")[0];
+      whatsAppService
+        .sendMessage(
+          application.phone,
+          `Olá ${firstName}, agradecemos seu interesse no *Projeto Pegasus*! Infelizmente, após análise, não temos uma vaga adequada ao seu perfil neste momento. Continuamos acompanhando novos talentos e podemos entrar em contato futuramente. Obrigado! 🏐`,
+        )
+        .catch(() => {});
+    }
+
+    return updated;
   },
 };

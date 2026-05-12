@@ -7,6 +7,7 @@
   Megaphone,
   MessageCircle,
   Radio,
+  Settings,
   UserPlus,
   Users,
   UserCheck,
@@ -153,6 +154,7 @@ export const menuGroups: MenuGroup[] = [
     items: [
       { label: "Acessos", path: "/app/admin/acessos", icon: Users, permissions: ["admin"] },
       { label: "WhatsApp", path: "/app/admin/whatsapp", icon: MessageCircle, permissions: ["admin"] },
+      { label: "Configurações", path: "/app/admin/configuracoes", icon: Settings, permissions: ["admin"] },
     ],
   },
 ];

@@ -87,6 +87,15 @@ export const athleteApplicationsController = {
     }
   }) satisfies RequestHandler,
 
+  reject: (async (request, response, next) => {
+    try {
+      const result = await athleteApplicationsService.reject(getParamId(request.params.id));
+      response.json(result);
+    } catch (error) {
+      next(error);
+    }
+  }) satisfies RequestHandler,
+
   delete: (async (request, response, next) => {
     try {
       await athleteApplicationsService.delete(getParamId(request.params.id));

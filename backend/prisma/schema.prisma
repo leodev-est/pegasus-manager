@@ -157,10 +157,14 @@ model Task {
 }
 
 model TrainingSetting {
-  id           String   @id @default("singleton")
-  blockedDates String[]
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  id                 String   @id @default("singleton")
+  blockedDates       String[]
+  trainingTime       String   @default("17:30 às 19:00")
+  trainingLocation   String   @default("Jerusalém")
+  trainingDependency String   @default("Quadra - CREC")
+  monthlyFeeAmount   Decimal  @default(0) @db.Decimal(10, 2)
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
 }
 
 model Training {

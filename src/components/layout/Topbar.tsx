@@ -65,20 +65,22 @@ function getInitials(name?: string) {
     .toUpperCase();
 }
 
-function formatNotificationDate(value: string) {
-  return new Intl.DateTimeFormat("pt-BR", {
-    day: "2-digit",
-    hour: "2-digit",
-    minute: "2-digit",
-    month: "2-digit",
-  }).format(new Date(value));
+function formatRelativeTime(value: string): string {
+  const diffMs = Date.now() - new Date(value).getTime();
+  const diffMinutes = Math.floor(diffMs / 60_000);
+  if (diffMinutes < 1) return "agora";
+  if (diffMinutes < 60) return `há ${diffMinutes} minuto${diffMinutes === 1 ? "" : "s"}`;
+  const diffHours = Math.floor(diffMinutes / 60);
+  if (diffHours < 24) return `há ${diffHours} hora${diffHours === 1 ? "" : "s"}`;
+  const diffDays = Math.floor(diffHours / 24);
+  return `há ${diffDays} dia${diffDays === 1 ? "" : "s"}`;
 }
 
 function typeLabel(type: Notification["type"]) {
   const labels: Record<Notification["type"], string> = {
-    avaliacao: "Avaliacao",
+    avaliacao: "Avaliação",
     financeiro: "Financeiro",
-    frequencia: "Frequencia",
+    frequencia: "Frequência",
     sistema: "Sistema",
     treino: "Treino",
   };
@@ -220,7 +222,7 @@ export function Topbar({ onMenuClick }: TopbarProps) {
           />
           <div className="min-w-0">
             <p className="text-sm font-semibold text-pegasus-medium">Sistema administrativo</p>
-            <p className="hidden text-xs text-slate-500 sm:block">Gestao integrada do Projeto Pegasus</p>
+            <p className="hidden text-xs text-slate-500 sm:block">Gestão integrada do Projeto Pegasus</p>
           </div>
         </div>
 
@@ -272,7 +274,7 @@ export function Topbar({ onMenuClick }: TopbarProps) {
 
           <div className="relative" ref={dropdownRef}>
             <button
-              aria-label="Notificacoes"
+              aria-label="Notificações"
               className="focus-ring relative grid h-10 w-10 place-items-center rounded-full border border-blue-100 bg-white text-pegasus-primary shadow-sm"
               onClick={() => {
                 setIsNotificationsOpen((current) => !current);
@@ -292,8 +294,8 @@ export function Topbar({ onMenuClick }: TopbarProps) {
               <section className="absolute right-0 top-12 z-50 w-[min(22rem,calc(100vw-2rem))] overflow-hidden rounded-2xl border border-blue-100 bg-white shadow-2xl">
                 <header className="flex items-center justify-between gap-3 border-b border-blue-100 p-4">
                   <div>
-                    <p className="font-black text-pegasus-navy">Notificacoes</p>
-                    <p className="text-xs text-slate-500">{unreadCount} nao lida(s)</p>
+                    <p className="font-black text-pegasus-navy">Notificações</p>
+                    <p className="text-xs text-slate-500">{unreadCount} não lida(s)</p>
                   </div>
                   <button
                     className="text-xs font-bold text-pegasus-primary disabled:opacity-50"
@@ -301,13 +303,13 @@ export function Topbar({ onMenuClick }: TopbarProps) {
                     onClick={handleMarkAllAsRead}
                     type="button"
                   >
-                    Marcar todas
+                    Marcar todas como lidas
                   </button>
                 </header>
 
                 <div className="max-h-[24rem] overflow-y-auto">
                   {isLoadingNotifications ? (
-                    <div className="p-4 text-sm font-bold text-pegasus-primary">Carregando notificacoes</div>
+                    <div className="p-4 text-sm font-bold text-pegasus-primary">Carregando notificações</div>
                   ) : notifications.length > 0 ? (
                     notifications.slice(0, 10).map((notification) => (
                       <button
@@ -329,12 +331,12 @@ export function Topbar({ onMenuClick }: TopbarProps) {
                         </div>
                         <div className="mt-3 flex items-center justify-between gap-3 text-xs font-bold text-slate-500">
                           <span>{typeLabel(notification.type)}</span>
-                          <span>{formatNotificationDate(notification.createdAt)}</span>
+                          <span>{formatRelativeTime(notification.createdAt)}</span>
                         </div>
                       </button>
                     ))
                   ) : (
-                    <div className="p-6 text-center text-sm text-slate-500">Nenhuma notificacao</div>
+                    <div className="p-6 text-center text-sm text-slate-500">Nenhuma notificação</div>
                   )}
                 </div>
               </section>

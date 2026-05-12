@@ -1,4 +1,4 @@
-﻿import { Banknote, Clipboard, FileText, Loader2, Plus, WalletCards } from "lucide-react";
+﻿import { Banknote, Clipboard, FileDown, FileText, Loader2, Plus, WalletCards } from "lucide-react";
 import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 import { useAuth } from "../../auth/AuthContext";
 import { ActionButtons } from "../../components/ui/ActionButtons";
@@ -15,6 +15,7 @@ import { Table } from "../../components/ui/Table";
 import { Textarea } from "../../components/ui/Textarea";
 import { useToast } from "../../components/ui/Toast";
 import { getApiErrorMessage } from "../../services/api";
+import { exportToCSV } from "../../utils/exportUtils";
 import { athleteService, type Athlete } from "../../services/athleteService";
 import {
   financeService,
@@ -515,12 +516,36 @@ export function FinancePage() {
 
       {activeTab === "mensalidades" || activeTab === "caixa" ? (
       <section className="panel overflow-hidden">
-        <div className="flex items-center gap-3 border-b border-blue-100 p-6">
-          <FileText className="text-pegasus-primary" size={22} />
-          <div>
-            <h2 className="text-xl font-bold text-pegasus-navy">{visiblePaymentTitle}</h2>
-            <p className="text-sm text-slate-500">{visiblePaymentDescription}</p>
+        <div className="flex items-center justify-between gap-3 border-b border-blue-100 p-6">
+          <div className="flex items-center gap-3">
+            <FileText className="text-pegasus-primary" size={22} />
+            <div>
+              <h2 className="text-xl font-bold text-pegasus-navy">{visiblePaymentTitle}</h2>
+              <p className="text-sm text-slate-500">{visiblePaymentDescription}</p>
+            </div>
           </div>
+          <Button
+            onClick={() =>
+              exportToCSV(
+                activeTab === "mensalidades" ? "mensalidades" : "lancamentos",
+                ["Atleta", "Descrição", "Valor", "Tipo", "Categoria", "Status", "Vencimento", "Data Pagamento"],
+                visiblePayments.map((p) => [
+                  p.athleteName ?? "-",
+                  p.description,
+                  p.amount,
+                  p.type,
+                  p.category ?? "-",
+                  p.status,
+                  p.dueDate ? p.dueDate.slice(0, 10) : "-",
+                  p.paidAt ? p.paidAt.slice(0, 10) : "-",
+                ]),
+              )
+            }
+            variant="secondary"
+          >
+            <FileDown size={17} />
+            Exportar CSV
+          </Button>
         </div>
         {isLoading ? (
           <div className="flex items-center gap-3 p-6 text-sm font-bold text-pegasus-primary">
@@ -615,18 +640,40 @@ export function FinancePage() {
               <p className="text-sm text-slate-500">{movements.length} movimentação(ões) registrada(s).</p>
             </div>
           </div>
-          {canCreate ? (
-            <div className="flex w-full flex-col gap-3 sm:w-auto sm:flex-row sm:flex-wrap">
-              <Button onClick={() => openMovementCreate("entrada")} variant="secondary">
-                <Plus size={17} />
-                Entrada
-              </Button>
-              <Button onClick={() => openMovementCreate("saida")} variant="secondary">
-                <Plus size={17} />
-                Saída
-              </Button>
-            </div>
-          ) : null}
+          <div className="flex w-full flex-col gap-3 sm:w-auto sm:flex-row sm:flex-wrap">
+            <Button
+              onClick={() =>
+                exportToCSV(
+                  "movimentacoes-caixa",
+                  ["Descrição", "Valor", "Tipo", "Categoria", "Data", "Responsável"],
+                  movements.map((m) => [
+                    m.description,
+                    m.amount,
+                    m.type,
+                    m.category ?? "-",
+                    m.date ? m.date.slice(0, 10) : "-",
+                    m.responsible ?? "-",
+                  ]),
+                )
+              }
+              variant="secondary"
+            >
+              <FileDown size={17} />
+              Exportar CSV
+            </Button>
+            {canCreate ? (
+              <>
+                <Button onClick={() => openMovementCreate("entrada")} variant="secondary">
+                  <Plus size={17} />
+                  Entrada
+                </Button>
+                <Button onClick={() => openMovementCreate("saida")} variant="secondary">
+                  <Plus size={17} />
+                  Saída
+                </Button>
+              </>
+            ) : null}
+          </div>
         </div>
         {movements.length > 0 ? (
           <>

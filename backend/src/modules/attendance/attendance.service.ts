@@ -235,7 +235,7 @@ export const attendanceService = {
 
     if (user?.athlete) {
       await notificationsService.createOnceTodayForUser(user.id, {
-        message: "Hoje tem treino às 17:30.",
+        message: `Hoje tem treino às ${OFFICIAL_TRAINING_TIME}.`,
         title: "Treino hoje",
         type: "treino",
       });

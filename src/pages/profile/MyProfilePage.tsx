@@ -18,6 +18,7 @@ import { PageHeader } from "../../components/ui/PageHeader";
 import { StatusBadge, type StatusTone } from "../../components/ui/StatusBadge";
 import { Textarea } from "../../components/ui/Textarea";
 import { useToast } from "../../components/ui/Toast";
+import { OFFICIAL_TRAINING } from "../../data/trainingConfig";
 import { getApiErrorMessage } from "../../services/api";
 import { evaluationService, type CoachEvaluationPayload, type SelfEvaluationPayload } from "../../services/evaluationService";
 import { profileService, type MyProfile } from "../../services/profileService";
@@ -314,7 +315,7 @@ export function MyProfilePage() {
               profile.upcomingTrainings.map((training) => (
                 <div className="rounded-2xl border border-blue-100 bg-white p-4" key={training.id}>
                   <p className="font-black text-pegasus-navy">{training.title}</p>
-                  <p className="mt-1 text-sm text-slate-500">{formatDate(training.date)} · Jerusalém · 17:30 as 19:00</p>
+                  <p className="mt-1 text-sm text-slate-500">{formatDate(training.date)} · {OFFICIAL_TRAINING.location} · {OFFICIAL_TRAINING.time}</p>
                   <p className="mt-2 text-sm text-slate-600">{training.objective ?? "Treino oficial Pegasus."}</p>
                 </div>
               ))

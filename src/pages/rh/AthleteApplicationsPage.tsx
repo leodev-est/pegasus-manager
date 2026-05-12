@@ -15,6 +15,7 @@ import { Table } from "../../components/ui/Table";
 import { Textarea } from "../../components/ui/Textarea";
 import { useToast } from "../../components/ui/Toast";
 import { getApiErrorMessage } from "../../services/api";
+import { OFFICIAL_TRAINING } from "../../data/trainingConfig";
 import {
   athleteApplicationService,
   type AthleteApplication,
@@ -184,7 +185,7 @@ function ApplicationDetailModal({
         <DetailField label="Posição" value={application.position} />
         <DetailField label="Nível" value={application.level} />
         <DetailField label="Tempo de Experiência" value={application.experienceTime} />
-        <DetailField label="Disponível aos Sábados (17:30-19h)" value={boolLabel(application.availableSaturdays)} />
+        <DetailField label={`Disponível aos Sábados (${OFFICIAL_TRAINING.time})`} value={boolLabel(application.availableSaturdays)} />
         <DetailField label="Joga em Time Atualmente" value={boolLabel(application.currentTeam)} />
         <DetailField label="Time Atual" value={application.currentTeamName} />
         <DetailField label="Disposto a Campeonatos" value={boolLabel(application.willingToCompete)} />
@@ -331,8 +332,13 @@ export function AthleteApplicationsPage() {
     if (!rejectTarget) return;
     setIsSaving(true);
     try {
-      await athleteApplicationService.update(rejectTarget.id, { status: "recusado" });
-      showToast("Inscrição recusada.", "success");
+      await athleteApplicationService.reject(rejectTarget.id);
+      showToast(
+        rejectTarget.phone
+          ? "Inscrição recusada. Mensagem enviada via WhatsApp."
+          : "Inscrição recusada.",
+        "success",
+      );
       setRejectTarget(null);
       await loadApplications();
     } catch (error) {

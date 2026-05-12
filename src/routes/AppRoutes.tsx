@@ -1,205 +1,218 @@
-﻿import { Navigate, Route, Routes } from "react-router-dom";
+import { Suspense, lazy } from "react";
+import { Navigate, Route, Routes } from "react-router-dom";
 import { ProtectedRoute } from "../components/auth/ProtectedRoute";
 import { AppLayout } from "../components/layout/AppLayout";
-import { AccessControlPage } from "../pages/admin/AccessControlPage";
-import { WhatsAppPage } from "../pages/admin/WhatsAppPage";
-import { AttendanceAdminPage } from "../pages/attendance/AttendanceAdminPage";
-import { ChamadaPage } from "../pages/attendance/ChamadaPage";
-import { MyFrequencyPage } from "../pages/attendance/MyFrequencyPage";
-import { LoginPage } from "../pages/auth/LoginPage";
-import { FirstAccessPage } from "../pages/auth/FirstAccessPage";
-import { DashboardPage } from "../pages/dashboard/DashboardPage";
-import { AthleteEvaluationsPage } from "../pages/evaluations/AthleteEvaluationsPage";
-import { FinancePage } from "../pages/finance/FinancePage";
-import { ManagementKanbanPage } from "../pages/management/ManagementKanbanPage";
-import { MarketingPage } from "../pages/marketing/MarketingPage";
-import { SchoolsPage } from "../pages/operational/SchoolsPage";
-import { SpreadsheetsPage } from "../pages/operational/SpreadsheetsPage";
-import { MyProfilePage } from "../pages/profile/MyProfilePage";
-import { InscricaoEnviadaPage } from "../pages/public/InscricaoEnviadaPage";
-import { InscricaoPage } from "../pages/public/InscricaoPage";
-import { LandingPage } from "../pages/public/LandingPage";
-import { NotFoundPage } from "../pages/public/NotFoundPage";
-import { AthleteApplicationsPage } from "../pages/rh/AthleteApplicationsPage";
-import { AthletesPage } from "../pages/rh/AthletesPage";
-import { ComunicadosPage } from "../pages/rh/ComunicadosPage";
-import { TestesPage } from "../pages/rh/TestesPage";
-import { TacticalCourtPage } from "../pages/tactical/TacticalCourtPage";
-import { TrainingCalendarPage } from "../pages/trainings/TrainingCalendarPage";
-import { TrainingsPage } from "../pages/trainings/TrainingsPage";
+
+const AccessControlPage = lazy(() => import("../pages/admin/AccessControlPage").then((m) => ({ default: m.AccessControlPage })));
+const ConfiguracoesPage = lazy(() => import("../pages/admin/ConfiguracoesPage").then((m) => ({ default: m.ConfiguracoesPage })));
+const WhatsAppPage = lazy(() => import("../pages/admin/WhatsAppPage").then((m) => ({ default: m.WhatsAppPage })));
+const AttendanceAdminPage = lazy(() => import("../pages/attendance/AttendanceAdminPage").then((m) => ({ default: m.AttendanceAdminPage })));
+const ChamadaPage = lazy(() => import("../pages/attendance/ChamadaPage").then((m) => ({ default: m.ChamadaPage })));
+const MyFrequencyPage = lazy(() => import("../pages/attendance/MyFrequencyPage").then((m) => ({ default: m.MyFrequencyPage })));
+const LoginPage = lazy(() => import("../pages/auth/LoginPage").then((m) => ({ default: m.LoginPage })));
+const FirstAccessPage = lazy(() => import("../pages/auth/FirstAccessPage").then((m) => ({ default: m.FirstAccessPage })));
+const DashboardPage = lazy(() => import("../pages/dashboard/DashboardPage").then((m) => ({ default: m.DashboardPage })));
+const AthleteEvaluationsPage = lazy(() => import("../pages/evaluations/AthleteEvaluationsPage").then((m) => ({ default: m.AthleteEvaluationsPage })));
+const FinancePage = lazy(() => import("../pages/finance/FinancePage").then((m) => ({ default: m.FinancePage })));
+const ManagementKanbanPage = lazy(() => import("../pages/management/ManagementKanbanPage").then((m) => ({ default: m.ManagementKanbanPage })));
+const MarketingPage = lazy(() => import("../pages/marketing/MarketingPage").then((m) => ({ default: m.MarketingPage })));
+const SchoolsPage = lazy(() => import("../pages/operational/SchoolsPage").then((m) => ({ default: m.SchoolsPage })));
+const SpreadsheetsPage = lazy(() => import("../pages/operational/SpreadsheetsPage").then((m) => ({ default: m.SpreadsheetsPage })));
+const MyProfilePage = lazy(() => import("../pages/profile/MyProfilePage").then((m) => ({ default: m.MyProfilePage })));
+const InscricaoEnviadaPage = lazy(() => import("../pages/public/InscricaoEnviadaPage").then((m) => ({ default: m.InscricaoEnviadaPage })));
+const InscricaoPage = lazy(() => import("../pages/public/InscricaoPage").then((m) => ({ default: m.InscricaoPage })));
+const LandingPage = lazy(() => import("../pages/public/LandingPage").then((m) => ({ default: m.LandingPage })));
+const NotFoundPage = lazy(() => import("../pages/public/NotFoundPage").then((m) => ({ default: m.NotFoundPage })));
+const AthleteApplicationsPage = lazy(() => import("../pages/rh/AthleteApplicationsPage").then((m) => ({ default: m.AthleteApplicationsPage })));
+const AthletesPage = lazy(() => import("../pages/rh/AthletesPage").then((m) => ({ default: m.AthletesPage })));
+const ComunicadosPage = lazy(() => import("../pages/rh/ComunicadosPage").then((m) => ({ default: m.ComunicadosPage })));
+const TestesPage = lazy(() => import("../pages/rh/TestesPage").then((m) => ({ default: m.TestesPage })));
+const TacticalCourtPage = lazy(() => import("../pages/tactical/TacticalCourtPage").then((m) => ({ default: m.TacticalCourtPage })));
+const TrainingCalendarPage = lazy(() => import("../pages/trainings/TrainingCalendarPage").then((m) => ({ default: m.TrainingCalendarPage })));
+const TrainingsPage = lazy(() => import("../pages/trainings/TrainingsPage").then((m) => ({ default: m.TrainingsPage })));
 
 export function AppRoutes() {
   return (
-    <Routes>
-      <Route path="/" element={<LandingPage />} />
-      <Route path="/inscricao" element={<InscricaoPage />} />
-      <Route path="/inscricao/enviada" element={<InscricaoEnviadaPage />} />
-      <Route path="/login" element={<LoginPage />} />
-      <Route path="/primeiro-acesso" element={<FirstAccessPage />} />
-      <Route
-        path="/app"
-        element={
-          <ProtectedRoute>
-            <AppLayout />
-          </ProtectedRoute>
-        }
-      >
-        <Route index element={<DashboardPage />} />
+    <Suspense fallback={null}>
+      <Routes>
+        <Route path="/" element={<LandingPage />} />
+        <Route path="/inscricao" element={<InscricaoPage />} />
+        <Route path="/inscricao/enviada" element={<InscricaoEnviadaPage />} />
+        <Route path="/login" element={<LoginPage />} />
+        <Route path="/primeiro-acesso" element={<FirstAccessPage />} />
         <Route
-          path="rh/testes"
+          path="/app"
           element={
-            <ProtectedRoute permissions={["rh"]}>
-              <TestesPage />
+            <ProtectedRoute>
+              <AppLayout />
             </ProtectedRoute>
           }
-        />
-        <Route
-          path="rh/inscricoes"
-          element={
-            <ProtectedRoute permissions={["rh"]}>
-              <AthleteApplicationsPage />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="rh/atletas"
-          element={
-            <ProtectedRoute permissions={["rh"]}>
-              <AthletesPage />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="rh/comunicados"
-          element={
-            <ProtectedRoute permissions={["rh"]}>
-              <ComunicadosPage />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="financeiro"
-          element={
-            <ProtectedRoute permissions={["financeiro"]}>
-              <FinancePage />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="gestao"
-          element={
-            <ProtectedRoute permissions={["gestao"]}>
-              <ManagementKanbanPage />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="marketing"
-          element={
-            <ProtectedRoute permissions={["marketing"]}>
-              <MarketingPage />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="treinos/calendario"
-          element={
-            <ProtectedRoute permissions={["treinos"]}>
-              <TrainingCalendarPage />
-            </ProtectedRoute>
-          }
-        />
-        <Route path="treinos/calendario-antigo" element={<Navigate to="/app/treinos/calendario" replace />} />
-        <Route
-          path="treinos"
-          element={
-            <ProtectedRoute permissions={["treinos"]}>
-              <TrainingsPage />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="quadra-tatica"
-          element={
-            <ProtectedRoute permissions={["treinos"]}>
-              <TacticalCourtPage />
-            </ProtectedRoute>
-          }
-        />
-<Route
-          path="meu-perfil"
-          element={
-            <ProtectedRoute permissions={["atleta", "trainings:update"]}>
-              <MyProfilePage />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="atleta/frequencia"
-          element={
-            <ProtectedRoute permissions={["atleta"]}>
-              <MyFrequencyPage />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="chamada"
-          element={
-            <ProtectedRoute permissions={["chamada"]}>
-              <ChamadaPage />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="frequencia"
-          element={
-            <ProtectedRoute permissions={["trainings:update"]}>
-              <AttendanceAdminPage />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="avaliacoes"
-          element={
-            <ProtectedRoute permissions={["trainings:update"]}>
-              <AthleteEvaluationsPage />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="operacional/escolas"
-          element={
-            <ProtectedRoute permissions={["operacional"]}>
-              <SchoolsPage />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="operacional/planilhas"
-          element={
-            <ProtectedRoute permissions={["operacional"]}>
-              <SpreadsheetsPage />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="admin/acessos"
-          element={
-            <ProtectedRoute permissions={["admin"]}>
-              <AccessControlPage />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="admin/whatsapp"
-          element={
-            <ProtectedRoute permissions={["admin"]}>
-              <WhatsAppPage />
-            </ProtectedRoute>
-          }
-        />
-      </Route>
-      <Route path="*" element={<NotFoundPage />} />
-    </Routes>
+        >
+          <Route index element={<DashboardPage />} />
+          <Route
+            path="rh/testes"
+            element={
+              <ProtectedRoute permissions={["rh"]}>
+                <TestesPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="rh/inscricoes"
+            element={
+              <ProtectedRoute permissions={["rh"]}>
+                <AthleteApplicationsPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="rh/atletas"
+            element={
+              <ProtectedRoute permissions={["rh"]}>
+                <AthletesPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="rh/comunicados"
+            element={
+              <ProtectedRoute permissions={["rh"]}>
+                <ComunicadosPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="financeiro"
+            element={
+              <ProtectedRoute permissions={["financeiro"]}>
+                <FinancePage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="gestao"
+            element={
+              <ProtectedRoute permissions={["gestao"]}>
+                <ManagementKanbanPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="marketing"
+            element={
+              <ProtectedRoute permissions={["marketing"]}>
+                <MarketingPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="treinos/calendario"
+            element={
+              <ProtectedRoute permissions={["treinos"]}>
+                <TrainingCalendarPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route path="treinos/calendario-antigo" element={<Navigate to="/app/treinos/calendario" replace />} />
+          <Route
+            path="treinos"
+            element={
+              <ProtectedRoute permissions={["treinos"]}>
+                <TrainingsPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="quadra-tatica"
+            element={
+              <ProtectedRoute permissions={["treinos"]}>
+                <TacticalCourtPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="meu-perfil"
+            element={
+              <ProtectedRoute permissions={["atleta", "trainings:update"]}>
+                <MyProfilePage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="atleta/frequencia"
+            element={
+              <ProtectedRoute permissions={["atleta"]}>
+                <MyFrequencyPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="chamada"
+            element={
+              <ProtectedRoute permissions={["chamada"]}>
+                <ChamadaPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="frequencia"
+            element={
+              <ProtectedRoute permissions={["trainings:update"]}>
+                <AttendanceAdminPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="avaliacoes"
+            element={
+              <ProtectedRoute permissions={["trainings:update"]}>
+                <AthleteEvaluationsPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="operacional/escolas"
+            element={
+              <ProtectedRoute permissions={["operacional"]}>
+                <SchoolsPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="operacional/planilhas"
+            element={
+              <ProtectedRoute permissions={["operacional"]}>
+                <SpreadsheetsPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="admin/acessos"
+            element={
+              <ProtectedRoute permissions={["admin"]}>
+                <AccessControlPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="admin/whatsapp"
+            element={
+              <ProtectedRoute permissions={["admin"]}>
+                <WhatsAppPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="admin/configuracoes"
+            element={
+              <ProtectedRoute permissions={["admin"]}>
+                <ConfiguracoesPage />
+              </ProtectedRoute>
+            }
+          />
+        </Route>
+        <Route path="*" element={<NotFoundPage />} />
+      </Routes>
+    </Suspense>
   );
 }

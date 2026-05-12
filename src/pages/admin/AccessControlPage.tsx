@@ -5,7 +5,6 @@ import { PageHeader } from "../../components/ui/PageHeader";
 import { StatusBadge } from "../../components/ui/StatusBadge";
 import { Table } from "../../components/ui/Table";
 import { useToast } from "../../components/ui/Toast";
-import { permissionRules } from "../../data/mockData";
 import { getApiErrorMessage } from "../../services/api";
 import { roleService, type RoleRecord } from "../../services/roleService";
 import { userService } from "../../services/userService";
@@ -224,21 +223,44 @@ export function AccessControlPage() {
             <ShieldCheck className="text-pegasus-primary" size={22} />
             <div>
               <h2 className="text-xl font-bold text-pegasus-navy">Perfis e permissões</h2>
-              <p className="text-sm text-slate-500">Regras iniciais de acesso por área.</p>
+              <p className="text-sm text-slate-500">Perfis cadastrados no sistema com suas permissões.</p>
             </div>
           </div>
 
-          <div className="mt-6 space-y-3">
-            {permissionRules.map((rule) => (
-              <div
-                key={rule.profile}
-                className="flex flex-col gap-2 rounded-2xl bg-pegasus-surface p-4 sm:flex-row sm:items-center sm:justify-between sm:gap-4"
-              >
-                <strong className="text-pegasus-navy">{rule.profile}</strong>
-                <span className="text-sm text-slate-600 sm:text-right">{rule.description}</span>
-              </div>
-            ))}
-          </div>
+          {isLoading ? (
+            <p className="mt-6 text-sm font-semibold text-slate-500">Carregando perfis...</p>
+          ) : (
+            <div className="mt-6 space-y-3">
+              {roles.map((role) => (
+                <div key={role.id} className="rounded-2xl bg-pegasus-surface p-4">
+                  <div className="flex items-center justify-between gap-2">
+                    <strong className="text-pegasus-navy">{role.name}</strong>
+                    {role.permissions.length > 0 && (
+                      <span className="text-xs text-slate-400">{role.permissions.length} permissão(ões)</span>
+                    )}
+                  </div>
+                  {role.description && (
+                    <p className="mt-1 text-sm text-slate-600">{role.description}</p>
+                  )}
+                  {role.permissions.length > 0 && (
+                    <div className="mt-2 flex flex-wrap gap-1">
+                      {role.permissions.map((p) => (
+                        <span
+                          key={p.key}
+                          className="rounded-full bg-white px-2 py-0.5 text-xs font-medium text-slate-600 ring-1 ring-blue-100"
+                        >
+                          {p.name || p.key}
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              ))}
+              {roles.length === 0 && (
+                <p className="text-sm text-slate-500">Nenhum perfil cadastrado.</p>
+              )}
+            </div>
+          )}
         </article>
       </section>
     </div>

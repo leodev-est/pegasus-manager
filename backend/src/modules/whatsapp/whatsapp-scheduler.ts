@@ -1,5 +1,6 @@
 import cron from "node-cron";
 import { prisma } from "../../config/prisma";
+import { OFFICIAL_TRAINING_PLACE, OFFICIAL_TRAINING_TIME } from "../../utils/trainingDates";
 import { whatsAppService } from "./whatsapp.service";
 
 function fmtDate(date: Date): string {
@@ -36,7 +37,7 @@ async function sendTrainingReminders(): Promise<void> {
     if (!a.phone) continue;
     await whatsAppService.sendMessage(
       a.phone,
-      `🏐 Olá ${first(a.name)}! Lembrete: treino *amanhã*, ${dateLabel}, das 17:30 às 19:00 em Jerusalém. Não falte!`,
+      `🏐 Olá ${first(a.name)}! Lembrete: treino *amanhã*, ${dateLabel}, das ${OFFICIAL_TRAINING_TIME} em ${OFFICIAL_TRAINING_PLACE}. Não falte!`,
     );
     await sleep(800);
   }

@@ -16,16 +16,8 @@ import { PageHeader } from "../../components/ui/PageHeader";
 import { useToast } from "../../components/ui/Toast";
 import { getApiErrorMessage } from "../../services/api";
 import { calendarService } from "../../services/calendarService";
-
-const OFFICIAL_TRAINING = {
-  time: "17:30 às 19:00",
-  location: "Jerusalém",
-  dependency: "Quadra - CREC",
-  modality: "Voleibol",
-};
-
-// Datas bloqueadas manualmente (base fixa, complementadas pelas do banco)
-const STATIC_MANUAL_BLOCKED = new Set(["2026-05-30", "2026-06-20", "2026-09-26"]);
+import { settingsService, type TrainingConfig } from "../../services/settingsService";
+import { MANUAL_BLOCKED_DATES, OFFICIAL_TRAINING } from "../../data/trainingConfig";
 
 function addUTCDays(date: Date, days: number): Date {
   return new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate() + days));
@@ -76,7 +68,7 @@ function getAutoBlockedSaturdays(year: number): Set<string> {
 }
 
 function buildStaticBlockedDates(): Set<string> {
-  const all = new Set(STATIC_MANUAL_BLOCKED);
+  const all = new Set<string>(MANUAL_BLOCKED_DATES);
   for (let year = 2024; year <= 2032; year++) {
     getAutoBlockedSaturdays(year).forEach((d) => all.add(d));
   }
@@ -86,12 +78,6 @@ function buildStaticBlockedDates(): Set<string> {
 const STATIC_BLOCKED_DATES = buildStaticBlockedDates();
 
 const WEEK_DAYS = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
-const INFO_CARDS: Array<{ label: string; value: string; icon: LucideIcon }> = [
-  { label: "Horário", value: OFFICIAL_TRAINING.time, icon: Clock },
-  { label: "Local", value: OFFICIAL_TRAINING.location, icon: MapPin },
-  { label: "Dependência", value: OFFICIAL_TRAINING.dependency, icon: CalendarDays },
-  { label: "Modalidade", value: OFFICIAL_TRAINING.modality, icon: CalendarDays },
-];
 
 function toDateKey(date: Date) {
   return date.toISOString().slice(0, 10);
@@ -147,6 +133,19 @@ export function TrainingCalendarPage() {
   const [dynamicBlockedDates, setDynamicBlockedDates] = useState<Set<string>>(new Set());
   const [isLoadingDates, setIsLoadingDates] = useState(false);
   const [isTogglingDate, setIsTogglingDate] = useState(false);
+  const [trainingConfig, setTrainingConfig] = useState<TrainingConfig>({
+    trainingTime: OFFICIAL_TRAINING.time,
+    trainingLocation: OFFICIAL_TRAINING.location,
+    trainingDependency: OFFICIAL_TRAINING.dependency,
+    monthlyFeeAmount: 0,
+  });
+
+  const infoCards: Array<{ label: string; value: string; icon: LucideIcon }> = [
+    { label: "Horário", value: trainingConfig.trainingTime, icon: Clock },
+    { label: "Local", value: trainingConfig.trainingLocation, icon: MapPin },
+    { label: "Dependência", value: trainingConfig.trainingDependency, icon: CalendarDays },
+    { label: "Modalidade", value: OFFICIAL_TRAINING.modality, icon: CalendarDays },
+  ];
 
   const allBlockedDates = useMemo(
     () => new Set([...STATIC_BLOCKED_DATES, ...dynamicBlockedDates]),
@@ -185,6 +184,7 @@ export function TrainingCalendarPage() {
 
   useEffect(() => {
     loadDynamicDates();
+    settingsService.getTrainingConfig().then(setTrainingConfig).catch(() => {});
   }, [loadDynamicDates]);
 
   const days = useMemo(() => getMonthDays(month), [month]);
@@ -228,7 +228,7 @@ export function TrainingCalendarPage() {
       />
 
       <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-        {INFO_CARDS.map(({ label, value, icon: Icon }) => (
+        {infoCards.map(({ label, value, icon: Icon }) => (
           <article className="panel p-5" key={label}>
             <div className="flex items-center gap-3">
               <span className="rounded-2xl bg-pegasus-ice p-3 text-pegasus-primary">
@@ -360,9 +360,9 @@ export function TrainingCalendarPage() {
         {selectedDate ? (
           <div className="space-y-4 text-sm leading-6 text-slate-600">
             <p><strong className="text-pegasus-navy">Data:</strong> {formatDate(selectedDate)}</p>
-            <p><strong className="text-pegasus-navy">Horário:</strong> {OFFICIAL_TRAINING.time}</p>
-            <p><strong className="text-pegasus-navy">Local:</strong> {OFFICIAL_TRAINING.location}</p>
-            <p><strong className="text-pegasus-navy">Dependência:</strong> {OFFICIAL_TRAINING.dependency}</p>
+            <p><strong className="text-pegasus-navy">Horário:</strong> {trainingConfig.trainingTime}</p>
+            <p><strong className="text-pegasus-navy">Local:</strong> {trainingConfig.trainingLocation}</p>
+            <p><strong className="text-pegasus-navy">Dependência:</strong> {trainingConfig.trainingDependency}</p>
             <p><strong className="text-pegasus-navy">Modalidade:</strong> {OFFICIAL_TRAINING.modality}</p>
             <p><strong className="text-pegasus-navy">Observações:</strong> Treino oficial Pegasus aos sábados. Verifique comunicados internos em caso de feriados ou ajustes operacionais.</p>
           </div>

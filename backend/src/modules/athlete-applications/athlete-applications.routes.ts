@@ -17,4 +17,5 @@ athleteApplicationsRoutes.post("/", permissionMiddleware("athletes:create"), ath
 athleteApplicationsRoutes.post("/import/google-sheets", permissionMiddleware("athletes:create"), athleteApplicationsController.importFromGoogleSheets);
 athleteApplicationsRoutes.patch("/:id", permissionMiddleware("athletes:update"), athleteApplicationsController.update);
 athleteApplicationsRoutes.post("/:id/approve", permissionMiddleware("athletes:create"), athleteApplicationsController.approve);
+athleteApplicationsRoutes.post("/:id/reject", permissionMiddleware("athletes:update"), athleteApplicationsController.reject);
 athleteApplicationsRoutes.delete("/:id", permissionMiddleware("athletes:delete"), athleteApplicationsController.delete);

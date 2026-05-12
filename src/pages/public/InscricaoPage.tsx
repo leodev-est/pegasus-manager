@@ -1,4 +1,5 @@
 import { ArrowLeft, ArrowRight, CheckCircle2, Loader2, LogIn, Trophy } from "lucide-react";
+import { OFFICIAL_TRAINING } from "../../data/trainingConfig";
 import { FormEvent, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import logoFull from "../../assets/logo/logo-full.png";
@@ -357,7 +358,7 @@ export function InscricaoPage() {
             <div className="mt-6 space-y-6">
               <RadioGroup
                 disabled={isSubmitting}
-                label="Disponível aos sábados das 17:30 às 19:00?"
+                label={`Disponível aos sábados das ${OFFICIAL_TRAINING.time}?`}
                 onChange={(v) => set("availableSaturdays", v)}
                 options={[
                   { label: "Sim", value: "sim" },

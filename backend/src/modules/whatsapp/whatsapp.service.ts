@@ -540,16 +540,24 @@ class WhatsAppService {
     }
   }
 
-  async notifyAthleteApproved(athleteId: string): Promise<void> {
+  async notifyAthleteApproved(athleteId: string, username?: string, isNewUser?: boolean): Promise<void> {
     if (this.status !== "connected") return;
     const athlete = await prisma.athlete.findUnique({
       where: { id: athleteId },
       select: { name: true, phone: true },
     });
     if (!athlete?.phone) return;
+
+    const tempPassword = process.env.ATHLETE_TEMP_PASSWORD ?? "Pegasus@Temp!2025";
+    const credentialsBlock = isNewUser && username
+      ? `\n\n🔐 *Seus dados de acesso:*\n👤 Usuário: *${username}*\n🔑 Senha provisória: *${tempPassword}*\n\nAcesse o sistema e troque sua senha no primeiro login.`
+      : username
+        ? `\n\n👤 Seu usuário de acesso: *${username}*`
+        : "";
+
     await this.sendMessage(
       athlete.phone,
-      `🎉 Parabéns ${first(athlete.name)}! Sua aprovação como atleta do *Projeto Pegasus* está confirmada. Bem-vindo(a) ao time! 🏐`,
+      `🎉 Parabéns ${first(athlete.name)}! Sua aprovação como atleta do *Projeto Pegasus* está confirmada. Bem-vindo(a) ao time! 🏐${credentialsBlock}`,
     );
   }
 

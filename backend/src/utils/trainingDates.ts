@@ -9,8 +9,8 @@ export const FRIDAY_NATIONAL_HOLIDAYS_2026 = [
 ] as const;
 export const OFFICIAL_TRAINING_START_DATE = "2026-04-25";
 export const OFFICIAL_TRAINING_END_DATE = "2026-12-31";
-export const OFFICIAL_TRAINING_TIME = "17:30 as 19:00";
-export const OFFICIAL_TRAINING_PLACE = "Jerusalem";
+export const OFFICIAL_TRAINING_TIME = "17:30 às 19:00";
+export const OFFICIAL_TRAINING_PLACE = "Jerusalém";
 export const OFFICIAL_TRAINING_MODALITY = "Voleibol";
 
 function toDateKey(date: Date | string) {

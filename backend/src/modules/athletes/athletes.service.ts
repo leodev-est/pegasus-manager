@@ -2,8 +2,8 @@
 import { prisma } from "../../config/prisma";
 import { AppError } from "../../middlewares/error.middleware";
 import { syncActiveAthleteUser } from "./athlete-user-sync";
-import { getMonthlyPaymentStatusForAthlete } from "./monthly-exemption";
 import { whatsAppService } from "../whatsapp/whatsapp.service";
+import { notificationsService } from "../notifications/notifications.service";
 
 const allowedStatuses = ["ativo", "teste", "inativo"] as const;
 const allowedPaymentStatuses = ["pago", "pendente", "atrasado", "isento"] as const;
@@ -123,13 +123,6 @@ function buildData(payload: AthletePayload, requireName: boolean) {
   }
   if (payload.notes !== undefined) data.notes = normalizeOptional(payload.notes);
 
-  if (typeof data.name === "string") {
-    data.monthlyPaymentStatus = getMonthlyPaymentStatusForAthlete(
-      data.name,
-      typeof data.monthlyPaymentStatus === "string" ? data.monthlyPaymentStatus : "pendente",
-    );
-  }
-
   return data;
 }
 
@@ -182,22 +175,35 @@ export const athletesService = {
       delete data.activatedAt;
     }
 
-    data.monthlyPaymentStatus = getMonthlyPaymentStatusForAthlete(
-      athleteName,
-      typeof data.monthlyPaymentStatus === "string"
-        ? data.monthlyPaymentStatus
-        : currentAthlete.monthlyPaymentStatus,
-    );
-
     const athlete = await prisma.athlete.update({
       where: { id },
       data,
     });
 
     if (athlete.status === "ativo") {
-      await syncActiveAthleteUser(athlete);
+      const syncedUser = await syncActiveAthleteUser(athlete);
       if (wasInTest) {
-        whatsAppService.notifyAthleteApproved(athlete.id).catch(() => {});
+        const username = syncedUser?.username ?? undefined;
+        const isNewUser = syncedUser?.mustChangePassword === true;
+        whatsAppService.notifyAthleteApproved(athlete.id, username, isNewUser).catch(() => {});
+
+        if (syncedUser) {
+          notificationsService
+            .createForUser(syncedUser.id, {
+              title: "Bem-vindo ao Pegasus! 🏐",
+              message: "Sua inscrição foi aprovada. Acesse o sistema para ver seus treinos e informações.",
+              type: "sistema",
+            })
+            .catch(() => {});
+        }
+
+        notificationsService
+          .notifyByRoles(["RH", "Diretor"], {
+            title: "Atleta aprovado",
+            message: `${athlete.name} foi aprovado(a) e agora faz parte do elenco ativo.`,
+            type: "sistema",
+          })
+          .catch(() => {});
       }
     }
     return prisma.athlete.findUniqueOrThrow({

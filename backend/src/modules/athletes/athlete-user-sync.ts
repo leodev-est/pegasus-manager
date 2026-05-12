@@ -1,7 +1,5 @@
 import bcrypt from "bcrypt";
 import { prisma } from "../../config/prisma";
-import { isMonthlyPaymentExempt } from "./monthly-exemption";
-
 const athleteRoleName = "Atleta";
 const temporaryAthletePassword = process.env.ATHLETE_TEMP_PASSWORD ?? "Pegasus@Temp!2025";
 
@@ -72,10 +70,6 @@ export async function syncActiveAthleteUser(athlete: {
   const email = normalizeEmail(athlete.email);
 
   if (athlete.status !== "ativo") {
-    return null;
-  }
-
-  if (isMonthlyPaymentExempt(athlete.name)) {
     return null;
   }
 

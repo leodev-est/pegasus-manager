@@ -1,8 +1,6 @@
 ﻿import { google } from "googleapis";
 import { prisma } from "../../config/prisma";
 import { AppError } from "../../middlewares/error.middleware";
-import { getMonthlyPaymentStatusForAthlete } from "./monthly-exemption";
-
 type ImportedAthlete = {
   name?: string;
   email?: string | null;
@@ -168,7 +166,7 @@ export const athletesImportService = {
             position: mapped.position,
             notes: mapped.notes,
             status: "teste",
-            monthlyPaymentStatus: getMonthlyPaymentStatusForAthlete(mapped.name),
+            monthlyPaymentStatus: "pendente",
           },
         });
 

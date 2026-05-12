@@ -133,6 +133,11 @@ export const athleteApplicationService = {
     return data;
   },
 
+  async reject(id: string) {
+    const { data } = await api.post<AthleteApplication>(`/athlete-applications/${id}/reject`);
+    return data;
+  },
+
   async delete(id: string) {
     await api.delete(`/athlete-applications/${id}`);
   },

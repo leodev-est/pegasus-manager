@@ -26,4 +26,35 @@ export const calendarController = {
     const dates = await calendarService.toggleBlockedDate(date);
     res.json({ blockedDates: dates });
   }) as RequestHandler,
+
+  getTrainingConfig: (async (_req, res) => {
+    const config = await calendarService.getTrainingConfig();
+    res.json({
+      trainingTime: config.trainingTime,
+      trainingLocation: config.trainingLocation,
+      trainingDependency: config.trainingDependency,
+      monthlyFeeAmount: Number(config.monthlyFeeAmount),
+    });
+  }) as RequestHandler,
+
+  updateTrainingConfig: (async (req, res) => {
+    const { trainingTime, trainingLocation, trainingDependency, monthlyFeeAmount } = req.body as {
+      trainingTime?: string;
+      trainingLocation?: string;
+      trainingDependency?: string;
+      monthlyFeeAmount?: number;
+    };
+    const config = await calendarService.updateTrainingConfig({
+      trainingTime,
+      trainingLocation,
+      trainingDependency,
+      monthlyFeeAmount,
+    });
+    res.json({
+      trainingTime: config.trainingTime,
+      trainingLocation: config.trainingLocation,
+      trainingDependency: config.trainingDependency,
+      monthlyFeeAmount: Number(config.monthlyFeeAmount),
+    });
+  }) as RequestHandler,
 };

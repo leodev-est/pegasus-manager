@@ -1,4 +1,4 @@
-﻿import { ChevronDown, ChevronUp, Download, Loader2, Plus, UserCheck, UserX } from "lucide-react";
+﻿import { Download, FileDown, Loader2, Plus, UserCheck } from "lucide-react";
 import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 import { useAuth } from "../../auth/AuthContext";
 import { ActionButtons } from "../../components/ui/ActionButtons";
@@ -15,6 +15,7 @@ import { Table } from "../../components/ui/Table";
 import { Textarea } from "../../components/ui/Textarea";
 import { useToast } from "../../components/ui/Toast";
 import { getApiErrorMessage } from "../../services/api";
+import { exportToCSV } from "../../utils/exportUtils";
 import {
   athleteService,
   type Athlete,
@@ -38,8 +39,9 @@ const emptyAthlete: AthleteForm = {
 };
 
 const statusOptions = [
-  { label: "Todos os status", value: "todos" },
-  { label: "Ativo", value: "ativo" },
+  { label: "Ativos", value: "ativo" },
+  { label: "Inativos", value: "inativo" },
+  { label: "Todos", value: "todos" },
 ];
 
 const paymentOptions = [
@@ -107,7 +109,7 @@ export function AthletesPage() {
   const canDelete = hasPermission(["athletes:delete"]);
   const [athletes, setAthletes] = useState<Athlete[]>([]);
   const [search, setSearch] = useState("");
-  const [status, setStatus] = useState("todos");
+  const [status, setStatus] = useState("ativo");
   const [monthlyPaymentStatus, setMonthlyPaymentStatus] = useState("todos");
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
@@ -118,30 +120,21 @@ export function AthletesPage() {
   const [form, setForm] = useState<AthleteForm>(emptyAthlete);
   const [deleteTarget, setDeleteTarget] = useState<Athlete | null>(null);
   const [reactivateTarget, setReactivateTarget] = useState<Athlete | null>(null);
-  const [showInactive, setShowInactive] = useState(false);
 
   const filters = useMemo(
-    () => ({
-      search,
-      status: "todos" as const,
-      monthlyPaymentStatus: "todos" as const,
-    }),
-    [search],
+    () => ({ search, status: status as AthleteStatus | "todos" }),
+    [search, status],
   );
 
   const displayedAthletes = useMemo(() => {
     return athletes.filter((a) => {
-      if (a.status === "inativo" || a.status === "teste") return false;
-      if (status !== "todos" && a.status !== status) return false;
+      if (a.status === "teste") return false;
+      if (status === "ativo" && a.status !== "ativo") return false;
+      if (status === "inativo" && a.status !== "inativo") return false;
       if (monthlyPaymentStatus !== "todos" && a.monthlyPaymentStatus !== monthlyPaymentStatus) return false;
       return true;
     });
   }, [athletes, status, monthlyPaymentStatus]);
-
-  const inactiveAthletes = useMemo(
-    () => athletes.filter((a) => a.status === "inativo"),
-    [athletes],
-  );
 
   const loadAthletes = useCallback(async () => {
     setIsLoading(true);
@@ -259,6 +252,19 @@ export function AthletesPage() {
         description="Cadastro, filtros e acompanhamento dos atletas."
         action={
           <div className="flex w-full flex-col gap-3 sm:w-auto sm:flex-row">
+            <Button
+              onClick={() =>
+                exportToCSV(
+                  "atletas",
+                  ["Nome", "E-mail", "Telefone", "Posição", "Categoria", "Status", "Mensalidade"],
+                  displayedAthletes.map((a) => [a.name, a.email, a.phone, a.position, a.category, a.status, a.monthlyPaymentStatus]),
+                )
+              }
+              variant="secondary"
+            >
+              <FileDown size={17} />
+              Exportar CSV
+            </Button>
             {canCreate ? (
               <>
                 <Button disabled={isImporting} onClick={importFromGoogleForms} variant="secondary">
@@ -334,7 +340,7 @@ export function AthletesPage() {
           <>
             <div className="grid gap-3 p-4 md:hidden">
               {displayedAthletes.map((athlete) => (
-                <article key={athlete.id} className="rounded-2xl border border-blue-100 bg-white p-4 shadow-sm">
+                <article key={athlete.id} className={`rounded-2xl border border-blue-100 bg-white p-4 shadow-sm${athlete.status === "inativo" ? " opacity-60" : ""}`}>
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0">
                       <h3 className="font-bold text-pegasus-navy">{athlete.name}</h3>
@@ -351,14 +357,25 @@ export function AthletesPage() {
                     </div>
                   </div>
                   <div className="mt-4 border-t border-blue-50 pt-3">
-                    <ActionButtons
-                      canDelete={false}
-                      canEdit={canUpdate}
-                      canToggle={canDelete && athlete.status !== "inativo"}
-                      onEdit={() => openEditModal(athlete)}
-                      onToggle={() => setDeleteTarget(athlete)}
-                      toggleLabel="Inativar"
-                    />
+                    {athlete.status === "inativo" ? (
+                      <ActionButtons
+                        canDelete={false}
+                        canEdit={canUpdate}
+                        canToggle={canUpdate}
+                        onEdit={() => openEditModal(athlete)}
+                        onToggle={() => setReactivateTarget(athlete)}
+                        toggleLabel="Reativar"
+                      />
+                    ) : (
+                      <ActionButtons
+                        canDelete={false}
+                        canEdit={canUpdate}
+                        canToggle={canDelete}
+                        onEdit={() => openEditModal(athlete)}
+                        onToggle={() => setDeleteTarget(athlete)}
+                        toggleLabel="Inativar"
+                      />
+                    )}
                   </div>
                 </article>
               ))}
@@ -369,7 +386,7 @@ export function AthletesPage() {
                 minWidth="820px"
               >
                 {displayedAthletes.map((athlete) => (
-                  <tr key={athlete.id} className="bg-white">
+                  <tr key={athlete.id} className={`bg-white${athlete.status === "inativo" ? " opacity-60" : ""}`}>
                     <td className="px-6 py-4">
                       <p className="font-bold text-pegasus-navy">{athlete.name}</p>
                       <p className="text-xs text-slate-500">{athlete.email ?? "-"}</p>
@@ -385,14 +402,25 @@ export function AthletesPage() {
                       />
                     </td>
                     <td className="px-6 py-4">
-                      <ActionButtons
-                        canDelete={false}
-                        canEdit={canUpdate}
-                        canToggle={canDelete && athlete.status !== "inativo"}
-                        onEdit={() => openEditModal(athlete)}
-                        onToggle={() => setDeleteTarget(athlete)}
-                        toggleLabel="Inativar"
-                      />
+                      {athlete.status === "inativo" ? (
+                        <ActionButtons
+                          canDelete={false}
+                          canEdit={canUpdate}
+                          canToggle={canUpdate}
+                          onEdit={() => openEditModal(athlete)}
+                          onToggle={() => setReactivateTarget(athlete)}
+                          toggleLabel="Reativar"
+                        />
+                      ) : (
+                        <ActionButtons
+                          canDelete={false}
+                          canEdit={canUpdate}
+                          canToggle={canDelete}
+                          onEdit={() => openEditModal(athlete)}
+                          onToggle={() => setDeleteTarget(athlete)}
+                          toggleLabel="Inativar"
+                        />
+                      )}
                     </td>
                   </tr>
                 ))}
@@ -410,81 +438,6 @@ export function AthletesPage() {
         )}
       </section>
 
-      {inactiveAthletes.length > 0 ? (
-        <section className="panel overflow-hidden">
-          <button
-            className="flex w-full items-center justify-between gap-3 p-6 text-left"
-            onClick={() => setShowInactive((prev) => !prev)}
-            type="button"
-          >
-            <div className="flex items-center gap-3">
-              <UserX className="text-slate-400" size={22} />
-              <div>
-                <h2 className="text-xl font-bold text-pegasus-navy">Atletas inativos</h2>
-                <p className="text-sm text-slate-500">{inactiveAthletes.length} atleta(s) inativo(s)</p>
-              </div>
-            </div>
-            {showInactive ? <ChevronUp className="text-slate-400" size={20} /> : <ChevronDown className="text-slate-400" size={20} />}
-          </button>
-
-          {showInactive ? (
-            <>
-              <div className="grid gap-3 border-t border-blue-100 p-4 md:hidden">
-                {inactiveAthletes.map((athlete) => (
-                  <article key={athlete.id} className="rounded-2xl border border-blue-100 bg-white p-4 shadow-sm opacity-75">
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="min-w-0">
-                        <h3 className="font-bold text-pegasus-navy">{athlete.name}</h3>
-                        <p className="mt-1 text-sm text-slate-500">{athlete.email ?? athlete.phone ?? "Sem contato"}</p>
-                      </div>
-                      <StatusBadge label="Inativo" tone="danger" />
-                    </div>
-                    <div className="mt-4 border-t border-blue-50 pt-3">
-                      <ActionButtons
-                        canDelete={false}
-                        canEdit={canUpdate}
-                        canToggle={canUpdate}
-                        onEdit={() => openEditModal(athlete)}
-                        onToggle={() => setReactivateTarget(athlete)}
-                        toggleLabel="Reativar"
-                      />
-                    </div>
-                  </article>
-                ))}
-              </div>
-              <div className="hidden border-t border-blue-100 md:block">
-                <Table headers={["Nome", "Posição", "Mensalidade", "Ações"]} minWidth="720px">
-                  {inactiveAthletes.map((athlete) => (
-                    <tr key={athlete.id} className="bg-white opacity-75">
-                      <td className="px-6 py-4">
-                        <p className="font-bold text-pegasus-navy">{athlete.name}</p>
-                        <p className="text-xs text-slate-500">{athlete.email ?? "-"}</p>
-                      </td>
-                      <td className="px-6 py-4 text-slate-600">{athlete.position ?? "-"}</td>
-                      <td className="px-6 py-4">
-                        <StatusBadge
-                          label={label(athlete.monthlyPaymentStatus)}
-                          tone={badgeTone(athlete.monthlyPaymentStatus)}
-                        />
-                      </td>
-                      <td className="px-6 py-4">
-                        <ActionButtons
-                          canDelete={false}
-                          canEdit={canUpdate}
-                          canToggle={canUpdate}
-                          onEdit={() => openEditModal(athlete)}
-                          onToggle={() => setReactivateTarget(athlete)}
-                          toggleLabel="Reativar"
-                        />
-                      </td>
-                    </tr>
-                  ))}
-                </Table>
-              </div>
-            </>
-          ) : null}
-        </section>
-      ) : null}
 
       <Modal
         description="Preencha os dados do atleta. As alterações serão salvas na API."
@@ -519,7 +472,11 @@ export function AthletesPage() {
               onChange={(event) =>
                 setForm({ ...form, status: event.target.value as AthleteStatus })
               }
-              options={statusOptions.filter((option) => option.value !== "todos")}
+              options={[
+                { label: "Ativo", value: "ativo" },
+                { label: "Inativo", value: "inativo" },
+                { label: "Teste", value: "teste" },
+              ]}
               value={form.status}
             />
             {form.status === "ativo" && editingAthlete?.status !== "ativo" ? (

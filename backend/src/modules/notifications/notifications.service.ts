@@ -85,6 +85,20 @@ export const notificationsService = {
     });
   },
 
+  async notifyByRoles(roleNames: string[], payload: Omit<NotificationPayload, "userId">) {
+    validateType(payload.type);
+    const users = await prisma.user.findMany({
+      where: {
+        active: true,
+        roles: { some: { role: { name: { in: roleNames } } } },
+      },
+      select: { id: true },
+    });
+    await Promise.all(
+      users.map((u) => this.create({ ...payload, userId: u.id }).catch(() => null)),
+    );
+  },
+
   async createOnceTodayForUser(userId: string | null | undefined, payload: Omit<NotificationPayload, "userId">) {
     if (!userId) return null;
     validateType(payload.type);

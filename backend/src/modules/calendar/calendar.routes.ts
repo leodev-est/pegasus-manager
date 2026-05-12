@@ -18,3 +18,10 @@ calendarRoutes.post(
   permissionMiddleware(["management:create", "management:update"]),
   calendarController.toggleBlockedDate,
 );
+
+calendarRoutes.get("/training-config", calendarController.getTrainingConfig);
+calendarRoutes.put(
+  "/training-config",
+  permissionMiddleware(["management:update", "management:create"]),
+  calendarController.updateTrainingConfig,
+);
