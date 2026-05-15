@@ -120,6 +120,12 @@ export const menuGroups: MenuGroup[] = [
         permissions: ["trainings:update"],
       },
       {
+        label: "Ranking",
+        path: "/app/frequencia/ranking",
+        icon: Trophy,
+        permissions: ["trainings:update", "rh"],
+      },
+      {
         label: "Avaliações",
         path: "/app/avaliacoes",
         icon: Star,

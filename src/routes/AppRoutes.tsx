@@ -36,6 +36,7 @@ const UniformsPage = lazy(() => import("../pages/uniforms/UniformsPage").then((m
 const SugestoesPage = lazy(() => import("../pages/athlete/SugestoesPage").then((m) => ({ default: m.SugestoesPage })));
 const OuvidoriaPage = lazy(() => import("../pages/rh/OuvidoriaPage").then((m) => ({ default: m.OuvidoriaPage })));
 const AvaliarTreinoPage = lazy(() => import("../pages/athlete/AvaliarTreinoPage").then((m) => ({ default: m.AvaliarTreinoPage })));
+const RankingFrequenciaPage = lazy(() => import("../pages/attendance/RankingFrequenciaPage").then((m) => ({ default: m.RankingFrequenciaPage })));
 
 export function AppRoutes() {
   return (
@@ -205,6 +206,14 @@ export function AppRoutes() {
             element={
               <ProtectedRoute permissions={["trainings:update"]}>
                 <AttendanceAdminPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="frequencia/ranking"
+            element={
+              <ProtectedRoute permissions={["trainings:update", "rh"]}>
+                <RankingFrequenciaPage />
               </ProtectedRoute>
             }
           />

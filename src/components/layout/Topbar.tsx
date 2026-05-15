@@ -7,6 +7,7 @@ import logoIcon from "../../assets/logo/logo-icon.png";
 import { api } from "../../services/api";
 import { notificationService, type Notification } from "../../services/notificationService";
 import { Button } from "../ui/Button";
+import { NotificationsButton } from "../pwa/NotificationsButton";
 
 type SearchResult = {
   id: string;
@@ -284,6 +285,8 @@ export function Topbar({ onMenuClick }: TopbarProps) {
           >
             {theme === "dark" ? <Sun size={18} /> : <Moon size={18} />}
           </button>
+
+          <NotificationsButton />
 
           <div className="relative" ref={dropdownRef}>
             <button

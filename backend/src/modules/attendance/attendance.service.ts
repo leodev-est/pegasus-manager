@@ -609,6 +609,53 @@ export const attendanceService = {
     return Object.fromEntries(summaries.map((s) => [s.athleteId, s.percentual]));
   },
 
+  async getAttendanceRanking() {
+    const athletes = await prisma.athlete.findMany({
+      where: { status: "ativo" },
+      select: { id: true, name: true, category: true, activatedAt: true, createdAt: true, status: true },
+      orderBy: { name: "asc" },
+    });
+
+    const todayKey = getBrazilDateKey();
+
+    const results = await Promise.all(
+      athletes.map(async (athlete) => {
+        const attendances = await prisma.trainingAttendance.findMany({
+          where: { athleteId: athlete.id },
+          include: { training: { select: { date: true } } },
+        });
+
+        const activeStartKey = toTrainingDateKey(athlete.activatedAt ?? athlete.createdAt);
+        const counted = attendances.filter((a) => {
+          const dateKey = toTrainingDateKey(a.training.date);
+          return dateKey <= todayKey && dateKey >= activeStartKey;
+        });
+
+        const presencas = counted.filter((a) => a.status === "presente").length;
+        const justificadas = counted.filter((a) => a.status === "justificada").length;
+        const faltas = counted.filter((a) => a.status === "falta").length;
+        const total = presencas + justificadas + faltas;
+        const percentual = total > 0 ? Math.round(((presencas + justificadas) / total) * 100) : null;
+
+        return {
+          athlete: { id: athlete.id, name: athlete.name, category: athlete.category },
+          presencas,
+          justificadas,
+          faltas,
+          total,
+          percentual,
+        };
+      }),
+    );
+
+    return results.sort((a, b) => {
+      if (a.percentual === null && b.percentual === null) return 0;
+      if (a.percentual === null) return 1;
+      if (b.percentual === null) return -1;
+      return b.percentual - a.percentual;
+    });
+  },
+
   async updateAttendance(id: string, payload: { notes?: string | null; status?: string }) {
     validateAttendanceStatus(payload.status);
 

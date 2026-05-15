@@ -55,6 +55,7 @@ function ensureDirectorOrCoach(
 }
 
 attendanceRoutes.get("/athletes-summary", ensureDirectorOrCoach, attendanceController.athletesSummary);
+attendanceRoutes.get("/ranking", ensureDirectorOrCoach, attendanceController.attendanceRanking);
 attendanceRoutes.get("/chamada", ensureDirectorOrCoach, attendanceController.getChamada);
 attendanceRoutes.post("/chamada/bulk", ensureDirectorOrCoach, attendanceController.markChamadaBulk);
 attendanceRoutes.get("/check-in/today", ensureTrainingsReadOrAthlete, attendanceController.todayCheckIn);

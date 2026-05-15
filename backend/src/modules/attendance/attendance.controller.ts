@@ -90,4 +90,12 @@ export const attendanceController = {
       next(error);
     }
   }) satisfies RequestHandler,
+
+  attendanceRanking: (async (_request, response, next) => {
+    try {
+      response.json(await attendanceService.getAttendanceRanking());
+    } catch (error) {
+      next(error);
+    }
+  }) satisfies RequestHandler,
 };
