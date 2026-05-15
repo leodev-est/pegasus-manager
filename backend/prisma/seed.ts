@@ -55,7 +55,7 @@ const rolePermissions: Record<string, string[]> = {
   Financeiro: ["finance:read", "finance:create", "finance:update", "finance:delete", "management:read"],
   Marketing: ["marketing:read", "marketing:create", "marketing:update", "marketing:delete", "management:read"],
   ChefeMarketing: ["marketing:read", "marketing:create", "marketing:update", "marketing:delete", "management:read"],
-  Conselheiro: ["management:read"],
+  Conselheiro: ["management:read", "management:create", "management:update"],
   Tecnico: ["trainings:read", "trainings:create", "trainings:update", "trainings:delete"],
   Treinador: ["trainings:read", "trainings:create", "trainings:update", "trainings:delete"],
   Operacional: [
