@@ -102,7 +102,9 @@ const ROLE_HIERARCHY: Array<{ role: string; label: string }> = [
   { role: "Financeiro", label: "Financeiro" },
   { role: "Tecnico", label: "Técnico" },
   { role: "Operacional", label: "Operacional" },
-  { role: "Conselheira", label: "Conselheira" },
+  { role: "Gestor", label: "Gestor" },
+  { role: "Conselheira", label: "Gestor" },
+  { role: "Conselheiro", label: "Gestor" },
   { role: "Atleta", label: "Atleta" },
 ];
 

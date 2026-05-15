@@ -225,7 +225,7 @@ export const accessUsers: AccessUser[] = [
   { name: "Leo", profile: "Diretor", access: "Todas as telas" },
   { name: "Allef", profile: "Diretor", access: "Todas as telas" },
   { name: "Giulia", profile: "RH + Financeiro", access: "RH, Financeiro e Gestão" },
-  { name: "Victoria", profile: "Conselheira", access: "Gestão" },
+  { name: "Victoria", profile: "Gestor", access: "Gestão" },
   { name: "Vito", profile: "Marketing", access: "Marketing e Gestão" },
 ];
 
@@ -234,7 +234,7 @@ export const permissionRules = [
   { profile: "RH", description: "RH e Gestão" },
   { profile: "Financeiro", description: "Financeiro e Gestão" },
   { profile: "Marketing", description: "Marketing e Gestão" },
-  { profile: "Conselheiro", description: "Gestão" },
+  { profile: "Gestor", description: "Gestão" },
   { profile: "Técnico", description: "Treinos" },
   { profile: "Operacional", description: "Operacional e Gestão" },
   { profile: "Atleta", description: "Dashboard" },

@@ -11,6 +11,7 @@ import { userService } from "../../services/userService";
 
 const accessByRole: Record<string, string> = {
   Atleta: "Dashboard",
+  Gestor: "Gestão",
   Conselheiro: "Gestão",
   Conselheira: "Gestão",
   Diretor: "Acesso total",

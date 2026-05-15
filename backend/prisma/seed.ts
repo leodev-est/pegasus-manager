@@ -55,7 +55,7 @@ const rolePermissions: Record<string, string[]> = {
   Financeiro: ["finance:read", "finance:create", "finance:update", "finance:delete", "management:read"],
   Marketing: ["marketing:read", "marketing:create", "marketing:update", "marketing:delete", "management:read"],
   ChefeMarketing: ["marketing:read", "marketing:create", "marketing:update", "marketing:delete", "management:read"],
-  Conselheiro: ["management:read", "management:create", "management:update"],
+  Gestor: ["management:read", "management:create", "management:update"],
   Tecnico: ["trainings:read", "trainings:create", "trainings:update", "trainings:delete"],
   Treinador: ["trainings:read", "trainings:create", "trainings:update", "trainings:delete"],
   Operacional: [
@@ -72,7 +72,7 @@ const users = [
   { name: "Leo", username: "leo", roles: ["Diretor", "Gestao", "Atleta"] },
   { name: "Allef", username: "allef", roles: ["Diretor", "Gestao", "Atleta"] },
   { name: "Giulia", username: "giulia", roles: ["RH", "Financeiro", "Gestao", "Atleta"] },
-  { name: "Victoria", username: "victoria", roles: ["Conselheiro", "Operacional", "Gestao", "Atleta"] },
+  { name: "Victoria", username: "victoria", roles: ["Gestor", "Operacional", "Gestao", "Atleta"] },
   { name: "Vito", username: "vito", roles: ["Marketing", "ChefeMarketing", "Gestao", "Atleta"] },
 ];
 
