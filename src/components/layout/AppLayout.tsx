@@ -9,7 +9,7 @@ export function AppLayout() {
   usePushSetup();
 
   return (
-    <div className="min-h-screen bg-pegasus-surface">
+    <div className="min-h-screen bg-pegasus-surface dark:bg-slate-900">
       <Sidebar isMobileOpen={isSidebarOpen} onNavigate={() => setIsSidebarOpen(false)} />
       {isSidebarOpen ? (
         <button

@@ -3,6 +3,7 @@ export type AuthenticatedUser = {
   name: string;
   username: string;
   email: string | null;
+  athleteId: string | null;
   roles: string[];
   permissions: string[];
 };

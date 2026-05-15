@@ -33,6 +33,9 @@ const TacticalCourtPage = lazy(() => import("../pages/tactical/TacticalCourtPage
 const TrainingCalendarPage = lazy(() => import("../pages/trainings/TrainingCalendarPage").then((m) => ({ default: m.TrainingCalendarPage })));
 const TrainingsPage = lazy(() => import("../pages/trainings/TrainingsPage").then((m) => ({ default: m.TrainingsPage })));
 const UniformsPage = lazy(() => import("../pages/uniforms/UniformsPage").then((m) => ({ default: m.UniformsPage })));
+const SugestoesPage = lazy(() => import("../pages/athlete/SugestoesPage").then((m) => ({ default: m.SugestoesPage })));
+const OuvidoriaPage = lazy(() => import("../pages/rh/OuvidoriaPage").then((m) => ({ default: m.OuvidoriaPage })));
+const AvaliarTreinoPage = lazy(() => import("../pages/athlete/AvaliarTreinoPage").then((m) => ({ default: m.AvaliarTreinoPage })));
 
 export function AppRoutes() {
   return (
@@ -81,6 +84,30 @@ export function AppRoutes() {
             element={
               <ProtectedRoute permissions={["rh"]}>
                 <ComunicadosPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="rh/ouvidoria"
+            element={
+              <ProtectedRoute permissions={["rh"]}>
+                <OuvidoriaPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="atleta/sugestoes"
+            element={
+              <ProtectedRoute permissions={["atleta"]}>
+                <SugestoesPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="atleta/avaliar-treino"
+            element={
+              <ProtectedRoute permissions={["atleta"]}>
+                <AvaliarTreinoPage />
               </ProtectedRoute>
             }
           />

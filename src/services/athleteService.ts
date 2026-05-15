@@ -73,7 +73,23 @@ function cleanFilters(filters?: AthleteFilters) {
   };
 }
 
+export type BirthdayAthlete = {
+  id: string;
+  name: string;
+  birthDate: string;
+  status: AthleteStatus;
+};
+
+export type BirthdaysResult = {
+  today: BirthdayAthlete[];
+  week: BirthdayAthlete[];
+};
+
 export const athleteService = {
+  async getBirthdays() {
+    const { data } = await api.get<BirthdaysResult>("/athletes/birthdays");
+    return data;
+  },
   async getAll(filters?: AthleteFilters) {
     const { data } = await api.get<Athlete[]>("/athletes", {
       params: cleanFilters(filters),

@@ -1,5 +1,6 @@
 import {
   CalendarDays,
+  Cake,
   ClipboardList,
   Loader2,
   Megaphone,
@@ -18,7 +19,7 @@ import { InstallPwaButton } from "../../components/pwa/InstallPwaButton";
 import { StatCard } from "../../components/ui/StatCard";
 import { useToast } from "../../components/ui/Toast";
 import { athleteApplicationService, type AthleteApplication } from "../../services/athleteApplicationService";
-import { athleteService, type Athlete } from "../../services/athleteService";
+import { athleteService, type Athlete, type BirthdaysResult } from "../../services/athleteService";
 import { getApiErrorMessage } from "../../services/api";
 import { financeService, type FinanceSummary } from "../../services/financeService";
 import { gamesService, type Game } from "../../services/gamesService";
@@ -112,6 +113,7 @@ export function DashboardPage() {
   const { showToast } = useToast();
   const [data, setData] = useState<DashboardData>(emptyDashboardData);
   const [isLoading, setIsLoading] = useState(true);
+  const [birthdays, setBirthdays] = useState<BirthdaysResult>({ today: [], week: [] });
 
   const canSeeRh = hasPermission(["rh"]);
   const canSeeFinance = hasPermission(["financeiro"]);
@@ -170,6 +172,14 @@ export function DashboardPage() {
         schools,
         upcomingGames,
       });
+
+      if (canSeeRh) {
+        try {
+          setBirthdays(await athleteService.getBirthdays());
+        } catch {
+          // non-critical, ignore
+        }
+      }
     } catch (error) {
       showToast(getApiErrorMessage(error), "error");
     } finally {
@@ -385,6 +395,48 @@ export function DashboardPage() {
                     </p>
                   </div>
                 ))}
+              </div>
+            </article>
+          ) : null}
+
+          {canSeeRh && (birthdays.today.length > 0 || birthdays.week.length > 0) ? (
+            <article className="panel p-6">
+              <div className="flex items-center gap-3">
+                <span className="rounded-2xl bg-pink-50 p-3 text-pink-600">
+                  <Cake size={22} />
+                </span>
+                <div>
+                  <h2 className="text-xl font-bold text-pegasus-navy">Aniversários</h2>
+                  <p className="text-sm text-slate-500">
+                    {birthdays.today.length > 0
+                      ? `${birthdays.today.length} aniversário(s) hoje`
+                      : `${birthdays.week.length} aniversário(s) esta semana`}
+                  </p>
+                </div>
+              </div>
+              <div className="mt-6 grid gap-3 sm:grid-cols-2">
+                {birthdays.today.map((a) => (
+                  <div key={a.id} className="flex items-center gap-3 rounded-2xl bg-pink-50 p-4">
+                    <span className="text-2xl">🎂</span>
+                    <div>
+                      <p className="font-bold text-pegasus-navy">{a.name}</p>
+                      <p className="text-xs font-semibold text-pink-600">Hoje!</p>
+                    </div>
+                  </div>
+                ))}
+                {birthdays.week.map((a) => {
+                  const d = new Date(a.birthDate);
+                  const day = d.toLocaleDateString("pt-BR", { weekday: "short", day: "2-digit", month: "short" });
+                  return (
+                    <div key={a.id} className="flex items-center gap-3 rounded-2xl bg-pegasus-surface p-4">
+                      <span className="text-2xl">🎁</span>
+                      <div>
+                        <p className="font-bold text-pegasus-navy">{a.name}</p>
+                        <p className="text-xs text-slate-500 capitalize">{day}</p>
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
             </article>
           ) : null}

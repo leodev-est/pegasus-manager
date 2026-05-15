@@ -8,6 +8,7 @@ export const athletesRoutes = Router();
 athletesRoutes.use(authMiddleware);
 
 athletesRoutes.get("/", permissionMiddleware(["athletes:read", "management:read", "trainings:read"]), athletesController.findAll);
+athletesRoutes.get("/birthdays", permissionMiddleware(["athletes:read", "management:read"]), athletesController.findBirthdays);
 athletesRoutes.get("/:id", permissionMiddleware(["athletes:read", "management:read"]), athletesController.findById);
 athletesRoutes.post("/", permissionMiddleware("athletes:create"), athletesController.create);
 athletesRoutes.post(

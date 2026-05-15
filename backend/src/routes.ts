@@ -26,6 +26,8 @@ import { trainingsRoutes } from "./modules/trainings/trainings.routes";
 import { uniformsRoutes } from "./modules/uniforms/uniforms.routes";
 import { usersRoutes } from "./modules/users/users.routes";
 import { whatsAppRoutes } from "./modules/whatsapp/whatsapp.routes";
+import { suggestionsRoutes } from "./modules/suggestions/suggestions.routes";
+import { trainingFeedbackRoutes } from "./modules/training-feedback/training-feedback.routes";
 
 export const routes = Router();
 
@@ -63,3 +65,5 @@ routes.use("/users", usersRoutes);
 routes.use("/roles", rolesRoutes);
 routes.use("/permissions", permissionsRoutes);
 routes.use("/whatsapp", whatsAppRoutes);
+routes.use("/suggestions", suggestionsRoutes);
+routes.use("/training-feedback", trainingFeedbackRoutes);

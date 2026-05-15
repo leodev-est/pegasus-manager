@@ -145,6 +145,43 @@ export const athletesService = {
     });
   },
 
+  async findBirthdays() {
+    const today = new Date();
+    const todayMonth = today.getMonth() + 1;
+    const todayDay = today.getDate();
+
+    // Build the next 7 days as month/day pairs (handles month rollover)
+    const window: Array<{ month: number; day: number }> = [];
+    for (let i = 0; i < 7; i++) {
+      const d = new Date(today);
+      d.setDate(today.getDate() + i);
+      window.push({ month: d.getMonth() + 1, day: d.getDate() });
+    }
+
+    const athletes = await prisma.athlete.findMany({
+      where: {
+        birthDate: { not: null },
+        status: { in: ["ativo", "teste"] },
+      },
+      select: { id: true, name: true, birthDate: true, status: true },
+      orderBy: { name: "asc" },
+    });
+
+    const todayBirthdays = athletes.filter((a) => {
+      const d = a.birthDate!;
+      return d.getMonth() + 1 === todayMonth && d.getDate() === todayDay;
+    });
+
+    const weekBirthdays = athletes.filter((a) => {
+      const d = a.birthDate!;
+      const m = d.getMonth() + 1;
+      const day = d.getDate();
+      return window.some((w) => w.month === m && w.day === day) && !(m === todayMonth && day === todayDay);
+    });
+
+    return { today: todayBirthdays, week: weekBirthdays };
+  },
+
   async findById(id: string) {
     const athlete = await prisma.athlete.findUnique({
       where: { id },

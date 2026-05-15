@@ -10,6 +10,11 @@
     sans-serif;
 }
 
+.dark {
+  color: #e2e8f0;
+  background: #0f172a;
+}
+
 * {
   box-sizing: border-box;
 }
@@ -40,10 +45,64 @@ textarea {
 
 @layer components {
   .panel {
-    @apply rounded-2xl border border-blue-100 bg-white shadow-soft;
+    @apply rounded-2xl border border-blue-100 bg-white shadow-soft dark:border-slate-700 dark:bg-slate-800 dark:shadow-none;
   }
 
   .focus-ring {
-    @apply focus:outline-none focus:ring-2 focus:ring-pegasus-sky focus:ring-offset-2;
+    @apply focus:outline-none focus:ring-2 focus:ring-pegasus-sky focus:ring-offset-2 dark:focus:ring-offset-slate-900;
   }
+}
+
+/* Dark mode global overrides */
+.dark input,
+.dark textarea,
+.dark select {
+  background-color: #1e293b;
+  color: #e2e8f0;
+  border-color: #334155;
+}
+
+.dark input::placeholder,
+.dark textarea::placeholder {
+  color: #64748b;
+}
+
+.dark .text-pegasus-navy {
+  color: #e2e8f0 !important;
+}
+
+.dark .text-slate-600 {
+  color: #94a3b8 !important;
+}
+
+.dark .text-slate-500 {
+  color: #64748b !important;
+}
+
+.dark .text-slate-400 {
+  color: #475569 !important;
+}
+
+.dark .bg-white {
+  background-color: #1e293b !important;
+}
+
+.dark .bg-pegasus-surface {
+  background-color: #0f172a !important;
+}
+
+.dark .bg-pegasus-ice {
+  background-color: #1e3a5f !important;
+}
+
+.dark .border-blue-100 {
+  border-color: #1e3a5f !important;
+}
+
+.dark .border-blue-50 {
+  border-color: #152f4d !important;
+}
+
+.dark .bg-blue-50\/70 {
+  background-color: rgba(30, 58, 95, 0.7) !important;
 }

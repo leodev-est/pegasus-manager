@@ -27,6 +27,15 @@ export const athletesController = {
     }
   }) satisfies RequestHandler,
 
+  findBirthdays: (async (_request, response, next) => {
+    try {
+      const birthdays = await athletesService.findBirthdays();
+      response.json(birthdays);
+    } catch (error) {
+      next(error);
+    }
+  }) satisfies RequestHandler,
+
   findById: (async (request, response, next) => {
     try {
       const athlete = await athletesService.findById(getParamId(request.params.id));

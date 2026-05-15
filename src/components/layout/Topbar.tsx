@@ -206,12 +206,12 @@ export function Topbar({ onMenuClick }: TopbarProps) {
   }
 
   return (
-    <header className="sticky top-0 z-20 w-full max-w-full border-b border-blue-100 bg-pegasus-surface/90 px-4 py-3 backdrop-blur md:px-8 md:py-4">
+    <header className="sticky top-0 z-20 w-full max-w-full border-b border-blue-100 bg-pegasus-surface/90 px-4 py-3 backdrop-blur dark:border-slate-700 dark:bg-slate-900/90 md:px-8 md:py-4">
       <div className="flex min-w-0 items-center justify-between gap-3">
         <div className="flex min-w-0 items-center gap-3">
           <button
             aria-label="Abrir menu"
-            className="focus-ring grid h-11 w-11 shrink-0 place-items-center rounded-full border border-blue-100 bg-white text-pegasus-primary shadow-sm lg:hidden"
+            className="focus-ring grid h-11 w-11 shrink-0 place-items-center rounded-full border border-blue-100 bg-white text-pegasus-primary shadow-sm dark:border-slate-700 dark:bg-slate-800 dark:text-blue-400 lg:hidden"
             onClick={onMenuClick}
             type="button"
           >
@@ -230,7 +230,7 @@ export function Topbar({ onMenuClick }: TopbarProps) {
 
         <div className="flex shrink-0 items-center gap-2 sm:gap-3">
           <div className="relative hidden min-w-72 xl:block" ref={searchRef}>
-            <label className="flex items-center gap-2 rounded-full border border-blue-100 bg-white px-4 py-2 text-sm text-slate-500 shadow-sm">
+            <label className="flex items-center gap-2 rounded-full border border-blue-100 bg-white px-4 py-2 text-sm text-slate-500 shadow-sm dark:border-slate-700 dark:bg-slate-800 dark:text-slate-400">
               <Search size={17} />
               <input
                 className="w-full bg-transparent text-slate-700 outline-none placeholder:text-slate-400"
@@ -241,7 +241,7 @@ export function Topbar({ onMenuClick }: TopbarProps) {
               />
             </label>
             {isSearchOpen && searchResults.length > 0 ? (
-              <div className="absolute left-0 top-12 z-50 w-full overflow-hidden rounded-2xl border border-blue-100 bg-white shadow-2xl">
+              <div className="absolute left-0 top-12 z-50 w-full overflow-hidden rounded-2xl border border-blue-100 bg-white shadow-2xl dark:border-slate-700 dark:bg-slate-800">
                 {Object.entries(
                   searchResults.reduce<Record<string, SearchResult[]>>((acc, result) => {
                     if (!acc[result.category]) acc[result.category] = [];
@@ -277,7 +277,7 @@ export function Topbar({ onMenuClick }: TopbarProps) {
           <div className="relative" ref={dropdownRef}>
             <button
               aria-label="Notificações"
-              className="focus-ring relative grid h-10 w-10 place-items-center rounded-full border border-blue-100 bg-white text-pegasus-primary shadow-sm"
+              className="focus-ring relative grid h-10 w-10 place-items-center rounded-full border border-blue-100 bg-white text-pegasus-primary shadow-sm dark:border-slate-700 dark:bg-slate-800 dark:text-blue-400"
               onClick={() => {
                 setIsNotificationsOpen((current) => !current);
                 loadNotifications();
@@ -293,7 +293,7 @@ export function Topbar({ onMenuClick }: TopbarProps) {
             </button>
 
             {isNotificationsOpen ? (
-              <section className="absolute right-0 top-12 z-50 w-[min(22rem,calc(100vw-2rem))] overflow-hidden rounded-2xl border border-blue-100 bg-white shadow-2xl">
+              <section className="absolute right-0 top-12 z-50 w-[min(22rem,calc(100vw-2rem))] overflow-hidden rounded-2xl border border-blue-100 bg-white shadow-2xl dark:border-slate-700 dark:bg-slate-800">
                 <header className="flex items-center justify-between gap-3 border-b border-blue-100 p-4">
                   <div>
                     <p className="font-black text-pegasus-navy">Notificações</p>
@@ -345,7 +345,7 @@ export function Topbar({ onMenuClick }: TopbarProps) {
             ) : null}
           </div>
 
-          <div className="flex min-w-0 items-center gap-2 rounded-full border border-blue-100 bg-white py-1 pl-1 pr-2 shadow-sm sm:pr-3">
+          <div className="flex min-w-0 items-center gap-2 rounded-full border border-blue-100 bg-white py-1 pl-1 pr-2 shadow-sm dark:border-slate-700 dark:bg-slate-800 sm:pr-3">
             <span className="grid h-8 w-8 place-items-center rounded-full bg-pegasus-primary text-xs font-bold text-white">
               {getInitials(user?.name)}
             </span>

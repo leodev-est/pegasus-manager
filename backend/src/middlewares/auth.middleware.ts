@@ -47,6 +47,7 @@ export const authMiddleware: RequestHandler = async (request, _response, next) =
       name: user.name,
       username: user.username,
       email: user.email,
+      athleteId: user.athleteId ?? null,
       roles: user.roles.map((userRole) => userRole.role.name),
       permissions: Array.from(
         new Set(

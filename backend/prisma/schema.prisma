@@ -92,6 +92,7 @@ model Athlete {
   paymentStatusHistory PaymentStatusHistory[]
   uniformDeliveries    UniformDelivery[]
   jerseyAssignment     JerseyAssignment?
+  trainingFeedbacks    TrainingFeedback[]
 }
 
 model AthleteApplication {
@@ -224,6 +225,7 @@ model Training {
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
   attendances    TrainingAttendance[]
+  feedbacks      TrainingFeedback[]
 }
 
 model TrainingAttendance {
@@ -430,4 +432,35 @@ model AuditLog {
   @@index([entity, entityId])
   @@index([userId])
   @@index([createdAt])
+}
+
+model Suggestion {
+  id          String   @id @default(uuid())
+  message     String
+  anonymous   Boolean  @default(false)
+  authorId    String?
+  authorName  String?
+  status      String   @default("pendente")
+  response    String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([status])
+  @@index([createdAt])
+}
+
+model TrainingFeedback {
+  id          String   @id @default(uuid())
+  trainingId  String
+  athleteId   String
+  rating      Int
+  comment     String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  training    Training @relation(fields: [trainingId], references: [id], onDelete: Cascade)
+  athlete     Athlete  @relation(fields: [athleteId], references: [id], onDelete: Cascade)
+
+  @@unique([trainingId, athleteId])
+  @@index([trainingId])
+  @@index([athleteId])
 }
