@@ -8,12 +8,10 @@
   Megaphone,
   MessageCircle,
   MessageSquarePlus,
-  Moon,
   Radio,
   Settings,
   ShieldCheck,
   Shirt,
-  Sun,
   Trophy,
   UserPlus,
   Users,
@@ -25,7 +23,6 @@
 } from "lucide-react";
 import { NavLink } from "react-router-dom";
 import { useAuth } from "../../auth/AuthContext";
-import { useTheme } from "../../contexts/ThemeContext";
 import logoIcon from "../../assets/logo/logo-icon.png";
 
 export type MenuItem = {
@@ -205,7 +202,6 @@ type SidebarProps = {
 
 export function Sidebar({ isMobileOpen = false, onNavigate }: SidebarProps) {
   const { hasPermission } = useAuth();
-  const { theme, toggleTheme } = useTheme();
   const visibleGroups = menuGroups
     .map((group) => ({
       ...group,
@@ -229,18 +225,6 @@ export function Sidebar({ isMobileOpen = false, onNavigate }: SidebarProps) {
           <p className="text-lg font-bold">Pegasus Manager</p>
           <p className="text-xs text-blue-100">Projeto esportivo</p>
         </div>
-      </div>
-
-      <div className="border-t border-white/10 px-4 py-3">
-        <button
-          aria-label={theme === "dark" ? "Modo claro" : "Modo escuro"}
-          className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-blue-50 transition hover:bg-white/10 hover:text-white"
-          onClick={toggleTheme}
-          type="button"
-        >
-          {theme === "dark" ? <Sun size={18} /> : <Moon size={18} />}
-          <span>{theme === "dark" ? "Modo claro" : "Modo escuro"}</span>
-        </button>
       </div>
 
       <nav className="flex-1 space-y-5 overflow-y-auto px-4 py-6">

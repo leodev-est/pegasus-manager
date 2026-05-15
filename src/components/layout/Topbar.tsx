@@ -1,7 +1,8 @@
-import { Bell, LogOut, Menu, Search, ShieldCheck } from "lucide-react";
+import { Bell, LogOut, Menu, Moon, Search, ShieldCheck, Sun } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../auth/AuthContext";
+import { useTheme } from "../../contexts/ThemeContext";
 import logoIcon from "../../assets/logo/logo-icon.png";
 import { api } from "../../services/api";
 import { notificationService, type Notification } from "../../services/notificationService";
@@ -120,6 +121,7 @@ function getHighestRole(roleLabels?: string[], roles?: string[]): string {
 
 export function Topbar({ onMenuClick }: TopbarProps) {
   const { logout, user } = useAuth();
+  const { theme, toggleTheme } = useTheme();
   const navigate = useNavigate();
   const userRole = getHighestRole(user?.roleLabels, user?.roles);
   const dropdownRef = useRef<HTMLDivElement | null>(null);
@@ -273,6 +275,15 @@ export function Topbar({ onMenuClick }: TopbarProps) {
               </div>
             ) : null}
           </div>
+
+          <button
+            aria-label={theme === "dark" ? "Modo claro" : "Modo escuro"}
+            className="focus-ring grid h-10 w-10 shrink-0 place-items-center rounded-full border border-blue-100 bg-white text-slate-500 shadow-sm transition hover:text-pegasus-primary dark:border-slate-700 dark:bg-slate-800 dark:text-slate-400 dark:hover:text-blue-400"
+            onClick={toggleTheme}
+            type="button"
+          >
+            {theme === "dark" ? <Sun size={18} /> : <Moon size={18} />}
+          </button>
 
           <div className="relative" ref={dropdownRef}>
             <button

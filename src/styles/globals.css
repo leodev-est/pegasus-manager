@@ -53,7 +53,11 @@ textarea {
   }
 }
 
-/* Dark mode global overrides */
+/* =====================
+   DARK MODE OVERRIDES
+   ===================== */
+
+/* Inputs */
 .dark input,
 .dark textarea,
 .dark select {
@@ -67,10 +71,22 @@ textarea {
   color: #64748b;
 }
 
+/* Texto: azul-escuro → quase branco */
 .dark .text-pegasus-navy {
   color: #e2e8f0 !important;
 }
 
+/* Texto: azul-primário (#0D47A1) → azul claro visível no dark */
+.dark .text-pegasus-primary {
+  color: #60a5fa !important;
+}
+
+/* Texto: azul-médio (#1565C0) → azul claro */
+.dark .text-pegasus-medium {
+  color: #93c5fd !important;
+}
+
+/* Texto secundário */
 .dark .text-slate-600 {
   color: #94a3b8 !important;
 }
@@ -83,6 +99,7 @@ textarea {
   color: #475569 !important;
 }
 
+/* Fundos brancos → dark */
 .dark .bg-white {
   background-color: #1e293b !important;
 }
@@ -91,10 +108,12 @@ textarea {
   background-color: #0f172a !important;
 }
 
+/* Ice (fundo suave azulado) → dark azul escuro */
 .dark .bg-pegasus-ice {
-  background-color: #1e3a5f !important;
+  background-color: #1e3354 !important;
 }
 
+/* Bordas azul-claro → dark */
 .dark .border-blue-100 {
   border-color: #1e3a5f !important;
 }
@@ -103,6 +122,20 @@ textarea {
   border-color: #152f4d !important;
 }
 
+/* Notificação não lida */
 .dark .bg-blue-50\/70 {
-  background-color: rgba(30, 58, 95, 0.7) !important;
+  background-color: rgba(30, 51, 84, 0.7) !important;
+}
+
+/* Ícone da área administrativa na Topbar (ShieldCheck) */
+.dark .text-pegasus-medium {
+  color: #93c5fd !important;
+}
+
+/* Badges de status info (usam bg-blue-X / text-blue-X) — deixa o Tailwind lidar */
+
+/* Stat cards: o valor em azul primário precisa ser legível */
+.dark .text-2xl.text-pegasus-primary,
+.dark .text-3xl.text-pegasus-primary {
+  color: #60a5fa !important;
 }
