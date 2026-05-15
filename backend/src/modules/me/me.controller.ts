@@ -17,4 +17,18 @@ export const meController = {
       next(error);
     }
   }) satisfies RequestHandler,
+
+  uploadAvatar: (async (request, response, next) => {
+    try {
+      const file = (request as typeof request & { file?: Express.Multer.File }).file;
+      if (!file) {
+        response.status(400).json({ message: "Nenhum arquivo enviado" });
+        return;
+      }
+      const result = await meService.updateAvatar(request.user!.id, file.buffer, file.mimetype);
+      response.json(result);
+    } catch (error) {
+      next(error);
+    }
+  }) satisfies RequestHandler,
 };

@@ -8,6 +8,7 @@ export const financeRoutes = Router();
 financeRoutes.use(authMiddleware);
 
 financeRoutes.get("/summary", permissionMiddleware("finance:read"), financeController.summary);
+financeRoutes.get("/chart-data", permissionMiddleware("finance:read"), financeController.chartData);
 financeRoutes.get("/payments", permissionMiddleware("finance:read"), financeController.findPayments);
 financeRoutes.post("/payments", permissionMiddleware("finance:create"), financeController.createPayment);
 financeRoutes.patch(
@@ -20,6 +21,9 @@ financeRoutes.delete(
   permissionMiddleware("finance:delete"),
   financeController.deletePayment,
 );
+financeRoutes.get("/mensalidades", permissionMiddleware("finance:read"), financeController.getMensalidades);
+financeRoutes.patch("/mensalidades/:id/pay", permissionMiddleware("finance:update"), financeController.payMensalidade);
+financeRoutes.patch("/mensalidades/:id/undo", permissionMiddleware("finance:update"), financeController.undoMensalidade);
 financeRoutes.get("/movements", permissionMiddleware("finance:read"), financeController.findMovements);
 financeRoutes.post(
   "/movements",

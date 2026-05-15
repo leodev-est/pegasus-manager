@@ -165,24 +165,40 @@ export const athleteApplicationsService = {
     }
 
     return prisma.$transaction(async (transaction) => {
-      const athlete = await transaction.athlete.create({
-        data: {
-          name: application.name,
-          email: application.email,
-          phone: application.phone,
-          category: application.category,
-          position: application.position,
-          notes: application.contribution
-            ? `${application.contribution}${application.notes ? `\n\n${application.notes}` : ""}`
-            : application.notes,
-          status: "teste",
-          monthlyPaymentStatus: "pendente",
-        },
-      });
+      // Check for existing athlete by email or phone to avoid duplicates
+      const email = application.email?.trim().toLowerCase() || null;
+      const phone = application.phone?.replace(/\D/g, "") || null;
+
+      let athlete = null;
+      if (email) {
+        athlete = await transaction.athlete.findFirst({ where: { email } });
+      }
+      if (!athlete && phone) {
+        athlete = await transaction.athlete.findFirst({
+          where: { phone: { contains: phone.slice(-8) } },
+        });
+      }
+
+      if (!athlete) {
+        athlete = await transaction.athlete.create({
+          data: {
+            name: application.name,
+            email: application.email,
+            phone: application.phone,
+            category: application.category,
+            position: application.position,
+            notes: application.contribution
+              ? `${application.contribution}${application.notes ? `\n\n${application.notes}` : ""}`
+              : application.notes,
+            status: "teste",
+            monthlyPaymentStatus: "pendente",
+          },
+        });
+      }
 
       const updatedApplication = await transaction.athleteApplication.update({
         where: { id },
-        data: { status: "aprovado" },
+        data: { status: "aprovado", athleteId: athlete.id },
       });
 
       return { application: updatedApplication, athlete };

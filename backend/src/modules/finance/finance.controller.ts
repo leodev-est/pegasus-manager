@@ -1,4 +1,5 @@
 import type { RequestHandler } from "express";
+import { auditService } from "../audit/audit.service";
 import { financeService } from "./finance.service";
 
 function getParamId(id: string | string[]) {
@@ -91,6 +92,45 @@ export const financeController = {
     try {
       await financeService.deleteMovement(getParamId(request.params.id));
       response.status(204).send();
+    } catch (error) {
+      next(error);
+    }
+  }) satisfies RequestHandler,
+
+  chartData: (async (request, response, next) => {
+    try {
+      const months = Math.min(Number(request.query.months) || 6, 12);
+      response.json(await financeService.getChartData(months));
+    } catch (error) {
+      next(error);
+    }
+  }) satisfies RequestHandler,
+
+  getMensalidades: (async (request, response, next) => {
+    try {
+      const month = getQueryParam(request.query.month) ?? new Date().toISOString().slice(0, 7);
+      const status = getQueryParam(request.query.status);
+      response.json(await financeService.getMensalidades(month, status));
+    } catch (error) {
+      next(error);
+    }
+  }) satisfies RequestHandler,
+
+  payMensalidade: (async (request, response, next) => {
+    try {
+      const result = await financeService.payMensalidade(getParamId(request.params.id));
+      auditService.log({ userId: request.user?.id, userName: request.user?.name, action: "pay_mensalidade", entity: "Payment", entityId: result.id });
+      response.json(result);
+    } catch (error) {
+      next(error);
+    }
+  }) satisfies RequestHandler,
+
+  undoMensalidade: (async (request, response, next) => {
+    try {
+      const result = await financeService.undoMensalidade(getParamId(request.params.id));
+      auditService.log({ userId: request.user?.id, userName: request.user?.name, action: "undo_mensalidade", entity: "Payment", entityId: getParamId(request.params.id) });
+      response.json(result);
     } catch (error) {
       next(error);
     }

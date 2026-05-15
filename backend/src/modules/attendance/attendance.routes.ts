@@ -54,6 +54,7 @@ function ensureDirectorOrCoach(
   next(new AppError("Acesso exclusivo para Diretor, Técnico ou Treinador.", 403));
 }
 
+attendanceRoutes.get("/athletes-summary", ensureDirectorOrCoach, attendanceController.athletesSummary);
 attendanceRoutes.get("/chamada", ensureDirectorOrCoach, attendanceController.getChamada);
 attendanceRoutes.post("/chamada/bulk", ensureDirectorOrCoach, attendanceController.markChamadaBulk);
 attendanceRoutes.get("/check-in/today", ensureTrainingsReadOrAthlete, attendanceController.todayCheckIn);

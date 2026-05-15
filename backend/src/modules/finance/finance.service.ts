@@ -225,6 +225,11 @@ export const financeService = {
       monthlyExpensesMovements,
       pendingCount,
       overdueCount,
+      mensalidadesRecebido,
+      mensalidadesPendente,
+      mensalidadesEsperado,
+      mensalidadesPagoCount,
+      mensalidadesTotalCount,
     ] = await Promise.all([
       prisma.$queryRaw<AggRow[]>`
         SELECT COALESCE(SUM(CASE WHEN type = 'receita' THEN amount ELSE -amount END), 0) AS value
@@ -264,6 +269,26 @@ export const financeService = {
         SELECT COUNT(*) AS count FROM "Payment"
         WHERE "athleteId" IS NOT NULL AND status = 'atrasado'
       `,
+      prisma.$queryRaw<AggRow[]>`
+        SELECT COALESCE(SUM(amount), 0) AS value FROM "Payment"
+        WHERE "referenceMonth" = ${month} AND LOWER(category) = 'mensalidade' AND status = 'pago'
+      `,
+      prisma.$queryRaw<AggRow[]>`
+        SELECT COALESCE(SUM(amount), 0) AS value FROM "Payment"
+        WHERE "referenceMonth" = ${month} AND LOWER(category) = 'mensalidade' AND status != 'pago'
+      `,
+      prisma.$queryRaw<AggRow[]>`
+        SELECT COALESCE(SUM(amount), 0) AS value FROM "Payment"
+        WHERE "referenceMonth" = ${month} AND LOWER(category) = 'mensalidade'
+      `,
+      prisma.$queryRaw<CountRow[]>`
+        SELECT COUNT(*) AS count FROM "Payment"
+        WHERE "referenceMonth" = ${month} AND LOWER(category) = 'mensalidade' AND status = 'pago'
+      `,
+      prisma.$queryRaw<CountRow[]>`
+        SELECT COUNT(*) AS count FROM "Payment"
+        WHERE "referenceMonth" = ${month} AND LOWER(category) = 'mensalidade'
+      `,
     ]);
 
     const currentCash =
@@ -275,6 +300,16 @@ export const financeService = {
       Number(monthlyExpensesPayments[0]?.value ?? 0) +
       Number(monthlyExpensesMovements[0]?.value ?? 0);
 
+    const totalMensalidadesCount = Number(mensalidadesTotalCount[0]?.count ?? 0);
+    const paidMensalidadesCount = Number(mensalidadesPagoCount[0]?.count ?? 0);
+    const mensalidadesTotalRecebido = Number(mensalidadesRecebido[0]?.value ?? 0);
+    const mensalidadesTotalPendente = Number(mensalidadesPendente[0]?.value ?? 0);
+    const mensalidadesTotalEsperado = Number(mensalidadesEsperado[0]?.value ?? 0);
+    const mensalidadesTaxaAdimplencia =
+      totalMensalidadesCount > 0
+        ? Math.round((paidMensalidadesCount / totalMensalidadesCount) * 100)
+        : 0;
+
     return {
       currentCash,
       monthlyRevenue,
@@ -282,6 +317,12 @@ export const financeService = {
       monthlyBalance: monthlyRevenue - monthlyExpenses,
       pendingMonthlyPayments: Number(pendingCount[0]?.count ?? 0),
       overdueMonthlyPayments: Number(overdueCount[0]?.count ?? 0),
+      mensalidadesTotalEsperado,
+      mensalidadesTotalRecebido,
+      mensalidadesTotalPendente,
+      mensalidadesTaxaAdimplencia,
+      mensalidadesPaidCount: paidMensalidadesCount,
+      mensalidadesTotalCount: totalMensalidadesCount,
     };
   },
 
@@ -473,6 +514,198 @@ export const financeService = {
   async deleteMovement(id: string) {
     await findMovementById(id);
     await prisma.$executeRaw`DELETE FROM "CashMovement" WHERE id = ${id}`;
+  },
+
+  async getMensalidades(month: string, filterStatus?: string) {
+    if (!/^\d{4}-\d{2}$/.test(month)) {
+      throw new AppError("Mês deve estar no formato YYYY-MM", 400);
+    }
+
+    const [year, mon] = month.split("-").map(Number);
+    const monthStart = new Date(Date.UTC(year, mon - 1, 1));
+    const monthEnd = new Date(Date.UTC(year, mon, 1));
+    const dueDate = new Date(Date.UTC(year, mon - 1, 10));
+
+    const setting = await prisma.trainingSetting.findFirst({ select: { monthlyFeeAmount: true } });
+    const defaultAmount = Number(setting?.monthlyFeeAmount ?? 0);
+
+    type AthleteRow = { id: string; name: string };
+    const athletes = await prisma.$queryRaw<AthleteRow[]>`
+      SELECT id, name FROM "Athlete"
+      WHERE status = 'ativo' AND "monthlyPaymentStatus" != 'isento'
+      ORDER BY name ASC
+    `;
+
+    if (athletes.length === 0) return [];
+
+    type MensalidadeRow = {
+      id: string;
+      athleteId: string | null;
+      status: string;
+      paidAt: Date | null;
+      amount: Prisma.Decimal;
+      referenceMonth: string | null;
+    };
+
+    const existing = await prisma.$queryRaw<MensalidadeRow[]>`
+      SELECT id, "athleteId", status, "paidAt", amount, "referenceMonth"
+      FROM "Payment"
+      WHERE LOWER(category) = 'mensalidade'
+        AND (
+          "referenceMonth" = ${month}
+          OR (
+            "referenceMonth" IS NULL
+            AND "dueDate" >= ${monthStart} AND "dueDate" < ${monthEnd}
+          )
+        )
+    `;
+
+    const existingByAthleteId = new Map<string, MensalidadeRow>();
+    const toUpdateRefMonth: string[] = [];
+
+    for (const row of existing) {
+      if (row.athleteId && !existingByAthleteId.has(row.athleteId)) {
+        existingByAthleteId.set(row.athleteId, row);
+        if (!row.referenceMonth) toUpdateRefMonth.push(row.id);
+      }
+    }
+
+    for (const id of toUpdateRefMonth) {
+      await prisma.$executeRaw`UPDATE "Payment" SET "referenceMonth" = ${month} WHERE id = ${id}`;
+    }
+
+    for (const athlete of athletes) {
+      if (!existingByAthleteId.has(athlete.id)) {
+        const newId = randomUUID();
+        await prisma.$executeRaw`
+          INSERT INTO "Payment" (id, "athleteId", description, amount, type, category, status, "dueDate", "referenceMonth", "updatedAt")
+          VALUES (${newId}, ${athlete.id}, 'Mensalidade', ${defaultAmount}, 'receita', 'Mensalidade', 'pendente', ${dueDate}, ${month}, NOW())
+        `;
+        existingByAthleteId.set(athlete.id, {
+          id: newId,
+          athleteId: athlete.id,
+          status: "pendente",
+          paidAt: null,
+          amount: new Prisma.Decimal(defaultAmount),
+          referenceMonth: month,
+        });
+      }
+    }
+
+    return athletes
+      .map((athlete) => {
+        const payment = existingByAthleteId.get(athlete.id)!;
+        if (filterStatus && filterStatus !== "todos" && payment.status !== filterStatus) return null;
+        return {
+          id: payment.id,
+          athleteId: athlete.id,
+          athleteName: athlete.name,
+          amount: Number(payment.amount),
+          status: payment.status as PaymentStatus,
+          paidAt: payment.paidAt instanceof Date ? payment.paidAt.toISOString() : null,
+          referenceMonth: month,
+        };
+      })
+      .filter((item): item is NonNullable<typeof item> => item !== null);
+  },
+
+  async payMensalidade(id: string) {
+    const rows = await prisma.$queryRaw<{ id: string }[]>`
+      SELECT id FROM "Payment" WHERE id = ${id} LIMIT 1
+    `;
+    if (!rows[0]) throw new AppError("Mensalidade não encontrada", 404);
+
+    await prisma.$executeRaw`
+      UPDATE "Payment" SET status = 'pago', "paidAt" = NOW(), "updatedAt" = NOW()
+      WHERE id = ${id}
+    `;
+
+    const updated = await prisma.$queryRaw<{ paidAt: Date }[]>`
+      SELECT "paidAt" FROM "Payment" WHERE id = ${id}
+    `;
+
+    return { id, status: "pago", paidAt: updated[0]?.paidAt?.toISOString() ?? null };
+  },
+
+  async undoMensalidade(id: string) {
+    const rows = await prisma.$queryRaw<{ id: string }[]>`
+      SELECT id FROM "Payment" WHERE id = ${id} LIMIT 1
+    `;
+    if (!rows[0]) throw new AppError("Mensalidade não encontrada", 404);
+
+    await prisma.$executeRaw`
+      UPDATE "Payment" SET status = 'pendente', "paidAt" = NULL, "updatedAt" = NOW()
+      WHERE id = ${id}
+    `;
+
+    return { id, status: "pendente", paidAt: null };
+  },
+
+  async getChartData(months = 6) {
+    const result: Array<{
+      month: string;
+      expected: number;
+      paid: number;
+      pending: number;
+      overdue: number;
+      overdueCount: number;
+    }> = [];
+
+    const now = new Date();
+    for (let i = months - 1; i >= 0; i--) {
+      const d = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - i, 1));
+      const monthStr = d.toISOString().slice(0, 7);
+      const range = parseMonth(monthStr)!;
+
+      type AggRow = { value: Prisma.Decimal };
+      type CountRow = { count: bigint };
+
+      const [paid, pending, overdue, overdueCount, totalAthletes] = await Promise.all([
+        prisma.$queryRaw<AggRow[]>`
+          SELECT COALESCE(SUM(amount), 0) AS value FROM "Payment"
+          WHERE LOWER(category) = 'mensalidade' AND status = 'pago'
+            AND COALESCE("paidAt","dueDate","createdAt") >= ${range.start}
+            AND COALESCE("paidAt","dueDate","createdAt") < ${range.end}
+        `,
+        prisma.$queryRaw<AggRow[]>`
+          SELECT COALESCE(SUM(amount), 0) AS value FROM "Payment"
+          WHERE LOWER(category) = 'mensalidade' AND status = 'pendente'
+            AND COALESCE("dueDate","createdAt") >= ${range.start}
+            AND COALESCE("dueDate","createdAt") < ${range.end}
+        `,
+        prisma.$queryRaw<AggRow[]>`
+          SELECT COALESCE(SUM(amount), 0) AS value FROM "Payment"
+          WHERE LOWER(category) = 'mensalidade' AND status = 'atrasado'
+            AND COALESCE("dueDate","createdAt") >= ${range.start}
+            AND COALESCE("dueDate","createdAt") < ${range.end}
+        `,
+        prisma.$queryRaw<CountRow[]>`
+          SELECT COUNT(DISTINCT "athleteId") AS count FROM "Payment"
+          WHERE LOWER(category) = 'mensalidade' AND status = 'atrasado'
+            AND COALESCE("dueDate","createdAt") >= ${range.start}
+            AND COALESCE("dueDate","createdAt") < ${range.end}
+        `,
+        prisma.$queryRaw<CountRow[]>`
+          SELECT COUNT(*) AS count FROM "Athlete" WHERE status = 'ativo' AND "monthlyPaymentStatus" != 'isento'
+        `,
+      ]);
+
+      const paidVal = Number(paid[0]?.value ?? 0);
+      const pendingVal = Number(pending[0]?.value ?? 0);
+      const overdueVal = Number(overdue[0]?.value ?? 0);
+      const expected = paidVal + pendingVal + overdueVal;
+
+      result.push({
+        month: monthStr,
+        expected,
+        paid: paidVal,
+        pending: pendingVal,
+        overdue: overdueVal,
+        overdueCount: Number(overdueCount[0]?.count ?? 0),
+      });
+    }
+
+    return result;
   },
 };
 

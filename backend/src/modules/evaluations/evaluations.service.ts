@@ -83,8 +83,9 @@ export function formatEvaluation(evaluation: Awaited<ReturnType<typeof getEvalua
 }
 
 async function getEvaluationByAthleteId(athleteId: string) {
-  return prisma.athleteEvaluation.findUnique({
+  return prisma.athleteEvaluation.findFirst({
     where: { athleteId },
+    orderBy: { createdAt: "desc" },
   });
 }
 
@@ -127,14 +128,10 @@ export const evaluationsService = {
       strengths: normalizeOptional(payload.strengths),
     };
 
-    const evaluation = await prisma.athleteEvaluation.upsert({
-      where: { athleteId: athlete.id },
-      create: {
-        athleteId: athlete.id,
-        ...data,
-      },
-      update: data,
-    });
+    const existing = await getEvaluationByAthleteId(athlete.id);
+    const evaluation = existing
+      ? await prisma.athleteEvaluation.update({ where: { id: existing.id }, data })
+      : await prisma.athleteEvaluation.create({ data: { athleteId: athlete.id, ...data } });
 
     return formatEvaluation(evaluation);
   },
@@ -144,10 +141,12 @@ export const evaluationsService = {
     return formatEvaluation(await getEvaluationByAthleteId(athleteId));
   },
 
-  async updateCoachEvaluation(athleteId: string, payload: CoachEvaluationPayload) {
+  async updateCoachEvaluation(athleteId: string, payload: CoachEvaluationPayload, evaluatorName?: string) {
     await ensureAthlete(athleteId);
 
     const data = {
+      athleteId,
+      evaluatedBy: evaluatorName ?? null,
       coachNotes: normalizeOptional(payload.coachNotes),
       mental: parseRating(payload.mental, "Mental"),
       physical: parseRating(payload.physical, "Fisico"),
@@ -155,14 +154,7 @@ export const evaluationsService = {
       technical: parseRating(payload.technical, "Tecnica"),
     };
 
-    const evaluation = await prisma.athleteEvaluation.upsert({
-      where: { athleteId },
-      create: {
-        athleteId,
-        ...data,
-      },
-      update: data,
-    });
+    const evaluation = await prisma.athleteEvaluation.create({ data });
 
     const athleteUser = await prisma.user.findUnique({
       where: { athleteId },
@@ -178,5 +170,14 @@ export const evaluationsService = {
     whatsAppService.notifyEvaluationUpdated(athleteId).catch(() => {});
 
     return formatEvaluation(evaluation);
+  },
+
+  async getHistory(athleteId: string) {
+    await ensureAthlete(athleteId);
+    const records = await prisma.athleteEvaluation.findMany({
+      where: { athleteId, evaluatedBy: { not: null } },
+      orderBy: { createdAt: "desc" },
+    });
+    return records.map((r) => ({ ...r, overall: calculateOverall(r) }));
   },
 };

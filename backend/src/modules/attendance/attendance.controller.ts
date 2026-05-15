@@ -82,4 +82,12 @@ export const attendanceController = {
       next(error);
     }
   }) satisfies RequestHandler,
+
+  athletesSummary: (async (_request, response, next) => {
+    try {
+      response.json(await attendanceService.getAthletesSummary());
+    } catch (error) {
+      next(error);
+    }
+  }) satisfies RequestHandler,
 };

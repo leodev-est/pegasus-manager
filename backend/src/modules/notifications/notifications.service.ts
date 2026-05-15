@@ -1,5 +1,6 @@
 import { prisma } from "../../config/prisma";
 import { AppError } from "../../middlewares/error.middleware";
+import { pushService } from "../push/push.service";
 
 const notificationTypes = ["treino", "financeiro", "frequencia", "avaliacao", "sistema"] as const;
 
@@ -66,7 +67,7 @@ export const notificationsService = {
       throw new AppError("Usuário destinatário é obrigatório", 400);
     }
 
-    return prisma.notification.create({
+    const notification = await prisma.notification.create({
       data: {
         message: requireText(payload.message, "Mensagem"),
         title: requireText(payload.title, "Título"),
@@ -74,6 +75,12 @@ export const notificationsService = {
         userId: payload.userId,
       },
     });
+
+    pushService
+      .sendToUser(payload.userId, { title: notification.title, body: notification.message })
+      .catch(() => {});
+
+    return notification;
   },
 
   async createForUser(userId: string | null | undefined, payload: Omit<NotificationPayload, "userId">) {

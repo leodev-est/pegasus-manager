@@ -8,19 +8,23 @@ datasource db {
 }
 
 model User {
-  id                 String     @id @default(uuid())
-  name               String
-  username           String     @unique
-  email              String?    @unique
-  password           String
-  active             Boolean    @default(true)
-  mustChangePassword Boolean    @default(false)
-  athleteId          String?    @unique
-  createdAt          DateTime   @default(now())
-  updatedAt          DateTime   @updatedAt
-  athlete            Athlete?   @relation(fields: [athleteId], references: [id], onDelete: SetNull)
-  roles              UserRole[]
-  notifications      Notification[]
+  id                  String     @id @default(uuid())
+  name                String
+  username            String     @unique
+  email               String?    @unique
+  password            String
+  active              Boolean    @default(true)
+  mustChangePassword  Boolean    @default(false)
+  athleteId           String?    @unique
+  avatarUrl           String?
+  googleRefreshToken  String?
+  googleCalendarId    String?
+  createdAt           DateTime   @default(now())
+  updatedAt           DateTime   @updatedAt
+  athlete             Athlete?   @relation(fields: [athleteId], references: [id], onDelete: SetNull)
+  roles               UserRole[]
+  notifications       Notification[]
+  pushSubscriptions   PushSubscription[]
 }
 
 model Role {
@@ -70,8 +74,10 @@ model Athlete {
   name                 String
   email                String?
   phone                String?
+  birthDate            DateTime?
   category             String?
   position             String?
+  gender               String?
   status               String    @default("teste")
   activatedAt          DateTime?
   monthlyPaymentStatus String    @default("pendente")
@@ -81,7 +87,11 @@ model Athlete {
   payments             Payment[]
   user                 User?
   attendances          TrainingAttendance[]
-  evaluation           AthleteEvaluation?
+  evaluations          AthleteEvaluation[]
+  application          AthleteApplication?
+  paymentStatusHistory PaymentStatusHistory[]
+  uniformDeliveries    UniformDelivery[]
+  jerseyAssignment     JerseyAssignment?
 }
 
 model AthleteApplication {
@@ -105,8 +115,10 @@ model AthleteApplication {
   source             String    @default("site")
   status             String    @default("pendente")
   notes              String?
+  athleteId          String?   @unique
   createdAt          DateTime  @default(now())
   updatedAt          DateTime  @updatedAt
+  athlete            Athlete?  @relation(fields: [athleteId], references: [id], onDelete: SetNull)
 }
 
 model Payment {
@@ -118,8 +130,9 @@ model Payment {
   category    String?
   status      String    @default("pendente")
   dueDate     DateTime?
-  paidAt      DateTime?
-  createdAt   DateTime  @default(now())
+  paidAt         DateTime?
+  referenceMonth String?
+  createdAt      DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
   athlete     Athlete?  @relation(fields: [athleteId], references: [id], onDelete: SetNull)
 }
@@ -157,32 +170,60 @@ model Task {
 }
 
 model TrainingSetting {
-  id                 String   @id @default("singleton")
-  blockedDates       String[]
-  trainingTime       String   @default("17:30 às 19:00")
-  trainingLocation   String   @default("Jerusalém")
-  trainingDependency String   @default("Quadra - CREC")
-  monthlyFeeAmount   Decimal  @default(0) @db.Decimal(10, 2)
-  createdAt          DateTime @default(now())
-  updatedAt          DateTime @updatedAt
+  id                       String   @id @default("singleton")
+  blockedDates             String[]
+  blockedDateEventIds      Json     @default("{}")
+  trainingTime             String   @default("17:30 às 19:00")
+  trainingLocation         String   @default("Jerusalém")
+  trainingDependency       String   @default("Quadra - CREC")
+  trainingDaysOfWeek       String[] @default([])
+  trainingDuration         Int      @default(90)
+  defaultTrainingCategory  String   @default("geral")
+  monthlyFeeAmount         Decimal  @default(0) @db.Decimal(10, 2)
+  overduePaymentDays       Int      @default(10)
+  maxAbsencesPercentage    Float    @default(25)
+  minAttendanceToEvaluate  Int      @default(3)
+  notifyOnApproval         Boolean  @default(true)
+  notifyOnOverdue          Boolean  @default(true)
+  notifyOnTraining         Boolean  @default(false)
+  systemName               String   @default("Pegasus Manager")
+  timezone                 String   @default("America/Sao_Paulo")
+  googleCalendarId         String?
+  googleRefreshToken       String?
+  pixKey                   String?
+  pixProvider              String?
+  pixApiKey                String?
+  pixWebhookSecret         String?
+  emailEnabled             Boolean  @default(false)
+  emailFallbackEnabled     Boolean  @default(false)
+  emailHost                String?
+  emailPort                Int?
+  emailSecure              Boolean  @default(true)
+  emailUser                String?
+  emailPassword            String?
+  emailFrom                String?
+  emailFromName            String   @default("Pegasus Manager")
+  createdAt                DateTime @default(now())
+  updatedAt                DateTime @updatedAt
 }
 
 model Training {
-  id        String   @id @default(uuid())
-  date      DateTime
-  title     String
-  category  String?
-  objective String?
-  warmup    String?
-  fundamentals String?
-  mainPart  String?
-  reducedGame String?
-  finalPart String?
-  notes     String?
-  createdBy String
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  attendances TrainingAttendance[]
+  id             String   @id @default(uuid())
+  date           DateTime
+  title          String
+  category       String?
+  objective      String?
+  warmup         String?
+  fundamentals   String?
+  mainPart       String?
+  reducedGame    String?
+  finalPart      String?
+  notes          String?
+  createdBy      String
+  googleEventId  String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  attendances    TrainingAttendance[]
 }
 
 model TrainingAttendance {
@@ -202,7 +243,8 @@ model TrainingAttendance {
 
 model AthleteEvaluation {
   id           String   @id @default(uuid())
-  athleteId    String   @unique
+  athleteId    String
+  evaluatedBy  String?
   selfRating   Float?
   strengths    String?
   improvements String?
@@ -214,6 +256,8 @@ model AthleteEvaluation {
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
   athlete      Athlete  @relation(fields: [athleteId], references: [id], onDelete: Cascade)
+
+  @@index([athleteId])
 }
 
 model Notification {
@@ -258,4 +302,132 @@ model Spreadsheet {
   description String?
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
+}
+
+model AnnouncementTemplate {
+  id        String   @id @default(uuid())
+  title     String
+  body      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model ScheduledAnnouncement {
+  id          String    @id @default(uuid())
+  title       String
+  body        String
+  target      String    @default("active")
+  channel     String    @default("both")
+  scheduledAt DateTime
+  sentAt      DateTime?
+  status      String    @default("pending")
+  error       String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+}
+
+model PaymentStatusHistory {
+  id         String   @id @default(uuid())
+  athleteId  String
+  fromStatus String
+  toStatus   String
+  changedBy  String
+  notes      String?
+  createdAt  DateTime @default(now())
+  athlete    Athlete  @relation(fields: [athleteId], references: [id], onDelete: Cascade)
+}
+
+model Game {
+  id            String    @id @default(uuid())
+  date          DateTime
+  opponent      String
+  location      String
+  scorePegasus  Int
+  scoreOpponent Int
+  result        String
+  notes         String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  sets          GameSet[]
+}
+
+model GameSet {
+  id            String  @id @default(uuid())
+  gameId        String
+  setNumber     Int
+  scorePegasus  Int
+  scoreOpponent Int
+  game          Game    @relation(fields: [gameId], references: [id], onDelete: Cascade)
+
+  @@unique([gameId, setNumber])
+}
+
+model UniformItem {
+  id          String            @id @default(uuid())
+  name        String
+  description String?
+  stock       Int               @default(0)
+  minStock    Int               @default(3)
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+  deliveries  UniformDelivery[]
+}
+
+model UniformDelivery {
+  id            String      @id @default(uuid())
+  uniformItemId String
+  athleteId     String
+  quantity      Int         @default(1)
+  deliveredAt   DateTime    @default(now())
+  notes         String?
+  deliveredBy   String?
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+  uniformItem   UniformItem @relation(fields: [uniformItemId], references: [id], onDelete: Cascade)
+  athlete       Athlete     @relation(fields: [athleteId], references: [id], onDelete: Cascade)
+}
+
+model JerseyAssignment {
+  id        String  @id @default(uuid())
+  number    Int
+  gender    String
+  athleteId String  @unique
+  athlete   Athlete @relation(fields: [athleteId], references: [id], onDelete: Cascade)
+
+  @@unique([number, gender])
+}
+
+model PushSubscription {
+  id        String   @id @default(uuid())
+  userId    String
+  endpoint  String   @unique
+  p256dh    String
+  auth      String
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model MonthlyReport {
+  id          String    @id @default(uuid())
+  month       String    @unique
+  fileName    String
+  content     Bytes
+  fileSize    Int
+  generatedAt DateTime  @default(now())
+  sentAt      DateTime?
+}
+
+model AuditLog {
+  id        String   @id @default(uuid())
+  userId    String?
+  userName  String?
+  action    String
+  entity    String
+  entityId  String?
+  meta      Json     @default("{}")
+  createdAt DateTime @default(now())
+
+  @@index([entity, entityId])
+  @@index([userId])
+  @@index([createdAt])
 }

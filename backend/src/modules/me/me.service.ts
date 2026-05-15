@@ -18,6 +18,7 @@ function startOfToday() {
 
 function formatUser(user: {
   active: boolean;
+  avatarUrl: string | null;
   email: string | null;
   id: string;
   name: string;
@@ -26,6 +27,7 @@ function formatUser(user: {
 }) {
   return {
     active: user.active,
+    avatarUrl: user.avatarUrl,
     email: user.email,
     id: user.id,
     name: user.name,
@@ -48,7 +50,14 @@ export const meService = {
       include: {
         athlete: {
           include: {
-            evaluation: true,
+            evaluations: {
+              orderBy: { createdAt: "desc" as const },
+              take: 3,
+            },
+            uniformDeliveries: {
+              include: { uniformItem: { select: { id: true, name: true } } },
+              orderBy: { deliveredAt: "desc" },
+            },
           },
         },
         roles: {
@@ -71,8 +80,17 @@ export const meService = {
       throw new AppError("Usuário não encontrado", 404);
     }
 
-    const athlete = user.athlete;
-    const [payments, upcomingTrainings, totalFrequency] = await Promise.all([
+    const athlete = user.athlete
+      ? {
+          ...user.athlete,
+          evaluation: user.athlete.evaluations[0] ?? null,
+          recentEvaluations: user.athlete.evaluations,
+        }
+      : null;
+    const now = new Date();
+    const threeMonthsAgo = new Date(Date.UTC(now.getFullYear(), now.getMonth() - 2, 1));
+
+    const [payments, upcomingTrainings, totalFrequency, monthlyFrequency] = await Promise.all([
       athlete
         ? prisma.payment.findMany({
             where: { athleteId: athlete.id },
@@ -81,15 +99,21 @@ export const meService = {
           })
         : [],
       prisma.training.findMany({
-        where: {
-          date: {
-            gte: startOfToday(),
-          },
-        },
+        where: { date: { gte: startOfToday() } },
         orderBy: { date: "asc" },
         take: 5,
       }),
       athlete ? attendanceService.getMyTotalFrequency(userId) : null,
+      athlete
+        ? prisma.trainingAttendance.findMany({
+            where: {
+              athleteId: athlete.id,
+              training: { date: { gte: threeMonthsAgo } },
+            },
+            include: { training: { select: { id: true, date: true, title: true } } },
+            orderBy: { training: { date: "asc" } },
+          })
+        : [],
     ]);
 
     return {
@@ -104,6 +128,7 @@ export const meService = {
             totalTrainings: totalFrequency.totalTreinos,
           }
         : null,
+      monthlyAttendance: monthlyFrequency,
       payments: payments.map((payment) => ({
         ...payment,
         amount: Number(payment.amount),
@@ -113,7 +138,14 @@ export const meService = {
     };
   },
 
-  async updateProfile(userId: string, payload: { email?: string | null; phone?: string | null }) {
+  async updateAvatar(userId: string, buffer: Buffer, mimeType: string) {
+    const base64 = buffer.toString("base64");
+    const dataUrl = `data:${mimeType};base64,${base64}`;
+    await prisma.user.update({ where: { id: userId }, data: { avatarUrl: dataUrl } });
+    return { avatarUrl: dataUrl };
+  },
+
+  async updateProfile(userId: string, payload: { email?: string | null; phone?: string | null; birthDate?: string | null }) {
     const user = await prisma.user.findUnique({
       where: { id: userId },
       include: { athlete: true },
@@ -134,12 +166,13 @@ export const meService = {
     });
 
     if (user.athlete) {
+      const athleteData: Record<string, unknown> = { email, phone };
+      if (payload.birthDate !== undefined) {
+        athleteData.birthDate = payload.birthDate ? new Date(payload.birthDate) : null;
+      }
       await prisma.athlete.update({
         where: { id: user.athlete.id },
-        data: {
-          email,
-          phone,
-        },
+        data: athleteData,
       });
     }
 

@@ -11,6 +11,7 @@ import {
   getOfficialTrainingDatesForMonth,
   isBlockedTrainingDate,
   isOfficialPegasusTrainingDate,
+  loadBlockedDates,
   parseMonthYear,
   toTrainingDateKey,
 } from "../../utils/trainingDates";
@@ -104,14 +105,14 @@ async function findTrainingByDate(dateKey: string) {
   });
 }
 
-async function ensureOfficialTrainingForDate(dateKey: string) {
+async function ensureOfficialTrainingForDate(dateKey: string, blockedDates: string[]) {
   const existing = await findTrainingByDate(dateKey);
 
   if (existing) {
     return existing;
   }
 
-  if (!isOfficialPegasusTrainingDate(dateKey)) {
+  if (!isOfficialPegasusTrainingDate(dateKey, blockedDates)) {
     return null;
   }
 
@@ -128,6 +129,7 @@ async function ensureOfficialTrainingForDate(dateKey: string) {
 }
 
 async function getTrainingDatesForMonth(year: number, month: number) {
+  const blockedDates = await loadBlockedDates();
   const { start, end } = monthRange(year, month);
   const trainings = await prisma.training.findMany({
     where: {
@@ -139,11 +141,11 @@ async function getTrainingDatesForMonth(year: number, month: number) {
     orderBy: { date: "asc" },
   });
 
-  const dateKeys = new Set(getOfficialTrainingDatesForMonth(year, month));
+  const dateKeys = new Set(getOfficialTrainingDatesForMonth(year, month, blockedDates));
 
   for (const training of trainings) {
     const dateKey = toTrainingDateKey(training.date);
-    if (dateKey >= OFFICIAL_TRAINING_START_DATE && !isBlockedTrainingDate(dateKey)) {
+    if (dateKey >= OFFICIAL_TRAINING_START_DATE && !isBlockedTrainingDate(dateKey, blockedDates)) {
       dateKeys.add(dateKey);
     }
   }
@@ -209,7 +211,8 @@ function getAthleteTrainingDates(
 export const attendanceService = {
   async getTodayCheckIn(userId: string) {
     const todayKey = getBrazilDateKey();
-    const training = await ensureOfficialTrainingForDate(todayKey);
+    const blockedDates = await loadBlockedDates();
+    const training = await ensureOfficialTrainingForDate(todayKey, blockedDates);
     const user = await prisma.user.findUnique({
       where: { id: userId },
       include: { athlete: true },
@@ -411,10 +414,11 @@ export const attendanceService = {
     });
     const todayKey = getBrazilDateKey();
     const countedDateKeys = dateKeys.filter((dateKey) => dateKey <= todayKey);
+    const blockedDates = await loadBlockedDates();
     const trainingsByDate = new Map<string, string>();
 
     for (const dateKey of countedDateKeys) {
-      const training = await ensureOfficialTrainingForDate(dateKey);
+      const training = await ensureOfficialTrainingForDate(dateKey, blockedDates);
       if (training) {
         trainingsByDate.set(dateKey, training.id);
       }
@@ -484,10 +488,18 @@ export const attendanceService = {
   },
 
   async getChamada(dateKey: string) {
-    const training = await ensureOfficialTrainingForDate(dateKey);
+    const blockedDates = await loadBlockedDates();
+    const isBlocked = isBlockedTrainingDate(dateKey, blockedDates);
+    const training = await ensureOfficialTrainingForDate(dateKey, blockedDates);
 
     if (!training) {
-      return { available: false, date: dateKey, training: null, athletes: [] };
+      return {
+        available: false,
+        date: dateKey,
+        training: null,
+        athletes: [],
+        reason: isBlocked ? "cancelado" : "sem_treino",
+      };
     }
 
     const athletes = await prisma.athlete.findMany({
@@ -519,7 +531,8 @@ export const attendanceService = {
   },
 
   async markChamadaBulk(dateKey: string, entries: Array<{ athleteId: string; status: string }>) {
-    const training = await ensureOfficialTrainingForDate(dateKey);
+    const blockedDates = await loadBlockedDates();
+    const training = await ensureOfficialTrainingForDate(dateKey, blockedDates);
 
     if (!training) {
       throw new AppError("Não há treino oficial para esta data", 404);
@@ -529,7 +542,7 @@ export const attendanceService = {
       validateAttendanceStatus(entry.status);
     }
 
-    return Promise.all(
+    const results = await Promise.all(
       entries.map(({ athleteId, status }) =>
         prisma.trainingAttendance.upsert({
           where: { trainingId_athleteId: { trainingId: training.id, athleteId } },
@@ -538,6 +551,62 @@ export const attendanceService = {
         }),
       ),
     );
+
+    // Check consecutive absences for athletes marked as "falta"
+    const consecutiveThreshold = 3;
+    const faltas = entries.filter((e) => e.status === "falta");
+    for (const { athleteId } of faltas) {
+      const recentAttendances = await prisma.trainingAttendance.findMany({
+        where: { athleteId },
+        orderBy: { createdAt: "desc" },
+        take: consecutiveThreshold,
+        include: { training: { select: { date: true } } },
+      });
+
+      const allFaltas = recentAttendances.length === consecutiveThreshold &&
+        recentAttendances.every((a) => a.status === "falta");
+
+      if (allFaltas) {
+        const athlete = await prisma.athlete.findUnique({ where: { id: athleteId }, select: { name: true } });
+        notificationsService
+          .notifyByRoles(["RH", "Diretor", "Gestao"], {
+            title: "Alerta de ausência",
+            message: `${athlete?.name ?? "Atleta"} faltou os últimos ${consecutiveThreshold} treinos consecutivos.`,
+            type: "frequencia",
+          })
+          .catch(() => {});
+      }
+    }
+
+    return results;
+  },
+
+  async getAthletesSummary() {
+    const athletes = await prisma.athlete.findMany({
+      where: { status: "ativo" },
+      select: { id: true, name: true },
+      orderBy: { name: "asc" },
+    });
+
+    const todayKey = getBrazilDateKey();
+    const summaries = await Promise.all(
+      athletes.map(async (athlete) => {
+        const attendances = await prisma.trainingAttendance.findMany({
+          where: { athleteId: athlete.id },
+          include: { training: { select: { date: true } } },
+        });
+        const counted = attendances.filter(
+          (a) => toTrainingDateKey(a.training.date) <= todayKey && a.status !== "programado",
+        );
+        const presencas = counted.filter((a) => a.status === "presente").length;
+        const justificadas = counted.filter((a) => a.status === "justificada").length;
+        const total = counted.length;
+        const percentual = total > 0 ? Math.round(((presencas + justificadas) / total) * 100) : null;
+        return { athleteId: athlete.id, percentual };
+      }),
+    );
+
+    return Object.fromEntries(summaries.map((s) => [s.athleteId, s.percentual]));
   },
 
   async updateAttendance(id: string, payload: { notes?: string | null; status?: string }) {

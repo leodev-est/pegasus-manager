@@ -32,5 +32,6 @@ function ensureDirectorOrCoach(request: Request, _response: Response, next: Next
 
 evaluationsRoutes.get("/me", ensureAthleteOrStaff, evaluationsController.getMe);
 evaluationsRoutes.patch("/self", ensureAthleteOrStaff, evaluationsController.updateSelf);
+evaluationsRoutes.get("/:athleteId/history", ensureDirectorOrCoach, evaluationsController.getHistory);
 evaluationsRoutes.get("/:athleteId", ensureDirectorOrCoach, evaluationsController.getByAthlete);
 evaluationsRoutes.patch("/:athleteId", ensureDirectorOrCoach, evaluationsController.updateByAthlete);

@@ -1,4 +1,5 @@
 import { prisma } from "../../config/prisma";
+import { emailService } from "../email/email.service";
 
 const raw = (process.env.EVOLUTION_API_URL ?? "").replace(/\/$/, "");
 const EVOLUTION_URL = raw && !raw.startsWith("http") ? `https://${raw}` : raw;
@@ -524,54 +525,68 @@ class WhatsAppService {
   // ── Notification helpers ──────────────────────────────────────────────────
 
   async notifyTrainingCancelled(dateKey: string): Promise<void> {
-    if (this.status !== "connected") return;
     const athletes = await prisma.athlete.findMany({
-      where: { status: "ativo", phone: { not: null } },
-      select: { name: true, phone: true },
+      where: { status: "ativo" },
+      select: { name: true, phone: true, email: true },
     });
     const date = fmtDate(dateKey);
+    const message = (name: string) =>
+      `Olá ${first(name)}! O treino de ${date} foi CANCELADO. Fique atento para novidades.`;
+
     for (const a of athletes) {
-      if (!a.phone) continue;
-      await this.sendMessage(
-        a.phone,
-        `⚠️ Olá ${first(a.name)}! O treino de *${date}* foi *CANCELADO*. Fique atento para novidades.`,
-      );
-      await sleep(800);
+      let sent = false;
+      if (this.status === "connected" && a.phone) {
+        try {
+          await this.sendMessage(a.phone, `⚠️ ${message(a.name)}`);
+          sent = true;
+        } catch { /* fallthrough */ }
+        await sleep(800);
+      }
+      if (!sent) {
+        await emailService.sendFallback(a.email, `Treino de ${date} cancelado`, message(a.name)).catch(() => {});
+      }
     }
   }
 
   async notifyAthleteApproved(athleteId: string, username?: string, isNewUser?: boolean): Promise<void> {
-    if (this.status !== "connected") return;
     const athlete = await prisma.athlete.findUnique({
       where: { id: athleteId },
-      select: { name: true, phone: true },
+      select: { name: true, phone: true, email: true },
     });
-    if (!athlete?.phone) return;
+    if (!athlete) return;
 
     const tempPassword = process.env.ATHLETE_TEMP_PASSWORD ?? "Pegasus@Temp!2025";
     const credentialsBlock = isNewUser && username
       ? `\n\n🔐 *Seus dados de acesso:*\n👤 Usuário: *${username}*\n🔑 Senha provisória: *${tempPassword}*\n\nAcesse o sistema e troque sua senha no primeiro login.`
-      : username
-        ? `\n\n👤 Seu usuário de acesso: *${username}*`
-        : "";
+      : username ? `\n\n👤 Seu usuário de acesso: *${username}*` : "";
+    const waMessage = `🎉 Parabéns ${first(athlete.name)}! Sua aprovação como atleta do *Projeto Pegasus* está confirmada. Bem-vindo(a) ao time! 🏐${credentialsBlock}`;
+    const emailText = `Parabéns ${first(athlete.name)}! Sua aprovação como atleta do Projeto Pegasus está confirmada. Bem-vindo(a) ao time!${credentialsBlock.replace(/\*/g, "")}`;
 
-    await this.sendMessage(
-      athlete.phone,
-      `🎉 Parabéns ${first(athlete.name)}! Sua aprovação como atleta do *Projeto Pegasus* está confirmada. Bem-vindo(a) ao time! 🏐${credentialsBlock}`,
-    );
+    let sent = false;
+    if (this.status === "connected" && athlete.phone) {
+      try { await this.sendMessage(athlete.phone, waMessage); sent = true; } catch { /* fallthrough */ }
+    }
+    if (!sent) {
+      await emailService.sendFallback(athlete.email, "Aprovação como atleta Pegasus", emailText).catch(() => {});
+    }
   }
 
   async notifyEvaluationUpdated(athleteId: string): Promise<void> {
-    if (this.status !== "connected") return;
     const athlete = await prisma.athlete.findUnique({
       where: { id: athleteId },
-      select: { name: true, phone: true },
+      select: { name: true, phone: true, email: true },
     });
-    if (!athlete?.phone) return;
-    await this.sendMessage(
-      athlete.phone,
-      `📊 Olá ${first(athlete.name)}! Sua avaliação técnica foi atualizada. Acesse o sistema Pegasus para conferir suas notas.`,
-    );
+    if (!athlete) return;
+
+    const message = `Olá ${first(athlete.name)}! Sua avaliação técnica foi atualizada. Acesse o sistema Pegasus para conferir suas notas.`;
+
+    let sent = false;
+    if (this.status === "connected" && athlete.phone) {
+      try { await this.sendMessage(athlete.phone, `📊 ${message}`); sent = true; } catch { /* fallthrough */ }
+    }
+    if (!sent) {
+      await emailService.sendFallback(athlete.email, "Avaliação técnica atualizada", message).catch(() => {});
+    }
   }
 }
 

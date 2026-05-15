@@ -1,4 +1,6 @@
 import cron from "node-cron";
+import { Prisma } from "@prisma/client";
+import { randomUUID } from "crypto";
 import { prisma } from "../../config/prisma";
 
 export function startFinanceScheduler(): void {
@@ -13,70 +15,41 @@ export function startFinanceScheduler(): void {
 }
 
 async function generateMonthlyFees(): Promise<void> {
-  const amountEnv = process.env.MONTHLY_FEE_AMOUNT;
-  const amount = amountEnv ? Number(amountEnv) : 0;
+  const setting = await prisma.trainingSetting.findFirst({ select: { monthlyFeeAmount: true } });
+  const amount = Number(setting?.monthlyFeeAmount ?? 0);
 
   if (!amount || amount <= 0) {
-    console.log("[Finance Scheduler] MONTHLY_FEE_AMOUNT não definido ou zero — nenhuma mensalidade gerada.");
+    console.log("[Finance Scheduler] monthlyFeeAmount não configurado ou zero — nenhuma mensalidade gerada.");
     return;
   }
 
   const now = new Date();
   const year = now.getUTCFullYear();
-  const month = now.getUTCMonth();
-
-  const monthStart = new Date(Date.UTC(year, month, 1));
-  const monthEnd = new Date(Date.UTC(year, month + 1, 0, 23, 59, 59, 999));
-  const dueDate = new Date(Date.UTC(year, month, 10));
-
-  const yearStr = String(year);
-  const monthStr = String(month + 1).padStart(2, "0");
-  const description = `Mensalidade ${yearStr}/${monthStr}`;
+  const mon = now.getUTCMonth();
+  const refMonth = `${year}-${String(mon + 1).padStart(2, "0")}`;
+  const dueDate = new Date(Date.UTC(year, mon, 10));
 
   const athletes = await prisma.athlete.findMany({
-    where: {
-      status: "ativo",
-      monthlyPaymentStatus: { not: "isento" },
-    },
-    select: { id: true, name: true },
+    where: { status: "ativo", monthlyPaymentStatus: { not: "isento" } },
+    select: { id: true },
   });
 
+  type Row = { athleteId: string | null };
+  const existing = await prisma.$queryRaw<Row[]>`
+    SELECT "athleteId" FROM "Payment"
+    WHERE "referenceMonth" = ${refMonth} AND LOWER(category) = 'mensalidade'
+  `;
+  const existingIds = new Set(existing.map((r) => r.athleteId));
+
   let created = 0;
-  let skipped = 0;
-
   for (const athlete of athletes) {
-    const existing = await prisma.payment.findFirst({
-      where: {
-        athleteId: athlete.id,
-        category: "mensalidade",
-        dueDate: {
-          gte: monthStart,
-          lte: monthEnd,
-        },
-      },
-    });
-
-    if (existing) {
-      skipped++;
-      continue;
-    }
-
-    await prisma.payment.create({
-      data: {
-        athleteId: athlete.id,
-        description,
-        amount: amount,
-        type: "receita",
-        category: "mensalidade",
-        status: "pendente",
-        dueDate,
-      },
-    });
-
+    if (existingIds.has(athlete.id)) continue;
+    await prisma.$executeRaw`
+      INSERT INTO "Payment" (id, "athleteId", description, amount, type, category, status, "dueDate", "referenceMonth", "updatedAt")
+      VALUES (${randomUUID()}, ${athlete.id}, 'Mensalidade', ${new Prisma.Decimal(amount)}, 'receita', 'Mensalidade', 'pendente', ${dueDate}, ${refMonth}, NOW())
+    `;
     created++;
   }
 
-  console.log(
-    `[Finance Scheduler] Mensalidades ${yearStr}/${monthStr}: ${created} criada(s), ${skipped} já existia(m).`,
-  );
+  console.log(`[Finance Scheduler] Mensalidades ${refMonth}: ${created} criada(s), ${athletes.length - created} já existia(m).`);
 }

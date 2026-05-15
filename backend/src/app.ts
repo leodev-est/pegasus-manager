@@ -2,6 +2,7 @@
 import express from "express";
 import helmet from "helmet";
 import morgan from "morgan";
+import rateLimit from "express-rate-limit";
 import { errorMiddleware } from "./middlewares/error.middleware";
 import { routes } from "./routes";
 
@@ -34,8 +35,25 @@ function isAllowedOrigin(origin: string) {
   return false;
 }
 
+const globalLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: isProduction ? 500 : 5000,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: "Muitas requisições. Tente novamente em breve." },
+});
+
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: isProduction ? 20 : 200,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: "Muitas tentativas de login. Aguarde 15 minutos." },
+});
+
 app.use(helmet());
 app.use(morgan(isProduction ? "combined" : "dev"));
+app.use(globalLimiter);
 app.use(
   cors({
     origin(origin, callback) {

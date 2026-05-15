@@ -1,4 +1,5 @@
 ﻿import { Prisma } from "@prisma/client";
+import { randomUUID } from "crypto";
 import { prisma } from "../../config/prisma";
 import { AppError } from "../../middlewares/error.middleware";
 import { syncActiveAthleteUser } from "./athlete-user-sync";
@@ -25,12 +26,16 @@ type AthleteFilters = {
   monthlyPaymentStatus?: string;
 };
 
+const allowedGenders = ["masculino", "feminino"] as const;
+type Gender = (typeof allowedGenders)[number];
+
 type AthletePayload = {
   name?: string;
   email?: string | null;
   phone?: string | null;
   category?: string | null;
   position?: string | null;
+  gender?: Gender | null;
   status?: AthleteStatus;
   monthlyPaymentStatus?: MonthlyPaymentStatus;
   notes?: string | null;
@@ -115,6 +120,12 @@ function buildData(payload: AthletePayload, requireName: boolean) {
   if (payload.phone !== undefined) data.phone = normalizeOptional(payload.phone);
   if (payload.category !== undefined) data.category = normalizeOptional(payload.category);
   if (payload.position !== undefined) data.position = normalizeOptional(payload.position);
+  if (payload.gender !== undefined) {
+    if (payload.gender && !allowedGenders.includes(payload.gender as Gender)) {
+      throw new AppError("Gênero deve ser masculino ou feminino", 400);
+    }
+    data.gender = payload.gender ?? null;
+  }
   if (payload.status !== undefined) data.status = payload.status;
   if (payload.status === "ativo") data.activatedAt = new Date();
   if (payload.status && payload.status !== "ativo") data.activatedAt = null;
@@ -220,6 +231,90 @@ export const athletesService = {
       data: {
         status: "inativo",
       },
+    });
+  },
+
+  async updatePaymentStatus(id: string, status: string, changedBy: string, notes?: string) {
+    validateMonthlyPaymentStatus(status);
+    const athlete = await this.findById(id);
+
+    if (status !== "isento") {
+      const now = new Date();
+      const year = now.getFullYear();
+      const month = now.getMonth();
+      const refMonth = `${year}-${String(month + 1).padStart(2, "0")}`;
+      const monthStart = new Date(Date.UTC(year, month, 1));
+      const monthEnd = new Date(Date.UTC(year, month + 1, 1));
+      const paymentStatus = status as "pago" | "pendente" | "atrasado";
+      const paidAt = status === "pago" ? now : null;
+      const dueDate = new Date(Date.UTC(year, month, 10));
+
+      const existing = await prisma.$queryRaw<{ id: string }[]>`
+        SELECT id FROM "Payment"
+        WHERE "athleteId" = ${id}
+          AND (LOWER(category) LIKE '%mensalidade%' OR LOWER(description) LIKE '%mensalidade%')
+          AND (
+            "referenceMonth" = ${refMonth}
+            OR (
+              "referenceMonth" IS NULL
+              AND (
+                ("dueDate" >= ${monthStart} AND "dueDate" < ${monthEnd})
+                OR ("createdAt" >= ${monthStart} AND "createdAt" < ${monthEnd})
+              )
+            )
+          )
+        LIMIT 1
+      `;
+
+      if (existing.length > 0) {
+        await prisma.$queryRaw`
+          UPDATE "Payment"
+          SET status = ${paymentStatus}, "paidAt" = ${paidAt}, "referenceMonth" = ${refMonth}, "updatedAt" = NOW()
+          WHERE id = ${existing[0].id}
+        `;
+      } else {
+        const lastAmount = await prisma.$queryRaw<{ amount: number }[]>`
+          SELECT amount FROM "Payment"
+          WHERE "athleteId" = ${id}
+            AND type = 'receita'
+            AND (LOWER(category) LIKE '%mensalidade%' OR LOWER(description) LIKE '%mensalidade%')
+          ORDER BY "createdAt" DESC
+          LIMIT 1
+        `;
+        const amount = lastAmount.length > 0 ? Number(lastAmount[0].amount) : 0;
+
+        await prisma.$queryRaw`
+          INSERT INTO "Payment" (id, "athleteId", description, amount, type, category, status, "dueDate", "referenceMonth", "paidAt", "updatedAt")
+          VALUES (
+            ${randomUUID()}, ${id}, 'Mensalidade', ${amount}, 'receita', 'Mensalidade',
+            ${paymentStatus}, ${dueDate}, ${refMonth}, ${paidAt}, NOW()
+          )
+        `;
+      }
+    }
+
+    await prisma.paymentStatusHistory.create({
+      data: {
+        athleteId: id,
+        fromStatus: athlete.monthlyPaymentStatus,
+        toStatus: status,
+        changedBy,
+        notes: notes?.trim() || null,
+      },
+    });
+
+    return prisma.athlete.update({
+      where: { id },
+      data: { monthlyPaymentStatus: status as MonthlyPaymentStatus },
+      include: includeUser,
+    });
+  },
+
+  async getPaymentStatusHistory(id: string) {
+    await this.findById(id);
+    return prisma.paymentStatusHistory.findMany({
+      where: { athleteId: id },
+      orderBy: { createdAt: "desc" },
     });
   },
 };

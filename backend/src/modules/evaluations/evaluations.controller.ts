@@ -33,8 +33,20 @@ export const evaluationsController = {
   updateByAthlete: (async (request, response, next) => {
     try {
       response.json(
-        await evaluationsService.updateCoachEvaluation(getParamId(request.params.athleteId), request.body),
+        await evaluationsService.updateCoachEvaluation(
+          getParamId(request.params.athleteId),
+          request.body,
+          request.user?.name,
+        ),
       );
+    } catch (error) {
+      next(error);
+    }
+  }) satisfies RequestHandler,
+
+  getHistory: (async (request, response, next) => {
+    try {
+      response.json(await evaluationsService.getHistory(getParamId(request.params.athleteId)));
     } catch (error) {
       next(error);
     }

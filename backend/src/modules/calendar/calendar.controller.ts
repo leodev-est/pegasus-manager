@@ -33,28 +33,77 @@ export const calendarController = {
       trainingTime: config.trainingTime,
       trainingLocation: config.trainingLocation,
       trainingDependency: config.trainingDependency,
+      trainingDaysOfWeek: config.trainingDaysOfWeek,
+      trainingDuration: config.trainingDuration,
+      defaultTrainingCategory: config.defaultTrainingCategory,
       monthlyFeeAmount: Number(config.monthlyFeeAmount),
+      overduePaymentDays: config.overduePaymentDays,
+      maxAbsencesPercentage: config.maxAbsencesPercentage,
+      minAttendanceToEvaluate: config.minAttendanceToEvaluate,
+      notifyOnApproval: config.notifyOnApproval,
+      notifyOnOverdue: config.notifyOnOverdue,
+      notifyOnTraining: config.notifyOnTraining,
+      systemName: config.systemName,
+      timezone: config.timezone,
+      blockedDates: config.blockedDates,
+      pixKey: config.pixKey,
+      pixProvider: config.pixProvider,
+      pixApiKey: config.pixApiKey ? "***" : null,
+      emailEnabled: config.emailEnabled,
+      emailFallbackEnabled: config.emailFallbackEnabled,
+      emailHost: config.emailHost,
+      emailPort: config.emailPort,
+      emailSecure: config.emailSecure,
+      emailUser: config.emailUser,
+      emailPassword: config.emailPassword ? "***" : null,
+      emailFrom: config.emailFrom,
+      emailFromName: config.emailFromName,
     });
   }) as RequestHandler,
 
   updateTrainingConfig: (async (req, res) => {
-    const { trainingTime, trainingLocation, trainingDependency, monthlyFeeAmount } = req.body as {
-      trainingTime?: string;
-      trainingLocation?: string;
-      trainingDependency?: string;
-      monthlyFeeAmount?: number;
-    };
-    const config = await calendarService.updateTrainingConfig({
-      trainingTime,
-      trainingLocation,
-      trainingDependency,
-      monthlyFeeAmount,
-    });
+    const body = req.body as Record<string, unknown>;
+    const allowed = [
+      "trainingTime", "trainingLocation", "trainingDependency", "trainingDaysOfWeek",
+      "trainingDuration", "defaultTrainingCategory", "monthlyFeeAmount", "overduePaymentDays",
+      "maxAbsencesPercentage", "minAttendanceToEvaluate", "notifyOnApproval", "notifyOnOverdue",
+      "notifyOnTraining", "systemName", "timezone", "pixKey", "pixProvider", "pixApiKey",
+      "pixWebhookSecret", "emailEnabled", "emailFallbackEnabled", "emailHost", "emailPort",
+      "emailSecure", "emailUser", "emailPassword", "emailFrom", "emailFromName",
+    ];
+    const update: Record<string, unknown> = {};
+    for (const key of allowed) {
+      if (body[key] !== undefined) update[key] = body[key];
+    }
+
+    const config = await calendarService.updateTrainingConfig(update as Parameters<typeof calendarService.updateTrainingConfig>[0]);
     res.json({
       trainingTime: config.trainingTime,
       trainingLocation: config.trainingLocation,
       trainingDependency: config.trainingDependency,
+      trainingDaysOfWeek: config.trainingDaysOfWeek,
+      trainingDuration: config.trainingDuration,
+      defaultTrainingCategory: config.defaultTrainingCategory,
       monthlyFeeAmount: Number(config.monthlyFeeAmount),
+      overduePaymentDays: config.overduePaymentDays,
+      maxAbsencesPercentage: config.maxAbsencesPercentage,
+      minAttendanceToEvaluate: config.minAttendanceToEvaluate,
+      notifyOnApproval: config.notifyOnApproval,
+      notifyOnOverdue: config.notifyOnOverdue,
+      notifyOnTraining: config.notifyOnTraining,
+      systemName: config.systemName,
+      timezone: config.timezone,
+      blockedDates: config.blockedDates,
+      pixKey: config.pixKey,
+      pixProvider: config.pixProvider,
+      emailEnabled: config.emailEnabled,
+      emailFallbackEnabled: config.emailFallbackEnabled,
+      emailHost: config.emailHost,
+      emailPort: config.emailPort,
+      emailSecure: config.emailSecure,
+      emailUser: config.emailUser,
+      emailFrom: config.emailFrom,
+      emailFromName: config.emailFromName,
     });
   }) as RequestHandler,
 };

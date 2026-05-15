@@ -1,7 +1,8 @@
 ﻿import { Prisma } from "@prisma/client";
 import { prisma } from "../../config/prisma";
 import { AppError } from "../../middlewares/error.middleware";
-import { isBlockedTrainingDate } from "../../utils/trainingDates";
+import { isBlockedTrainingDate, loadBlockedDates } from "../../utils/trainingDates";
+import { googleCalendarService } from "../google-calendar/google-calendar.service";
 
 type TrainingFilters = {
   category?: string;
@@ -31,7 +32,7 @@ function normalizeOptional(value: string | null | undefined) {
   return trimmed.length > 0 ? trimmed : null;
 }
 
-function parseDate(value: string | undefined, required: boolean) {
+function parseDate(value: string | undefined, required: boolean, blockedDates: string[]) {
   if (!value) {
     if (required) throw new AppError("Data do treino é obrigatória", 400);
     return undefined;
@@ -43,7 +44,7 @@ function parseDate(value: string | undefined, required: boolean) {
     throw new AppError("Data do treino inválida", 400);
   }
 
-  if (isBlockedTrainingDate(date)) {
+  if (isBlockedTrainingDate(date, blockedDates)) {
     throw new AppError("Esta data está bloqueada para treinos oficiais Pegasus.", 400);
   }
 
@@ -94,7 +95,7 @@ function buildWhere(filters: TrainingFilters) {
   return where;
 }
 
-function buildData(payload: TrainingPayload, requireBaseFields: boolean) {
+function buildData(payload: TrainingPayload, requireBaseFields: boolean, blockedDates: string[]) {
   const data: Prisma.TrainingUncheckedCreateInput | Prisma.TrainingUncheckedUpdateInput = {};
 
   if (requireBaseFields && !payload.title?.trim()) {
@@ -105,7 +106,7 @@ function buildData(payload: TrainingPayload, requireBaseFields: boolean) {
     throw new AppError("Criado por é obrigatório", 400);
   }
 
-  const date = parseDate(payload.date, requireBaseFields);
+  const date = parseDate(payload.date, requireBaseFields, blockedDates);
   if (date !== undefined) data.date = date;
 
   if (payload.title !== undefined) {
@@ -163,28 +164,28 @@ export const trainingsService = {
   },
 
   async create(payload: TrainingPayload) {
-    const data = buildData(payload, true) as Prisma.TrainingUncheckedCreateInput;
+    const blockedDates = await loadBlockedDates();
+    const data = buildData(payload, true, blockedDates) as Prisma.TrainingUncheckedCreateInput;
 
-    return prisma.training.create({
-      data,
-    });
+    const training = await prisma.training.create({ data });
+    googleCalendarService.syncTrainingCreate(training).catch(() => {});
+    return training;
   },
 
   async update(id: string, payload: TrainingPayload) {
-    await this.findById(id);
-    const data = buildData(payload, false) as Prisma.TrainingUncheckedUpdateInput;
+    const existing = await this.findById(id);
+    const blockedDates = await loadBlockedDates();
+    const data = buildData(payload, false, blockedDates) as Prisma.TrainingUncheckedUpdateInput;
 
-    return prisma.training.update({
-      where: { id },
-      data,
-    });
+    const updated = await prisma.training.update({ where: { id }, data });
+    googleCalendarService.syncTrainingUpdate({ ...updated, googleEventId: existing.googleEventId }).catch(() => {});
+    return updated;
   },
 
   async delete(id: string) {
-    await this.findById(id);
-    await prisma.training.delete({
-      where: { id },
-    });
+    const existing = await this.findById(id);
+    await prisma.training.delete({ where: { id } });
+    googleCalendarService.syncTrainingDelete(existing.googleEventId).catch(() => {});
   },
 };
 

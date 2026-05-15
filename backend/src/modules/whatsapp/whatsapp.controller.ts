@@ -1,5 +1,38 @@
 import type { Request, Response } from "express";
+import { prisma } from "../../config/prisma";
 import { whatsAppService } from "./whatsapp.service";
+
+async function handleIncomingMessage(phone: string, text: string) {
+  const normalized = text.trim().toUpperCase().normalize("NFD").replace(/[̀-ͯ]/g, "");
+  if (normalized !== "SIM") return;
+
+  const digits = phone.replace(/\D/g, "");
+  const athlete = await prisma.athlete.findFirst({
+    where: {
+      status: "ativo",
+      phone: { contains: digits.slice(-8) },
+    },
+  });
+  if (!athlete) return;
+
+  const todayStr = new Date().toISOString().slice(0, 10);
+  const training = await prisma.training.findFirst({
+    where: {
+      date: {
+        gte: new Date(`${todayStr}T00:00:00.000Z`),
+        lt: new Date(`${todayStr}T23:59:59.999Z`),
+      },
+    },
+  });
+  if (!training) return;
+
+  await prisma.trainingAttendance.upsert({
+    where: { trainingId_athleteId: { trainingId: training.id, athleteId: athlete.id } },
+    create: { trainingId: training.id, athleteId: athlete.id, status: "presente", notes: "Confirmado via WhatsApp" },
+    update: { status: "presente", notes: "Confirmado via WhatsApp" },
+  });
+  console.log(`[WhatsApp] Presença confirmada via WhatsApp: ${athlete.name}`);
+}
 
 
 export const whatsAppController = {
@@ -35,6 +68,24 @@ export const whatsAppController = {
         console.log("[WhatsApp] QR recebido via webhook");
       } else {
         console.log("[WhatsApp] QR event sem base64:", JSON.stringify(data).slice(0, 200));
+      }
+    }
+
+    // Handle incoming messages — "SIM" confirms training attendance
+    if (ev === "messages.upsert" || ev === "message" || ev === "messages_upsert") {
+      const messages: any[] = Array.isArray(data?.messages) ? data.messages : (data ? [data] : []);
+      for (const msg of messages) {
+        const fromMe: boolean = msg?.key?.fromMe ?? false;
+        if (fromMe) continue;
+        const remoteJid: string = msg?.key?.remoteJid ?? "";
+        const phone = remoteJid.replace(/@.*/, "").replace(/\D/g, "");
+        const text: string =
+          msg?.message?.conversation ??
+          msg?.message?.extendedTextMessage?.text ??
+          "";
+        if (phone && text) {
+          handleIncomingMessage(phone, text).catch(() => {});
+        }
       }
     }
 
