@@ -1,5 +1,6 @@
-﻿import { Banknote, Clipboard, FileDown, FileText, Loader2, Plus, WalletCards } from "lucide-react";
+﻿import { Banknote, BarChart2, Clipboard, FileDown, FileText, Loader2, Plus, WalletCards } from "lucide-react";
 import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
+import { Bar, BarChart, CartesianGrid, Legend, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { useAuth } from "../../auth/AuthContext";
 import { ActionButtons } from "../../components/ui/ActionButtons";
 import { Button } from "../../components/ui/Button";
@@ -17,11 +18,14 @@ import { useToast } from "../../components/ui/Toast";
 import { getApiErrorMessage } from "../../services/api";
 import { exportToCSV } from "../../utils/exportUtils";
 import { athleteService, type Athlete } from "../../services/athleteService";
+import { reportsService, type MonthlyReport } from "../../services/reportsService";
 import {
   financeService,
   type CashMovement,
+  type ChartDataPoint,
   type FinanceStatus,
   type FinanceSummary,
+  type MensalidadeEntry,
   type MovementPayload,
   type MovementType,
   type Payment,
@@ -36,13 +40,14 @@ type DeleteTarget =
   | { kind: "movement"; id: string; description: string };
 
 const currentMonth = new Date().toISOString().slice(0, 7);
-type FinanceTab = "resumo" | "mensalidades" | "caixa" | "relatorios";
+type FinanceTab = "resumo" | "mensalidades" | "caixa" | "relatorios" | "graficos";
 
 const financeTabs: Array<{ label: string; value: FinanceTab }> = [
   { label: "Resumo", value: "resumo" },
   { label: "Mensalidades", value: "mensalidades" },
   { label: "Caixa", value: "caixa" },
   { label: "Relatórios", value: "relatorios" },
+  { label: "Gráficos", value: "graficos" },
 ];
 
 const emptyPayment: PaymentForm = {
@@ -121,6 +126,16 @@ function defaultDueDate() {
   return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-10`;
 }
 
+function formatChartMonth(value: string) {
+  const [year, m] = value.split("-");
+  return new Date(Number(year), Number(m) - 1, 1).toLocaleDateString("pt-BR", { month: "short", year: "2-digit" });
+}
+
+function formatChartCurrency(value: number) {
+  if (value >= 1000) return `R$${(value / 1000).toFixed(0)}k`;
+  return `R$${value}`;
+}
+
 function normalizePayload<T extends Record<string, unknown>>(payload: T) {
   return Object.fromEntries(
     Object.entries(payload).map(([key, value]) => [key, value === "" ? undefined : value]),
@@ -177,6 +192,12 @@ export function FinancePage() {
     monthlyBalance: 0,
     pendingMonthlyPayments: 0,
     overdueMonthlyPayments: 0,
+    mensalidadesTotalEsperado: 0,
+    mensalidadesTotalRecebido: 0,
+    mensalidadesTotalPendente: 0,
+    mensalidadesTaxaAdimplencia: 0,
+    mensalidadesPaidCount: 0,
+    mensalidadesTotalCount: 0,
   });
   const [payments, setPayments] = useState<Payment[]>([]);
   const [movements, setMovements] = useState<CashMovement[]>([]);
@@ -185,6 +206,16 @@ export function FinancePage() {
   const [status, setStatus] = useState("todos");
   const [month, setMonth] = useState(currentMonth);
   const [activeTab, setActiveTab] = useState<FinanceTab>("resumo");
+  const [chartData, setChartData] = useState<ChartDataPoint[]>([]);
+  const [isLoadingChart, setIsLoadingChart] = useState(false);
+  const [mensalidades, setMensalidades] = useState<MensalidadeEntry[]>([]);
+  const [mensalidadeMonth, setMensalidadeMonth] = useState(currentMonth);
+  const [mensalidadeStatus, setMensalidadeStatus] = useState("todos");
+  const [isLoadingMensalidades, setIsLoadingMensalidades] = useState(false);
+  const [updatingMensalidadeId, setUpdatingMensalidadeId] = useState<string | null>(null);
+  const [reports, setReports] = useState<MonthlyReport[]>([]);
+  const [isLoadingReports, setIsLoadingReports] = useState(false);
+  const [isGeneratingReport, setIsGeneratingReport] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [paymentModal, setPaymentModal] = useState(false);
@@ -225,6 +256,31 @@ export function FinancePage() {
     loadFinance();
   }, [loadFinance]);
 
+  useEffect(() => {
+    if (activeTab !== "graficos") return;
+    setIsLoadingChart(true);
+    financeService.getChartData(6).then(setChartData).catch(() => {}).finally(() => setIsLoadingChart(false));
+  }, [activeTab]);
+
+  const loadMensalidades = useCallback(async () => {
+    setIsLoadingMensalidades(true);
+    try {
+      const data = await financeService.getMensalidades(
+        mensalidadeMonth,
+        mensalidadeStatus !== "todos" ? mensalidadeStatus : undefined,
+      );
+      setMensalidades(data);
+    } catch (error) {
+      showToast(getApiErrorMessage(error), "error");
+    } finally {
+      setIsLoadingMensalidades(false);
+    }
+  }, [mensalidadeMonth, mensalidadeStatus, showToast]);
+
+  useEffect(() => {
+    if (activeTab === "mensalidades") loadMensalidades();
+  }, [activeTab, loadMensalidades]);
+
   const monthExpenses = useMemo(() => {
     const paymentExpenses = payments
       .filter((payment) => payment.type === "despesa" && payment.status === "pago")
@@ -246,6 +302,16 @@ export function FinancePage() {
         `Saídas do mês: ${formatCurrency(summary.monthlyExpenses)}`,
         `Saldo do mês: ${formatCurrency(summary.monthlyBalance)}`,
         "",
+        ...(summary.mensalidadesTotalCount > 0
+          ? [
+              "Mensalidades:",
+              `- Total esperado: ${formatCurrency(summary.mensalidadesTotalEsperado)}`,
+              `- Total recebido: ${formatCurrency(summary.mensalidadesTotalRecebido)}`,
+              `- Total pendente: ${formatCurrency(summary.mensalidadesTotalPendente)}`,
+              `- Taxa de adimplência: ${summary.mensalidadesTaxaAdimplencia}% (${summary.mensalidadesPaidCount}/${summary.mensalidadesTotalCount})`,
+              "",
+            ]
+          : []),
         "Gastos:",
         ...(monthExpenses.length > 0
           ? monthExpenses.map((expense) => `- ${expense.description}: ${formatCurrency(expense.amount)}`)
@@ -259,14 +325,70 @@ export function FinancePage() {
     [athletes],
   );
 
-  const monthlyPayments = useMemo(() => payments.filter(isMonthlyPayment), [payments]);
   const cashPayments = useMemo(() => payments.filter((payment) => !isMonthlyPayment(payment)), [payments]);
-  const visiblePayments = activeTab === "mensalidades" ? monthlyPayments : cashPayments;
-  const visiblePaymentTitle = activeTab === "mensalidades" ? "Mensalidades" : "Lançamentos financeiros";
-  const visiblePaymentDescription =
-    activeTab === "mensalidades"
-      ? `${monthlyPayments.length} mensalidade(s) encontrada(s).`
-      : `${cashPayments.length} lançamento(s) encontrado(s).`;
+
+  async function markAsPaid(id: string) {
+    setUpdatingMensalidadeId(id);
+    setMensalidades((prev) =>
+      prev.map((m) =>
+        m.id === id ? { ...m, status: "pago" as FinanceStatus, paidAt: new Date().toISOString() } : m,
+      ),
+    );
+    try {
+      await financeService.payMensalidade(id);
+      await loadMensalidades();
+    } catch (error) {
+      showToast(getApiErrorMessage(error), "error");
+      await loadMensalidades();
+    } finally {
+      setUpdatingMensalidadeId(null);
+    }
+  }
+
+  const loadReports = useCallback(async () => {
+    setIsLoadingReports(true);
+    try {
+      const data = await reportsService.list();
+      setReports(data);
+    } catch {
+      // Silently fail
+    } finally {
+      setIsLoadingReports(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (activeTab === "relatorios") loadReports();
+  }, [activeTab, loadReports]);
+
+  async function generateReport() {
+    setIsGeneratingReport(true);
+    try {
+      await reportsService.generate();
+      await loadReports();
+      showToast("Relatório gerado com sucesso.", "success");
+    } catch (error) {
+      showToast(getApiErrorMessage(error), "error");
+    } finally {
+      setIsGeneratingReport(false);
+    }
+  }
+
+  async function undoPayment(id: string) {
+    setUpdatingMensalidadeId(id);
+    setMensalidades((prev) =>
+      prev.map((m) => (m.id === id ? { ...m, status: "pendente" as FinanceStatus, paidAt: null } : m)),
+    );
+    try {
+      await financeService.undoMensalidade(id);
+      await loadMensalidades();
+    } catch (error) {
+      showToast(getApiErrorMessage(error), "error");
+      await loadMensalidades();
+    } finally {
+      setUpdatingMensalidadeId(null);
+    }
+  }
 
   function openPaymentModal(paymentType: PaymentType, monthly = false) {
     setEditingPayment(null);
@@ -379,12 +501,7 @@ export function FinancePage() {
         title="Financeiro"
         description="Controle de receitas, despesas, mensalidades e caixa do projeto."
         action={
-          canCreate && activeTab === "mensalidades" ? (
-            <Button onClick={() => openPaymentModal("receita", true)}>
-              <Plus size={17} />
-              Registrar mensalidade
-            </Button>
-          ) : canCreate && activeTab === "caixa" ? (
+          canCreate && activeTab === "caixa" ? (
             <div className="flex w-full flex-col gap-3 sm:w-auto sm:flex-row sm:flex-wrap">
               <Button onClick={() => openPaymentModal("receita")}>
                 <Plus size={17} />
@@ -453,11 +570,9 @@ export function FinancePage() {
       </section>
       ) : null}
 
-      {activeTab === "mensalidades" || activeTab === "caixa" ? (
+      {activeTab === "caixa" ? (
       <FilterBar>
-        {activeTab === "caixa" ? (
-          <Select label="Tipo" onChange={(event) => setType(event.target.value)} options={paymentTypeOptions} value={type} />
-        ) : null}
+        <Select label="Tipo" onChange={(event) => setType(event.target.value)} options={paymentTypeOptions} value={type} />
         <Select label="Status" onChange={(event) => setStatus(event.target.value)} options={statusOptions} value={status} />
         <Input label="Mês" onChange={(event) => setMonth(event.target.value)} type="month" value={month} />
       </FilterBar>
@@ -491,6 +606,32 @@ export function FinancePage() {
             <strong className="mt-2 block text-xl text-pegasus-navy">{formatCurrency(summary.monthlyBalance)}</strong>
           </div>
         </div>
+        {summary.mensalidadesTotalCount > 0 ? (
+          <>
+            <p className="mt-6 text-sm font-bold text-pegasus-navy">Mensalidades do mês</p>
+            <div className="mt-3 grid gap-4 sm:grid-cols-2 md:grid-cols-4">
+              <div className="rounded-2xl border border-blue-100 bg-pegasus-surface p-4">
+                <p className="text-sm font-semibold text-slate-500">Total esperado</p>
+                <strong className="mt-2 block text-xl text-pegasus-navy">{formatCurrency(summary.mensalidadesTotalEsperado)}</strong>
+              </div>
+              <div className="rounded-2xl border border-emerald-100 bg-emerald-50 p-4">
+                <p className="text-sm font-semibold text-emerald-700">Total recebido</p>
+                <strong className="mt-2 block text-xl text-emerald-800">{formatCurrency(summary.mensalidadesTotalRecebido)}</strong>
+              </div>
+              <div className="rounded-2xl border border-amber-100 bg-amber-50 p-4">
+                <p className="text-sm font-semibold text-amber-700">Total pendente</p>
+                <strong className="mt-2 block text-xl text-amber-800">{formatCurrency(summary.mensalidadesTotalPendente)}</strong>
+              </div>
+              <div className="rounded-2xl border border-blue-100 bg-pegasus-surface p-4">
+                <p className="text-sm font-semibold text-slate-500">Taxa de adimplência</p>
+                <strong className={`mt-2 block text-xl ${summary.mensalidadesTaxaAdimplencia >= 80 ? "text-emerald-700" : summary.mensalidadesTaxaAdimplencia >= 50 ? "text-amber-700" : "text-rose-700"}`}>
+                  {summary.mensalidadesTaxaAdimplencia}%
+                </strong>
+                <p className="mt-1 text-xs text-slate-400">{summary.mensalidadesPaidCount}/{summary.mensalidadesTotalCount} pagos</p>
+              </div>
+            </div>
+          </>
+        ) : null}
         <div className="mt-6">
           <p className="text-sm font-bold text-pegasus-navy">Gastos</p>
           <div className="mt-3 space-y-2">
@@ -506,30 +647,239 @@ export function FinancePage() {
             )}
           </div>
         </div>
-        {activeTab === "relatorios" ? (
-          <p className="mt-6 rounded-2xl border border-blue-100 bg-pegasus-ice p-4 text-sm font-semibold text-pegasus-primary">
-            Exportação em PDF/Excel preparada para uma próxima etapa.
-          </p>
-        ) : null}
       </section>
       ) : null}
 
-      {activeTab === "mensalidades" || activeTab === "caixa" ? (
+      {activeTab === "relatorios" ? (
       <section className="panel overflow-hidden">
         <div className="flex items-center justify-between gap-3 border-b border-blue-100 p-6">
           <div className="flex items-center gap-3">
             <FileText className="text-pegasus-primary" size={22} />
             <div>
-              <h2 className="text-xl font-bold text-pegasus-navy">{visiblePaymentTitle}</h2>
-              <p className="text-sm text-slate-500">{visiblePaymentDescription}</p>
+              <h2 className="text-xl font-bold text-pegasus-navy">Relatórios Mensais</h2>
+              <p className="text-sm text-slate-500">PDF gerado automaticamente no 1º dia de cada mês.</p>
+            </div>
+          </div>
+          <Button onClick={generateReport} disabled={isGeneratingReport} variant="secondary">
+            {isGeneratingReport ? <Loader2 className="animate-spin" size={17} /> : <FileDown size={17} />}
+            Gerar agora
+          </Button>
+        </div>
+        {isLoadingReports ? (
+          <div className="flex items-center gap-3 p-6 text-sm font-bold text-pegasus-primary">
+            <Loader2 className="animate-spin" size={18} />
+            Carregando relatórios...
+          </div>
+        ) : reports.length === 0 ? (
+          <div className="p-6">
+            <EmptyState icon={FileText} title="Nenhum relatório gerado" description="Clique em 'Gerar agora' para criar o relatório do mês atual." />
+          </div>
+        ) : (
+          <div className="divide-y divide-blue-50">
+            {reports.map((r) => (
+              <div key={r.id} className="flex items-center justify-between gap-4 px-6 py-4">
+                <div>
+                  <p className="font-bold text-pegasus-navy">{r.fileName}</p>
+                  <p className="text-xs text-slate-500">
+                    Gerado em {new Date(r.generatedAt).toLocaleDateString("pt-BR")} · {(r.fileSize / 1024).toFixed(1)} KB
+                  </p>
+                </div>
+                <Button
+                  variant="secondary"
+                  className="h-8 px-3 text-xs"
+                  onClick={() => reportsService.download(r.id, r.fileName)}
+                >
+                  <FileDown size={13} />
+                  Download
+                </Button>
+              </div>
+            ))}
+          </div>
+        )}
+      </section>
+      ) : null}
+
+      {activeTab === "mensalidades" ? (
+      <section className="space-y-4">
+        <div className="panel p-5">
+          <div className="flex flex-wrap items-end gap-4">
+            <Input
+              label="Mês"
+              onChange={(e) => setMensalidadeMonth(e.target.value)}
+              type="month"
+              value={mensalidadeMonth}
+            />
+            <Select
+              label="Status"
+              onChange={(e) => setMensalidadeStatus(e.target.value)}
+              options={statusOptions}
+              value={mensalidadeStatus}
+            />
+          </div>
+          {mensalidades.length > 0 ? (
+            <div className="mt-4 flex flex-wrap gap-3 text-sm font-semibold">
+              <span className="rounded-full bg-emerald-50 px-3 py-1 text-emerald-700">
+                {mensalidades.filter((m) => m.status === "pago").length} pago(s)
+              </span>
+              <span className="rounded-full bg-amber-50 px-3 py-1 text-amber-700">
+                {mensalidades.filter((m) => m.status !== "pago").length} pendente(s)
+              </span>
+              <span className="rounded-full bg-pegasus-ice px-3 py-1 text-pegasus-navy">
+                {mensalidades.length} total
+              </span>
+            </div>
+          ) : null}
+        </div>
+
+        <div className="panel overflow-hidden">
+          <div className="flex items-center gap-3 border-b border-blue-100 p-6">
+            <FileText className="text-pegasus-primary" size={22} />
+            <div>
+              <h2 className="text-xl font-bold text-pegasus-navy">Mensalidades</h2>
+              <p className="text-sm text-slate-500">
+                {isLoadingMensalidades ? "Carregando..." : `${mensalidades.length} atleta(s) no mês.`}
+              </p>
+            </div>
+            <div className="ml-auto">
+              <Button
+                onClick={() =>
+                  exportToCSV(
+                    "mensalidades",
+                    ["Atleta", "Valor", "Status", "Data pagamento"],
+                    mensalidades.map((m) => [
+                      m.athleteName,
+                      m.amount,
+                      m.status,
+                      m.paidAt ? m.paidAt.slice(0, 10) : "-",
+                    ]),
+                  )
+                }
+                variant="secondary"
+              >
+                <FileDown size={17} />
+                Exportar CSV
+              </Button>
+            </div>
+          </div>
+
+          {isLoadingMensalidades ? (
+            <div className="flex items-center gap-3 p-6 text-sm font-bold text-pegasus-primary">
+              <Loader2 className="animate-spin" size={18} />
+              Carregando mensalidades
+            </div>
+          ) : mensalidades.length > 0 ? (
+            <>
+              <div className="grid gap-3 p-4 md:hidden">
+                {mensalidades.map((m) => (
+                  <article key={m.id} className="rounded-2xl border border-blue-100 bg-white p-4 shadow-sm">
+                    <div className="flex items-start justify-between gap-3">
+                      <div>
+                        <h3 className="font-bold text-pegasus-navy">{m.athleteName}</h3>
+                        <p className="mt-1 text-sm text-slate-500">
+                          {m.paidAt ? formatDate(m.paidAt) : "Não pago"}
+                        </p>
+                      </div>
+                      <div className="flex flex-col items-end gap-2">
+                        <strong className="text-pegasus-navy">{formatCurrency(m.amount)}</strong>
+                        <StatusBadge label={label(m.status)} tone={badgeTone(m.status)} />
+                      </div>
+                    </div>
+                    <div className="mt-4 border-t border-blue-50 pt-3">
+                      {m.status === "pago" ? (
+                        <Button
+                          className="h-8 px-3 text-xs"
+                          disabled={updatingMensalidadeId === m.id}
+                          onClick={() => undoPayment(m.id)}
+                          variant="secondary"
+                        >
+                          {updatingMensalidadeId === m.id ? <Loader2 className="animate-spin" size={13} /> : null}
+                          Desfazer
+                        </Button>
+                      ) : (
+                        <Button
+                          className="h-8 px-3 text-xs"
+                          disabled={updatingMensalidadeId === m.id}
+                          onClick={() => markAsPaid(m.id)}
+                        >
+                          {updatingMensalidadeId === m.id ? <Loader2 className="animate-spin" size={13} /> : null}
+                          Marcar como Pago
+                        </Button>
+                      )}
+                    </div>
+                  </article>
+                ))}
+              </div>
+              <div className="hidden md:block">
+                <Table
+                  headers={["Nome", "Valor", "Status", "Data pagamento", "Ações"]}
+                  minWidth="760px"
+                >
+                  {mensalidades.map((m) => (
+                    <tr key={m.id} className="bg-white">
+                      <td className="px-6 py-4 font-bold text-pegasus-navy">{m.athleteName}</td>
+                      <td className="px-6 py-4 text-slate-600">{formatCurrency(m.amount)}</td>
+                      <td className="px-6 py-4">
+                        <StatusBadge label={label(m.status)} tone={badgeTone(m.status)} />
+                      </td>
+                      <td className="px-6 py-4 text-slate-600">
+                        {m.paidAt ? formatDate(m.paidAt) : "-"}
+                      </td>
+                      <td className="px-6 py-4">
+                        {m.status === "pago" ? (
+                          <Button
+                            className="h-8 px-3 text-xs"
+                            disabled={updatingMensalidadeId === m.id}
+                            onClick={() => undoPayment(m.id)}
+                            variant="secondary"
+                          >
+                            {updatingMensalidadeId === m.id ? <Loader2 className="animate-spin" size={13} /> : null}
+                            Desfazer
+                          </Button>
+                        ) : (
+                          <Button
+                            className="h-8 px-3 text-xs"
+                            disabled={updatingMensalidadeId === m.id}
+                            onClick={() => markAsPaid(m.id)}
+                          >
+                            {updatingMensalidadeId === m.id ? <Loader2 className="animate-spin" size={13} /> : null}
+                            Marcar como Pago
+                          </Button>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </Table>
+              </div>
+            </>
+          ) : (
+            <div className="p-6">
+              <EmptyState
+                icon={FileText}
+                title="Nenhum atleta ativo encontrado"
+                description="Não há atletas ativos não-isentos para o período selecionado."
+              />
+            </div>
+          )}
+        </div>
+      </section>
+      ) : null}
+
+      {activeTab === "caixa" ? (
+      <section className="panel overflow-hidden">
+        <div className="flex items-center justify-between gap-3 border-b border-blue-100 p-6">
+          <div className="flex items-center gap-3">
+            <FileText className="text-pegasus-primary" size={22} />
+            <div>
+              <h2 className="text-xl font-bold text-pegasus-navy">Lançamentos financeiros</h2>
+              <p className="text-sm text-slate-500">{cashPayments.length} lançamento(s) encontrado(s).</p>
             </div>
           </div>
           <Button
             onClick={() =>
               exportToCSV(
-                activeTab === "mensalidades" ? "mensalidades" : "lancamentos",
+                "lancamentos",
                 ["Atleta", "Descrição", "Valor", "Tipo", "Categoria", "Status", "Vencimento", "Data Pagamento"],
-                visiblePayments.map((p) => [
+                cashPayments.map((p) => [
                   p.athleteName ?? "-",
                   p.description,
                   p.amount,
@@ -552,10 +902,10 @@ export function FinancePage() {
             <Loader2 className="animate-spin" size={18} />
             Carregando financeiro
           </div>
-        ) : visiblePayments.length > 0 ? (
+        ) : cashPayments.length > 0 ? (
           <>
             <div className="grid gap-3 p-4 md:hidden">
-              {visiblePayments.map((payment) => (
+              {cashPayments.map((payment) => (
                 <article key={payment.id} className="rounded-2xl border border-blue-100 bg-white p-4 shadow-sm">
                   <div className="flex items-start justify-between gap-3">
                     <div>
@@ -588,7 +938,7 @@ export function FinancePage() {
                 headers={["Data", "Descrição", "Atleta", "Tipo", "Categoria", "Valor", "Status", "Ações"]}
                 minWidth="1040px"
               >
-                {visiblePayments.map((payment) => (
+                {cashPayments.map((payment) => (
                   <tr key={payment.id} className="bg-white">
                     <td className="px-6 py-4 text-slate-600">{formatDate(payment.paidAt ?? payment.dueDate ?? payment.createdAt)}</td>
                     <td className="px-6 py-4 font-bold text-pegasus-navy">{payment.description}</td>
@@ -618,12 +968,8 @@ export function FinancePage() {
           <div className="p-6">
             <EmptyState
               icon={FileText}
-              title={activeTab === "mensalidades" ? "Nenhuma mensalidade encontrada" : "Nenhum lançamento encontrado"}
-              description={
-                activeTab === "mensalidades"
-                  ? "Ajuste os filtros ou registre uma mensalidade."
-                  : "Ajuste os filtros ou crie uma receita ou despesa."
-              }
+              title="Nenhum lançamento encontrado"
+              description="Ajuste os filtros ou crie uma receita ou despesa."
             />
           </div>
         )}
@@ -736,6 +1082,65 @@ export function FinancePage() {
     </section>
       ) : null}
 
+      {activeTab === "graficos" ? (
+        <section className="space-y-6">
+          {isLoadingChart ? (
+            <div className="panel flex items-center gap-3 p-6 text-sm font-bold text-pegasus-primary">
+              <Loader2 className="animate-spin" size={18} />
+              Carregando gráficos
+            </div>
+          ) : chartData.length === 0 ? (
+            <EmptyState icon={BarChart2} title="Sem dados" description="Não há dados financeiros para exibir nos gráficos." />
+          ) : (
+            <>
+              <article className="panel p-6">
+                <h3 className="mb-4 text-lg font-black text-pegasus-navy">Receita: Esperado vs Pago</h3>
+                <ResponsiveContainer height={280} width="100%">
+                  <BarChart data={chartData}>
+                    <CartesianGrid stroke="#e2e8f0" strokeDasharray="3 3" />
+                    <XAxis dataKey="month" tick={{ fontSize: 12 }} tickFormatter={formatChartMonth} />
+                    <YAxis tick={{ fontSize: 12 }} tickFormatter={formatChartCurrency} />
+                    <Tooltip formatter={(value: number) => formatCurrency(value)} labelFormatter={formatChartMonth} />
+                    <Legend />
+                    <Bar dataKey="expected" fill="#94a3b8" name="Esperado" radius={[4, 4, 0, 0]} />
+                    <Bar dataKey="paid" fill="#1e3a5f" name="Pago" radius={[4, 4, 0, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </article>
+
+              <article className="panel p-6">
+                <h3 className="mb-4 text-lg font-black text-pegasus-navy">Inadimplência por mês (qtd)</h3>
+                <ResponsiveContainer height={240} width="100%">
+                  <LineChart data={chartData}>
+                    <CartesianGrid stroke="#e2e8f0" strokeDasharray="3 3" />
+                    <XAxis dataKey="month" tick={{ fontSize: 12 }} tickFormatter={formatChartMonth} />
+                    <YAxis allowDecimals={false} tick={{ fontSize: 12 }} />
+                    <Tooltip labelFormatter={formatChartMonth} />
+                    <Line dataKey="overdueCount" dot={{ r: 4 }} name="Em atraso" stroke="#ef4444" strokeWidth={2} />
+                  </LineChart>
+                </ResponsiveContainer>
+              </article>
+
+              <article className="panel p-6">
+                <h3 className="mb-4 text-lg font-black text-pegasus-navy">Evolução de mensalidades</h3>
+                <ResponsiveContainer height={280} width="100%">
+                  <BarChart data={chartData}>
+                    <CartesianGrid stroke="#e2e8f0" strokeDasharray="3 3" />
+                    <XAxis dataKey="month" tick={{ fontSize: 12 }} tickFormatter={formatChartMonth} />
+                    <YAxis tick={{ fontSize: 12 }} tickFormatter={formatChartCurrency} />
+                    <Tooltip formatter={(value: number) => formatCurrency(value)} labelFormatter={formatChartMonth} />
+                    <Legend />
+                    <Bar dataKey="paid" fill="#22c55e" name="Pago" stackId="a" />
+                    <Bar dataKey="pending" fill="#f59e0b" name="Pendente" stackId="a" />
+                    <Bar dataKey="overdue" fill="#ef4444" name="Atrasado" radius={[4, 4, 0, 0]} stackId="a" />
+                  </BarChart>
+                </ResponsiveContainer>
+              </article>
+            </>
+          )}
+        </section>
+      ) : null}
+
       <Modal
         isOpen={paymentModal}
         onClose={() => setPaymentModal(false)}
@@ -826,6 +1231,7 @@ export function FinancePage() {
         onConfirm={confirmDelete}
         title="Confirmar exclusão"
       />
+
     </div>
   );
 }

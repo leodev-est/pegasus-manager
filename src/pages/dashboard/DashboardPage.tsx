@@ -4,6 +4,7 @@ import {
   Loader2,
   Megaphone,
   School,
+  Trophy,
   UserCheck,
   UserPlus,
   Users,
@@ -20,6 +21,7 @@ import { athleteApplicationService, type AthleteApplication } from "../../servic
 import { athleteService, type Athlete } from "../../services/athleteService";
 import { getApiErrorMessage } from "../../services/api";
 import { financeService, type FinanceSummary } from "../../services/financeService";
+import { gamesService, type Game } from "../../services/gamesService";
 import { kanbanService, type ManagementTask } from "../../services/kanbanService";
 import { marketingService, type MarketingTask } from "../../services/marketingService";
 import { operationalService, type SchoolContact } from "../../services/operationalService";
@@ -33,6 +35,7 @@ type DashboardData = {
   managementTasks: ManagementTask[];
   marketingTasks: MarketingTask[];
   schools: SchoolContact[];
+  upcomingGames: Game[];
 };
 
 type DashboardStat = {
@@ -50,6 +53,7 @@ const emptyDashboardData: DashboardData = {
   managementTasks: [],
   marketingTasks: [],
   schools: [],
+  upcomingGames: [],
 };
 
 function formatCurrency(value: number) {
@@ -120,6 +124,13 @@ export function DashboardPage() {
     setIsLoading(true);
 
     try {
+      const currentMonth = new Date().toISOString().slice(0, 7);
+      const nextMonth = (() => {
+        const d = new Date();
+        d.setMonth(d.getMonth() + 1);
+        return d.toISOString().slice(0, 7);
+      })();
+
       const [
         athletes,
         applications,
@@ -128,6 +139,8 @@ export function DashboardPage() {
         managementTasks,
         marketingTasks,
         schools,
+        gamesThisMonth,
+        gamesNextMonth,
       ] = await Promise.all([
         canSeeRh ? athleteService.getAll() : Promise.resolve([]),
         canSeeRh ? athleteApplicationService.getAll() : Promise.resolve([]),
@@ -136,7 +149,16 @@ export function DashboardPage() {
         canSeeManagement ? kanbanService.getTasks({ area: "management" }) : Promise.resolve([]),
         canSeeMarketing ? marketingService.getTasks() : Promise.resolve([]),
         canSeeOperational ? operationalService.getSchoolContacts() : Promise.resolve([]),
+        gamesService.getAll(currentMonth),
+        gamesService.getAll(nextMonth),
       ]);
+
+      const now = new Date();
+      const allGames = [...gamesThisMonth, ...gamesNextMonth];
+      const upcomingGames = allGames
+        .filter((g) => new Date(g.date) >= now)
+        .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
+        .slice(0, 5);
 
       setData({
         athletes,
@@ -146,6 +168,7 @@ export function DashboardPage() {
         managementTasks,
         marketingTasks,
         schools,
+        upcomingGames,
       });
     } catch (error) {
       showToast(getApiErrorMessage(error), "error");
@@ -309,20 +332,25 @@ export function DashboardPage() {
               </div>
               <div className="mt-6 grid gap-3">
                 {canSeeRh ? (
-                  <div className="rounded-2xl bg-pegasus-surface p-4">
-                    <p className="text-sm font-semibold text-slate-600">Inscricoes pendentes</p>
-                    <strong className="mt-1 block text-2xl text-pegasus-navy">
+                  <div className={`rounded-2xl p-4 ${pendingApplications > 0 ? "bg-amber-50" : "bg-pegasus-surface"}`}>
+                    <p className="text-sm font-semibold text-slate-600">Inscrições pendentes</p>
+                    <strong className={`mt-1 block text-2xl ${pendingApplications > 0 ? "text-amber-700" : "text-pegasus-navy"}`}>
                       {pendingApplications}
                     </strong>
                   </div>
                 ) : null}
                 {canSeeFinance ? (
-                  <div className="rounded-2xl bg-pegasus-surface p-4">
+                  <div className={`rounded-2xl p-4 ${(data.financeSummary?.overdueMonthlyPayments ?? 0) > 0 ? "bg-rose-50" : "bg-pegasus-surface"}`}>
                     <p className="text-sm font-semibold text-slate-600">Mensalidades em aberto</p>
-                    <strong className="mt-1 block text-2xl text-pegasus-navy">
+                    <strong className={`mt-1 block text-2xl ${(data.financeSummary?.overdueMonthlyPayments ?? 0) > 0 ? "text-rose-700" : "text-pegasus-navy"}`}>
                       {(data.financeSummary?.pendingMonthlyPayments ?? 0) +
                         (data.financeSummary?.overdueMonthlyPayments ?? 0)}
                     </strong>
+                    {(data.financeSummary?.overdueMonthlyPayments ?? 0) > 0 && (
+                      <p className="mt-0.5 text-xs font-semibold text-rose-600">
+                        {data.financeSummary?.overdueMonthlyPayments} em atraso
+                      </p>
+                    )}
                   </div>
                 ) : null}
                 {canSeeOperational ? (
@@ -334,6 +362,32 @@ export function DashboardPage() {
               </div>
             </article>
           </section>
+
+          {data.upcomingGames.length > 0 ? (
+            <article className="panel p-6">
+              <div className="flex items-center gap-3">
+                <span className="rounded-2xl bg-pegasus-ice p-3 text-pegasus-primary">
+                  <Trophy size={22} />
+                </span>
+                <div>
+                  <h2 className="text-xl font-bold text-pegasus-navy">Próximos Jogos</h2>
+                  <p className="text-sm text-slate-500">{data.upcomingGames.length} jogo(s) agendado(s)</p>
+                </div>
+              </div>
+              <div className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                {data.upcomingGames.map((game) => (
+                  <div key={game.id} className="rounded-2xl bg-pegasus-surface p-4">
+                    <p className="font-bold text-pegasus-navy">vs {game.opponent}</p>
+                    <p className="mt-1 text-sm text-slate-500">
+                      {new Date(game.date).toLocaleDateString("pt-BR", { day: "2-digit", month: "short", timeZone: "UTC" })}
+                      {" · "}
+                      {game.location === "casa" ? "Em casa" : "Fora"}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            </article>
+          ) : null}
 
           <section className="grid gap-6 xl:grid-cols-3">
             {canSeeFinance ? (

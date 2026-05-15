@@ -24,6 +24,7 @@ export type AthleteApplication = {
   source: string;
   status: AthleteApplicationStatus;
   notes: string | null;
+  athleteId: string | null;
   createdAt: string;
   updatedAt: string;
 };

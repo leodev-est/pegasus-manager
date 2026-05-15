@@ -1,5 +1,6 @@
-import { ArrowRightCircle, Download, Loader2, Plus, UserPlus, XCircle } from "lucide-react";
+import { ArrowRightCircle, Download, ExternalLink, Loader2, Plus, UserPlus, XCircle } from "lucide-react";
 import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
+import { Link } from "react-router-dom";
 import { useAuth } from "../../auth/AuthContext";
 import { ActionButtons } from "../../components/ui/ActionButtons";
 import { Button } from "../../components/ui/Button";
@@ -488,6 +489,13 @@ export function AthleteApplicationsPage() {
                     <Button className="h-8 px-3 text-xs" onClick={() => setDetailApplication(application)} variant="secondary">
                       Ver detalhes
                     </Button>
+                    {application.status === "aprovado" && application.athleteId ? (
+                      <Link to="/app/rh/atletas">
+                        <Button className="h-8 px-3 text-xs" variant="secondary">
+                          <ExternalLink size={12} />Ver atleta
+                        </Button>
+                      </Link>
+                    ) : null}
                     <ActionButtons
                       canDelete={canDelete}
                       canEdit={canUpdate}
@@ -546,6 +554,13 @@ export function AthleteApplicationsPage() {
                           <Button className="h-8 px-3 text-xs" onClick={() => setRejectTarget(application)} variant="danger">
                             <XCircle size={13} />Recusar
                           </Button>
+                        ) : null}
+                        {application.status === "aprovado" && application.athleteId ? (
+                          <Link to="/app/rh/atletas">
+                            <Button className="h-8 px-3 text-xs" variant="secondary">
+                              <ExternalLink size={12} />Ver atleta
+                            </Button>
+                          </Link>
                         ) : null}
                         <ActionButtons
                           canDelete={canDelete}

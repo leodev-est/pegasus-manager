@@ -1,10 +1,12 @@
 import { useState } from "react";
 import { Outlet } from "react-router-dom";
+import { usePushSetup } from "../../hooks/usePushSetup";
 import { Sidebar } from "./Sidebar";
 import { Topbar } from "./Topbar";
 
 export function AppLayout() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  usePushSetup();
 
   return (
     <div className="min-h-screen bg-pegasus-surface">

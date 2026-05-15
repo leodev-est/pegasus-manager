@@ -15,6 +15,19 @@ export type AthleteEvaluation = {
   updatedAt: string | null;
 };
 
+export type EvaluationHistoryEntry = {
+  id: string;
+  athleteId: string;
+  evaluatedBy: string | null;
+  technical: number | null;
+  physical: number | null;
+  tactical: number | null;
+  mental: number | null;
+  coachNotes: string | null;
+  overall: number | null;
+  createdAt: string;
+};
+
 export type SelfEvaluationPayload = {
   selfRating?: number | null;
   strengths?: string | null;
@@ -47,6 +60,11 @@ export const evaluationService = {
 
   async updateCoachEvaluation(athleteId: string, payload: CoachEvaluationPayload) {
     const { data } = await api.patch<AthleteEvaluation>(`/evaluations/${athleteId}`, payload);
+    return data;
+  },
+
+  async getHistory(athleteId: string) {
+    const { data } = await api.get<EvaluationHistoryEntry[]>(`/evaluations/${athleteId}/history`);
     return data;
   },
 };

@@ -1,5 +1,5 @@
-﻿import { Download, FileDown, Loader2, Plus, UserCheck } from "lucide-react";
-import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
+﻿import { ClockArrowUp, Download, FileDown, Loader2, Plus, UserCheck, VenetianMask } from "lucide-react";
+import { FormEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useAuth } from "../../auth/AuthContext";
 import { ActionButtons } from "../../components/ui/ActionButtons";
 import { Button } from "../../components/ui/Button";
@@ -16,16 +16,26 @@ import { Textarea } from "../../components/ui/Textarea";
 import { useToast } from "../../components/ui/Toast";
 import { getApiErrorMessage } from "../../services/api";
 import { exportToCSV } from "../../utils/exportUtils";
+import { attendanceService } from "../../services/attendanceService";
 import {
   athleteService,
   type Athlete,
+  type AthleteGender,
   type AthleteImportSummary,
   type AthletePayload,
   type AthleteStatus,
   type MonthlyPaymentStatus,
+  type PaymentStatusHistoryEntry,
 } from "../../services/athleteService";
 
-type AthleteForm = Required<AthletePayload>;
+function frequencyTone(pct: number | null | undefined): string {
+  if (pct == null) return "text-slate-400";
+  if (pct >= 75) return "text-emerald-600 font-bold";
+  if (pct >= 50) return "text-amber-600 font-bold";
+  return "text-rose-600 font-bold";
+}
+
+type AthleteForm = Required<Omit<AthletePayload, "gender">> & { gender: AthleteGender | "" };
 
 const emptyAthlete: AthleteForm = {
   name: "",
@@ -33,6 +43,7 @@ const emptyAthlete: AthleteForm = {
   phone: "",
   category: "",
   position: "",
+  gender: "",
   status: "ativo",
   monthlyPaymentStatus: "pendente",
   notes: "",
@@ -44,8 +55,7 @@ const statusOptions = [
   { label: "Todos", value: "todos" },
 ];
 
-const paymentOptions = [
-  { label: "Todas as mensalidades", value: "todos" },
+const paymentStatusOptions = [
   { label: "Pago", value: "pago" },
   { label: "Pendente", value: "pendente" },
   { label: "Atrasado", value: "atrasado" },
@@ -82,6 +92,7 @@ function buildPayload(form: AthleteForm): AthletePayload {
     phone: form.phone || undefined,
     category: form.category || undefined,
     position: form.position,
+    gender: form.gender || null,
     status: form.status,
     monthlyPaymentStatus: form.monthlyPaymentStatus,
     notes: form.notes,
@@ -95,6 +106,7 @@ function athleteToForm(athlete: Athlete): AthleteForm {
     phone: athlete.phone ?? "",
     category: athlete.category ?? "",
     position: athlete.position ?? "",
+    gender: athlete.gender ?? "",
     status: athlete.status,
     monthlyPaymentStatus: athlete.monthlyPaymentStatus,
     notes: athlete.notes ?? "",
@@ -110,7 +122,6 @@ export function AthletesPage() {
   const [athletes, setAthletes] = useState<Athlete[]>([]);
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState("ativo");
-  const [monthlyPaymentStatus, setMonthlyPaymentStatus] = useState("todos");
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [isImporting, setIsImporting] = useState(false);
@@ -120,6 +131,13 @@ export function AthletesPage() {
   const [form, setForm] = useState<AthleteForm>(emptyAthlete);
   const [deleteTarget, setDeleteTarget] = useState<Athlete | null>(null);
   const [reactivateTarget, setReactivateTarget] = useState<Athlete | null>(null);
+  const [frequencyMap, setFrequencyMap] = useState<Record<string, number | null>>({});
+  const [historyAthlete, setHistoryAthlete] = useState<Athlete | null>(null);
+  const [paymentHistory, setPaymentHistory] = useState<PaymentStatusHistoryEntry[]>([]);
+  const [isLoadingHistory, setIsLoadingHistory] = useState(false);
+  const [genderSuggestion, setGenderSuggestion] = useState<{ gender: AthleteGender; probability: number } | null>(null);
+  const [showNoGender, setShowNoGender] = useState(false);
+  const genderizeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const filters = useMemo(
     () => ({ search, status: status as AthleteStatus | "todos" }),
@@ -131,14 +149,18 @@ export function AthletesPage() {
       if (a.status === "teste") return false;
       if (status === "ativo" && a.status !== "ativo") return false;
       if (status === "inativo" && a.status !== "inativo") return false;
-      if (monthlyPaymentStatus !== "todos" && a.monthlyPaymentStatus !== monthlyPaymentStatus) return false;
+      if (showNoGender && a.gender) return false;
       return true;
     });
-  }, [athletes, status, monthlyPaymentStatus]);
+  }, [athletes, status, showNoGender]);
+
+  const noGenderCount = useMemo(
+    () => athletes.filter((a) => a.status === "ativo" && !a.gender).length,
+    [athletes],
+  );
 
   const loadAthletes = useCallback(async () => {
     setIsLoading(true);
-
     try {
       const data = await athleteService.getAll(filters);
       setAthletes(data);
@@ -153,15 +175,60 @@ export function AthletesPage() {
     loadAthletes();
   }, [loadAthletes]);
 
+  useEffect(() => {
+    attendanceService.getAthletesSummary().then(setFrequencyMap).catch(() => {});
+  }, []);
+
+  async function openPaymentHistory(athlete: Athlete) {
+    setHistoryAthlete(athlete);
+    setPaymentHistory([]);
+    setIsLoadingHistory(true);
+    try {
+      const data = await athleteService.getPaymentStatusHistory(athlete.id);
+      setPaymentHistory(data);
+    } catch (error) {
+      showToast(getApiErrorMessage(error), "error");
+    } finally {
+      setIsLoadingHistory(false);
+    }
+  }
+
+  function fetchGenderSuggestion(name: string) {
+    const firstName = name.trim().split(" ")[0];
+    if (!firstName || firstName.length < 2) { setGenderSuggestion(null); return; }
+    if (genderizeTimer.current) clearTimeout(genderizeTimer.current);
+    genderizeTimer.current = setTimeout(async () => {
+      try {
+        const res = await fetch(`https://api.genderize.io/?name=${encodeURIComponent(firstName)}&country_id=BR`);
+        const json = await res.json() as { gender: string | null; probability: number };
+        if (json.gender === "male" || json.gender === "female") {
+          setGenderSuggestion({
+            gender: json.gender === "male" ? "masculino" : "feminino",
+            probability: json.probability,
+          });
+        } else {
+          setGenderSuggestion(null);
+        }
+      } catch { setGenderSuggestion(null); }
+    }, 600);
+  }
+
+  function handleNameChange(value: string) {
+    setForm((f) => ({ ...f, name: value }));
+    fetchGenderSuggestion(value);
+  }
+
   function openCreateModal() {
     setEditingAthlete(null);
     setForm(emptyAthlete);
+    setGenderSuggestion(null);
     setIsModalOpen(true);
   }
 
   function openEditModal(athlete: Athlete) {
     setEditingAthlete(athlete);
     setForm(athleteToForm(athlete));
+    setGenderSuggestion(null);
     setIsModalOpen(true);
   }
 
@@ -314,12 +381,21 @@ export function AthletesPage() {
           options={statusOptions}
           value={status}
         />
-        <Select
-          label="Mensalidade"
-          onChange={(event) => setMonthlyPaymentStatus(event.target.value)}
-          options={paymentOptions}
-          value={monthlyPaymentStatus}
-        />
+        <div className="flex items-end">
+          <button
+            type="button"
+            onClick={() => setShowNoGender((v) => !v)}
+            className={`flex items-center gap-2 rounded-xl border px-3 py-2 text-sm font-medium transition ${showNoGender ? "border-amber-400 bg-amber-50 text-amber-700" : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50"}`}
+          >
+            <VenetianMask size={15} />
+            Sem gênero
+            {noGenderCount > 0 && (
+              <span className={`rounded-full px-1.5 py-0.5 text-xs font-bold ${showNoGender ? "bg-amber-200 text-amber-800" : "bg-slate-100 text-slate-500"}`}>
+                {noGenderCount}
+              </span>
+            )}
+          </button>
+        </div>
       </FilterBar>
 
       <section className="panel overflow-hidden">
@@ -351,12 +427,15 @@ export function AthletesPage() {
                   <div className="mt-4 grid gap-3 text-sm text-slate-600">
                     <p><strong className="text-pegasus-navy">Posição:</strong> {athlete.position ?? "-"}</p>
                     <p><strong className="text-pegasus-navy">Categoria:</strong> {athlete.category ?? "-"}</p>
-                    <div>
-                      <span className="mb-2 block font-bold text-pegasus-navy">Mensalidade</span>
-                      <StatusBadge label={label(athlete.monthlyPaymentStatus)} tone={badgeTone(athlete.monthlyPaymentStatus)} />
-                    </div>
                   </div>
-                  <div className="mt-4 border-t border-blue-50 pt-3">
+                  <div className="mt-4 flex flex-wrap items-center gap-2 border-t border-blue-50 pt-3">
+                    <Button
+                      className="h-8 px-3 text-xs"
+                      onClick={() => openPaymentHistory(athlete)}
+                      variant="secondary"
+                    >
+                      <ClockArrowUp size={13} />Histórico
+                    </Button>
                     {athlete.status === "inativo" ? (
                       <ActionButtons
                         canDelete={false}
@@ -382,48 +461,68 @@ export function AthletesPage() {
             </div>
             <div className="hidden md:block">
               <Table
-                headers={["Nome", "Posição", "Status", "Mensalidade", "Ações"]}
-                minWidth="820px"
+                headers={["Nome", "Posição", "Gênero", "Status", "Frequência", "Ações"]}
+                minWidth="920px"
               >
-                {displayedAthletes.map((athlete) => (
-                  <tr key={athlete.id} className={`bg-white${athlete.status === "inativo" ? " opacity-60" : ""}`}>
-                    <td className="px-6 py-4">
-                      <p className="font-bold text-pegasus-navy">{athlete.name}</p>
-                      <p className="text-xs text-slate-500">{athlete.email ?? "-"}</p>
-                    </td>
-                    <td className="px-6 py-4 text-slate-600">{athlete.position ?? "-"}</td>
-                    <td className="px-6 py-4">
-                      <StatusBadge label={label(athlete.status)} tone={badgeTone(athlete.status)} />
-                    </td>
-                    <td className="px-6 py-4">
-                      <StatusBadge
-                        label={label(athlete.monthlyPaymentStatus)}
-                        tone={badgeTone(athlete.monthlyPaymentStatus)}
-                      />
-                    </td>
-                    <td className="px-6 py-4">
-                      {athlete.status === "inativo" ? (
-                        <ActionButtons
-                          canDelete={false}
-                          canEdit={canUpdate}
-                          canToggle={canUpdate}
-                          onEdit={() => openEditModal(athlete)}
-                          onToggle={() => setReactivateTarget(athlete)}
-                          toggleLabel="Reativar"
-                        />
-                      ) : (
-                        <ActionButtons
-                          canDelete={false}
-                          canEdit={canUpdate}
-                          canToggle={canDelete}
-                          onEdit={() => openEditModal(athlete)}
-                          onToggle={() => setDeleteTarget(athlete)}
-                          toggleLabel="Inativar"
-                        />
-                      )}
-                    </td>
-                  </tr>
-                ))}
+                {displayedAthletes.map((athlete) => {
+                  const pct = frequencyMap[athlete.id];
+                  return (
+                    <tr key={athlete.id} className={`bg-white${athlete.status === "inativo" ? " opacity-60" : ""}`}>
+                      <td className="px-6 py-4">
+                        <p className="font-bold text-pegasus-navy">{athlete.name}</p>
+                        <p className="text-xs text-slate-500">{athlete.email ?? "-"}</p>
+                      </td>
+                      <td className="px-6 py-4 text-slate-600">{athlete.position ?? "-"}</td>
+                      <td className="px-6 py-4">
+                        {athlete.gender ? (
+                          <span className={`inline-block rounded-full px-2 py-0.5 text-xs font-semibold ${athlete.gender === "masculino" ? "bg-blue-100 text-blue-700" : "bg-pink-100 text-pink-700"}`}>
+                            {athlete.gender === "masculino" ? "Masc." : "Fem."}
+                          </span>
+                        ) : (
+                          <span className="text-xs text-slate-300">—</span>
+                        )}
+                      </td>
+                      <td className="px-6 py-4">
+                        <StatusBadge label={label(athlete.status)} tone={badgeTone(athlete.status)} />
+                      </td>
+                      <td className="px-6 py-4">
+                        <span className={`text-sm ${frequencyTone(pct)}`}>
+                          {pct != null ? `${pct}%` : "—"}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <Button
+                            className="h-8 px-3 text-xs"
+                            onClick={() => openPaymentHistory(athlete)}
+                            variant="secondary"
+                          >
+                            <ClockArrowUp size={13} />Histórico
+                          </Button>
+                          {athlete.status === "inativo" ? (
+                            <ActionButtons
+                              canDelete={false}
+                              canEdit={canUpdate}
+                              canToggle={canUpdate}
+                              onEdit={() => openEditModal(athlete)}
+                              onToggle={() => setReactivateTarget(athlete)}
+                              toggleLabel="Reativar"
+                            />
+                          ) : (
+                            <ActionButtons
+                              canDelete={false}
+                              canEdit={canUpdate}
+                              canToggle={canDelete}
+                              onEdit={() => openEditModal(athlete)}
+                              onToggle={() => setDeleteTarget(athlete)}
+                              toggleLabel="Inativar"
+                            />
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
               </Table>
             </div>
           </>
@@ -439,6 +538,41 @@ export function AthletesPage() {
       </section>
 
 
+      {/* Modal de histórico de mensalidade */}
+      <Modal
+        isOpen={Boolean(historyAthlete)}
+        onClose={() => setHistoryAthlete(null)}
+        title={`Histórico de mensalidade — ${historyAthlete?.name ?? ""}`}
+      >
+        {isLoadingHistory ? (
+          <div className="flex items-center gap-3 py-8 text-sm font-bold text-pegasus-primary">
+            <Loader2 className="animate-spin" size={18} />
+            Carregando histórico
+          </div>
+        ) : paymentHistory.length === 0 ? (
+          <p className="py-8 text-center text-sm text-slate-500">Nenhuma alteração registrada ainda.</p>
+        ) : (
+          <div className="divide-y divide-blue-50">
+            {paymentHistory.map((entry) => (
+              <div className="flex items-start justify-between gap-4 py-3" key={entry.id}>
+                <div>
+                  <p className="text-sm text-slate-600">
+                    <span className="font-bold text-pegasus-navy">{label(entry.fromStatus)}</span>
+                    {" → "}
+                    <span className="font-bold text-pegasus-navy">{label(entry.toStatus)}</span>
+                  </p>
+                  <p className="mt-0.5 text-xs text-slate-400">por {entry.changedBy}</p>
+                  {entry.notes ? <p className="mt-0.5 text-xs text-slate-500 italic">{entry.notes}</p> : null}
+                </div>
+                <p className="shrink-0 text-xs text-slate-400">
+                  {new Date(entry.createdAt).toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" })}
+                </p>
+              </div>
+            ))}
+          </div>
+        )}
+      </Modal>
+
       <Modal
         description="Preencha os dados do atleta. As alterações serão salvas na API."
         isOpen={isModalOpen}
@@ -450,7 +584,7 @@ export function AthletesPage() {
             <Input
               disabled={isSaving}
               label="Nome"
-              onChange={(event) => setForm({ ...form, name: event.target.value })}
+              onChange={(event) => handleNameChange(event.target.value)}
               required
               value={form.name}
             />
@@ -467,6 +601,27 @@ export function AthletesPage() {
               options={positionOptions}
               value={form.position}
             />
+            <div>
+              <Select
+                label="Gênero"
+                onChange={(event) => setForm({ ...form, gender: event.target.value as AthleteGender | "" })}
+                options={[
+                  { label: "Não definido", value: "" },
+                  { label: "Masculino", value: "masculino" },
+                  { label: "Feminino", value: "feminino" },
+                ]}
+                value={form.gender}
+              />
+              {genderSuggestion && !form.gender && (
+                <button
+                  type="button"
+                  onClick={() => setForm((f) => ({ ...f, gender: genderSuggestion.gender }))}
+                  className="mt-1.5 flex items-center gap-1.5 rounded-lg border border-amber-200 bg-amber-50 px-2.5 py-1 text-xs font-medium text-amber-700 hover:bg-amber-100"
+                >
+                  Sugestão: {genderSuggestion.gender === "masculino" ? "Masculino" : "Feminino"} ({Math.round(genderSuggestion.probability * 100)}%) — clique para aplicar
+                </button>
+              )}
+            </div>
             <Select
               label="Status"
               onChange={(event) =>
@@ -492,7 +647,7 @@ export function AthletesPage() {
                   monthlyPaymentStatus: event.target.value as MonthlyPaymentStatus,
                 })
               }
-              options={paymentOptions.filter((option) => option.value !== "todos")}
+              options={paymentStatusOptions}
               value={form.monthlyPaymentStatus}
             />
           </div>

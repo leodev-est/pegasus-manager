@@ -168,9 +168,15 @@ export function ChamadaPage() {
         </div>
       ) : !chamada?.available ? (
         <div className="flex flex-col items-center justify-center gap-3 rounded-2xl border border-blue-100 bg-white py-16 text-center shadow-soft">
-          <ClipboardList className="text-blue-200" size={40} />
-          <p className="font-bold text-pegasus-navy">Sem treino nesta data</p>
-          <p className="text-sm text-pegasus-medium">Navegue para um sábado de treino.</p>
+          <ClipboardList className={(chamada as { reason?: string }).reason === "cancelado" ? "text-red-300" : "text-blue-200"} size={40} />
+          <p className="font-bold text-pegasus-navy">
+            {(chamada as { reason?: string }).reason === "cancelado" ? "Treino cancelado nesta data" : "Sem treino nesta data"}
+          </p>
+          <p className="text-sm text-pegasus-medium">
+            {(chamada as { reason?: string }).reason === "cancelado"
+              ? "Esta data está bloqueada no calendário."
+              : "Navegue para um sábado de treino."}
+          </p>
         </div>
       ) : (
         <>

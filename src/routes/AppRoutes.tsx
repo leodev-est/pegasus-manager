@@ -4,6 +4,7 @@ import { ProtectedRoute } from "../components/auth/ProtectedRoute";
 import { AppLayout } from "../components/layout/AppLayout";
 
 const AccessControlPage = lazy(() => import("../pages/admin/AccessControlPage").then((m) => ({ default: m.AccessControlPage })));
+const AuditLogPage = lazy(() => import("../pages/admin/AuditLogPage").then((m) => ({ default: m.AuditLogPage })));
 const ConfiguracoesPage = lazy(() => import("../pages/admin/ConfiguracoesPage").then((m) => ({ default: m.ConfiguracoesPage })));
 const WhatsAppPage = lazy(() => import("../pages/admin/WhatsAppPage").then((m) => ({ default: m.WhatsAppPage })));
 const AttendanceAdminPage = lazy(() => import("../pages/attendance/AttendanceAdminPage").then((m) => ({ default: m.AttendanceAdminPage })));
@@ -26,10 +27,12 @@ const NotFoundPage = lazy(() => import("../pages/public/NotFoundPage").then((m) 
 const AthleteApplicationsPage = lazy(() => import("../pages/rh/AthleteApplicationsPage").then((m) => ({ default: m.AthleteApplicationsPage })));
 const AthletesPage = lazy(() => import("../pages/rh/AthletesPage").then((m) => ({ default: m.AthletesPage })));
 const ComunicadosPage = lazy(() => import("../pages/rh/ComunicadosPage").then((m) => ({ default: m.ComunicadosPage })));
+const GamesPage = lazy(() => import("../pages/games/GamesPage").then((m) => ({ default: m.GamesPage })));
 const TestesPage = lazy(() => import("../pages/rh/TestesPage").then((m) => ({ default: m.TestesPage })));
 const TacticalCourtPage = lazy(() => import("../pages/tactical/TacticalCourtPage").then((m) => ({ default: m.TacticalCourtPage })));
 const TrainingCalendarPage = lazy(() => import("../pages/trainings/TrainingCalendarPage").then((m) => ({ default: m.TrainingCalendarPage })));
 const TrainingsPage = lazy(() => import("../pages/trainings/TrainingsPage").then((m) => ({ default: m.TrainingsPage })));
+const UniformsPage = lazy(() => import("../pages/uniforms/UniformsPage").then((m) => ({ default: m.UniformsPage })));
 
 export function AppRoutes() {
   return (
@@ -94,6 +97,22 @@ export function AppRoutes() {
             element={
               <ProtectedRoute permissions={["gestao"]}>
                 <ManagementKanbanPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="jogos"
+            element={
+              <ProtectedRoute permissions={["dashboard"]}>
+                <GamesPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="uniformes"
+            element={
+              <ProtectedRoute permissions={["gestao"]}>
+                <UniformsPage />
               </ProtectedRoute>
             }
           />
@@ -191,6 +210,14 @@ export function AppRoutes() {
             element={
               <ProtectedRoute permissions={["admin"]}>
                 <AccessControlPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="admin/auditoria"
+            element={
+              <ProtectedRoute permissions={["admin"]}>
+                <AuditLogPage />
               </ProtectedRoute>
             }
           />

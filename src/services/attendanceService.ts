@@ -113,4 +113,9 @@ export const attendanceService = {
     const { data } = await api.post("/attendance/chamada/bulk", { date, entries });
     return data;
   },
+
+  async getAthletesSummary() {
+    const { data } = await api.get<Record<string, number | null>>("/attendance/athletes-summary");
+    return data;
+  },
 };

@@ -8,6 +8,9 @@
   MessageCircle,
   Radio,
   Settings,
+  ShieldCheck,
+  Shirt,
+  Trophy,
   UserPlus,
   Users,
   UserCheck,
@@ -45,6 +48,23 @@ export const menuGroups: MenuGroup[] = [
         path: "/app/gestao",
         icon: ClipboardList,
         permissions: ["gestao"],
+      },
+      {
+        label: "Uniformes",
+        path: "/app/uniformes",
+        icon: Shirt,
+        permissions: ["gestao"],
+      },
+    ],
+  },
+  {
+    title: "Jogos",
+    items: [
+      {
+        label: "Jogos e Resultados",
+        path: "/app/jogos",
+        icon: Trophy,
+        permissions: ["dashboard"],
       },
     ],
   },
@@ -153,6 +173,7 @@ export const menuGroups: MenuGroup[] = [
     title: "Administração",
     items: [
       { label: "Acessos", path: "/app/admin/acessos", icon: Users, permissions: ["admin"] },
+      { label: "Auditoria", path: "/app/admin/auditoria", icon: ShieldCheck, permissions: ["admin"] },
       { label: "WhatsApp", path: "/app/admin/whatsapp", icon: MessageCircle, permissions: ["admin"] },
       { label: "Configurações", path: "/app/admin/configuracoes", icon: Settings, permissions: ["admin"] },
     ],

@@ -11,6 +11,22 @@ export type FinanceSummary = {
   monthlyBalance: number;
   pendingMonthlyPayments: number;
   overdueMonthlyPayments: number;
+  mensalidadesTotalEsperado: number;
+  mensalidadesTotalRecebido: number;
+  mensalidadesTotalPendente: number;
+  mensalidadesTaxaAdimplencia: number;
+  mensalidadesPaidCount: number;
+  mensalidadesTotalCount: number;
+};
+
+export type MensalidadeEntry = {
+  id: string;
+  athleteId: string;
+  athleteName: string;
+  amount: number;
+  status: FinanceStatus;
+  paidAt: string | null;
+  referenceMonth: string;
 };
 
 export type Payment = {
@@ -39,6 +55,15 @@ export type CashMovement = {
   notes: string | null;
   createdAt: string;
   updatedAt: string;
+};
+
+export type ChartDataPoint = {
+  month: string;
+  expected: number;
+  paid: number;
+  pending: number;
+  overdue: number;
+  overdueCount: number;
 };
 
 export type PaymentFilters = {
@@ -116,5 +141,27 @@ export const financeService = {
   },
   async deleteMovement(id: string) {
     await api.delete(`/finance/movements/${id}`);
+  },
+  async getChartData(months = 6) {
+    const { data } = await api.get<ChartDataPoint[]>("/finance/chart-data", { params: { months } });
+    return data;
+  },
+  async getMensalidades(month: string, status?: string) {
+    const { data } = await api.get<MensalidadeEntry[]>("/finance/mensalidades", {
+      params: { month, status: status && status !== "todos" ? status : undefined },
+    });
+    return data;
+  },
+  async payMensalidade(id: string) {
+    const { data } = await api.patch<{ id: string; status: string; paidAt: string | null }>(
+      `/finance/mensalidades/${id}/pay`,
+    );
+    return data;
+  },
+  async undoMensalidade(id: string) {
+    const { data } = await api.patch<{ id: string; status: string; paidAt: string | null }>(
+      `/finance/mensalidades/${id}/undo`,
+    );
+    return data;
   },
 };

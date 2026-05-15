@@ -1,5 +1,6 @@
-import { Loader2, Save, Shield, Star, UserRound } from "lucide-react";
+import { ChevronDown, ChevronUp, History, Loader2, Save, Shield, Star, TrendingUp, UserRound } from "lucide-react";
 import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
+import { CartesianGrid, Legend, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { Button } from "../../components/ui/Button";
 import { EmptyState } from "../../components/ui/EmptyState";
 import { Input } from "../../components/ui/Input";
@@ -14,6 +15,7 @@ import {
   evaluationService,
   type AthleteEvaluation,
   type CoachEvaluationPayload,
+  type EvaluationHistoryEntry,
 } from "../../services/evaluationService";
 
 const emptyEvaluation: AthleteEvaluation = {
@@ -89,6 +91,8 @@ export function AthleteEvaluationsPage() {
     tactical: null,
     technical: null,
   });
+  const [history, setHistory] = useState<EvaluationHistoryEntry[]>([]);
+  const [expandedHistoryId, setExpandedHistoryId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isLoadingEvaluation, setIsLoadingEvaluation] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
@@ -111,6 +115,16 @@ export function AthleteEvaluationsPage() {
       setIsLoading(false);
     }
   }, [showToast]);
+
+  const loadHistory = useCallback(async (athleteId: string) => {
+    if (!athleteId) { setHistory([]); return; }
+    try {
+      const data = await evaluationService.getHistory(athleteId);
+      setHistory(data);
+    } catch {
+      setHistory([]);
+    }
+  }, []);
 
   const loadEvaluation = useCallback(
     async (athleteId: string) => {
@@ -146,7 +160,8 @@ export function AthleteEvaluationsPage() {
 
   useEffect(() => {
     loadEvaluation(selectedAthleteId);
-  }, [loadEvaluation, selectedAthleteId]);
+    loadHistory(selectedAthleteId);
+  }, [loadEvaluation, loadHistory, selectedAthleteId]);
 
   async function saveEvaluation(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -156,6 +171,7 @@ export function AthleteEvaluationsPage() {
     try {
       const data = await evaluationService.updateCoachEvaluation(selectedAthleteId, form);
       setEvaluation(data);
+      loadHistory(selectedAthleteId);
       showToast("Avaliação técnica salva.", "success");
     } catch (error) {
       showToast(getApiErrorMessage(error), "error");
@@ -304,6 +320,112 @@ export function AthleteEvaluationsPage() {
           </article>
         </section>
       )}
+
+      {selectedAthlete && history.length >= 2 ? (
+        <section className="panel p-6">
+          <div className="mb-5 flex items-center gap-3">
+            <TrendingUp className="text-pegasus-primary" size={20} />
+            <h2 className="text-xl font-black text-pegasus-navy">Evolução por atributo</h2>
+            <span className="rounded-full bg-pegasus-ice px-3 py-1 text-xs font-bold text-pegasus-primary">
+              {history.length} avaliações
+            </span>
+          </div>
+          <ResponsiveContainer width="100%" height={260}>
+            <LineChart
+              data={[...history].reverse().map((entry, i) => ({
+                label: `#${i + 1} ${new Date(entry.createdAt).toLocaleDateString("pt-BR", { month: "short", day: "2-digit" })}`,
+                Técnica: entry.technical,
+                Físico: entry.physical,
+                Tático: entry.tactical,
+                Mental: entry.mental,
+                Overall: entry.overall,
+              }))}
+            >
+              <CartesianGrid stroke="#e2e8f0" strokeDasharray="3 3" />
+              <XAxis dataKey="label" tick={{ fontSize: 11 }} />
+              <YAxis domain={[0, 10]} tick={{ fontSize: 11 }} />
+              <Tooltip />
+              <Legend />
+              <Line type="monotone" dataKey="Técnica" stroke="#1e3a5f" strokeWidth={2} dot={{ r: 4 }} />
+              <Line type="monotone" dataKey="Físico" stroke="#22c55e" strokeWidth={2} dot={{ r: 4 }} />
+              <Line type="monotone" dataKey="Tático" stroke="#f59e0b" strokeWidth={2} dot={{ r: 4 }} />
+              <Line type="monotone" dataKey="Mental" stroke="#ec4899" strokeWidth={2} dot={{ r: 4 }} />
+              <Line type="monotone" dataKey="Overall" stroke="#6366f1" strokeWidth={2} strokeDasharray="5 3" dot={{ r: 4 }} />
+            </LineChart>
+          </ResponsiveContainer>
+        </section>
+      ) : null}
+
+      {selectedAthlete && history.length > 0 ? (
+        <section className="panel p-6">
+          <div className="mb-5 flex items-center gap-3">
+            <History className="text-pegasus-primary" size={20} />
+            <h2 className="text-xl font-black text-pegasus-navy">Histórico de avaliações</h2>
+            <span className="rounded-full bg-pegasus-ice px-3 py-1 text-xs font-bold text-pegasus-primary">
+              {history.length} registro{history.length !== 1 ? "s" : ""}
+            </span>
+          </div>
+          <div className="space-y-3">
+            {history.map((entry, index) => {
+              const prev = history[index + 1] ?? null;
+              const isExpanded = expandedHistoryId === entry.id;
+              return (
+                <article key={entry.id} className="overflow-hidden rounded-2xl border border-blue-100 bg-white">
+                  <button
+                    className="flex w-full items-center justify-between gap-4 p-4 text-left"
+                    onClick={() => setExpandedHistoryId(isExpanded ? null : entry.id)}
+                    type="button"
+                  >
+                    <div className="flex items-center gap-4">
+                      <span className="text-3xl font-black text-pegasus-navy">{entry.overall ?? "--"}</span>
+                      <div>
+                        <p className="text-sm font-bold text-pegasus-navy">
+                          {new Date(entry.createdAt).toLocaleDateString("pt-BR")}
+                        </p>
+                        <p className="text-xs text-slate-500">{entry.evaluatedBy ?? "Avaliação técnica"}</p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-4">
+                      {([["Téc", entry.technical], ["Fís", entry.physical], ["Tát", entry.tactical], ["Men", entry.mental]] as [string, number | null][]).map(([abbr, val]) => (
+                        <span className="hidden flex-col items-center sm:flex" key={abbr}>
+                          <span className="text-xs text-slate-400">{abbr}</span>
+                          <span className="text-sm font-bold text-pegasus-navy">{val ?? "--"}</span>
+                        </span>
+                      ))}
+                      {isExpanded ? <ChevronUp className="text-slate-400" size={16} /> : <ChevronDown className="text-slate-400" size={16} />}
+                    </div>
+                  </button>
+                  {isExpanded ? (
+                    <div className="border-t border-blue-50 px-4 pb-4 pt-3">
+                      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+                        {([["Técnica", entry.technical, prev?.technical], ["Físico", entry.physical, prev?.physical], ["Tático", entry.tactical, prev?.tactical], ["Mental", entry.mental, prev?.mental]] as [string, number | null, number | null | undefined][]).map(([name, current, previous]) => {
+                          const delta = current !== null && previous != null ? +(current - previous).toFixed(1) : null;
+                          return (
+                            <div className="rounded-xl bg-pegasus-surface p-3" key={name}>
+                              <p className="text-xs font-bold uppercase tracking-wide text-slate-400">{name}</p>
+                              <p className="mt-1 text-2xl font-black text-pegasus-navy">{current ?? "--"}</p>
+                              {delta !== null ? (
+                                <p className={`mt-0.5 text-xs font-bold ${delta > 0 ? "text-emerald-600" : delta < 0 ? "text-rose-600" : "text-slate-400"}`}>
+                                  {delta > 0 ? `+${delta} ↑` : delta < 0 ? `${delta} ↓` : "= igual"}
+                                </p>
+                              ) : null}
+                            </div>
+                          );
+                        })}
+                      </div>
+                      {entry.coachNotes ? (
+                        <p className="mt-3 text-sm text-slate-600">
+                          <strong className="text-pegasus-navy">Obs.: </strong>{entry.coachNotes}
+                        </p>
+                      ) : null}
+                    </div>
+                  ) : null}
+                </article>
+              );
+            })}
+          </div>
+        </section>
+      ) : null}
     </div>
   );
 }

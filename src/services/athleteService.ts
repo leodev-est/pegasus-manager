@@ -2,6 +2,7 @@ import { api } from "./api";
 
 export type AthleteStatus = "ativo" | "teste" | "inativo";
 export type MonthlyPaymentStatus = "pago" | "pendente" | "atrasado" | "isento";
+export type AthleteGender = "masculino" | "feminino";
 
 export type Athlete = {
   id: string;
@@ -10,6 +11,7 @@ export type Athlete = {
   phone: string | null;
   category: string | null;
   position: string | null;
+  gender: AthleteGender | null;
   status: AthleteStatus;
   monthlyPaymentStatus: MonthlyPaymentStatus;
   notes: string | null;
@@ -33,9 +35,20 @@ export type AthletePayload = {
   phone?: string;
   category?: string;
   position?: string;
+  gender?: AthleteGender | null;
   status?: AthleteStatus;
   monthlyPaymentStatus?: MonthlyPaymentStatus;
   notes?: string;
+};
+
+export type PaymentStatusHistoryEntry = {
+  id: string;
+  athleteId: string;
+  fromStatus: string;
+  toStatus: string;
+  changedBy: string;
+  notes: string | null;
+  createdAt: string;
 };
 
 export type AthleteImportSummary = {
@@ -85,6 +98,14 @@ export const athleteService = {
   },
   async importFromGoogleSheets() {
     const { data } = await api.post<AthleteImportSummary>("/athletes/import/google-sheets");
+    return data;
+  },
+  async updatePaymentStatus(id: string, status: MonthlyPaymentStatus, notes?: string) {
+    const { data } = await api.patch<Athlete>(`/athletes/${id}/payment-status`, { status, notes });
+    return data;
+  },
+  async getPaymentStatusHistory(id: string) {
+    const { data } = await api.get<PaymentStatusHistoryEntry[]>(`/athletes/${id}/payment-status-history`);
     return data;
   },
 };

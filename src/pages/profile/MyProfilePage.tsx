@@ -1,15 +1,18 @@
 import {
   CalendarDays,
+  Camera,
   CreditCard,
   Loader2,
   Mail,
+  Package,
   Phone,
   Save,
   Shield,
   TrendingUp,
   UserRound,
 } from "lucide-react";
-import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
+import { FormEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useLocation } from "react-router-dom";
 import { useAuth } from "../../auth/AuthContext";
 import { Button } from "../../components/ui/Button";
 import { EmptyState } from "../../components/ui/EmptyState";
@@ -21,6 +24,7 @@ import { useToast } from "../../components/ui/Toast";
 import { OFFICIAL_TRAINING } from "../../data/trainingConfig";
 import { getApiErrorMessage } from "../../services/api";
 import { evaluationService, type CoachEvaluationPayload, type SelfEvaluationPayload } from "../../services/evaluationService";
+import { googleCalendarService, type GoogleCalendarStatus } from "../../services/googleCalendarService";
 import { profileService, type MyProfile } from "../../services/profileService";
 
 function initials(name: string) {
@@ -98,13 +102,19 @@ function RatingInput({
 export function MyProfilePage() {
   const { hasPermission, user } = useAuth();
   const { showToast } = useToast();
+  const location = useLocation();
   const canEditCoachEvaluation = hasPermission(["trainings:update"]);
   const [profile, setProfile] = useState<MyProfile | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isSavingProfile, setIsSavingProfile] = useState(false);
   const [isSavingSelf, setIsSavingSelf] = useState(false);
   const [isSavingCoach, setIsSavingCoach] = useState(false);
-  const [contactForm, setContactForm] = useState({ email: "", phone: "" });
+  const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+  const avatarInputRef = useRef<HTMLInputElement>(null);
+  const [contactForm, setContactForm] = useState({ email: "", phone: "", birthDate: "" });
+  const [calendarStatus, setCalendarStatus] = useState<GoogleCalendarStatus | null>(null);
+  const [isConnectingCalendar, setIsConnectingCalendar] = useState(false);
   const [selfForm, setSelfForm] = useState<SelfEvaluationPayload>({
     improvements: "",
     selfRating: null,
@@ -124,9 +134,11 @@ export function MyProfilePage() {
     try {
       const data = await profileService.getMyProfile();
       setProfile(data);
+      setAvatarUrl(data.user.avatarUrl ?? null);
       setContactForm({
         email: data.athlete?.email ?? data.user.email ?? "",
         phone: data.athlete?.phone ?? "",
+        birthDate: data.athlete?.birthDate ? new Date(data.athlete.birthDate).toISOString().slice(0, 10) : "",
       });
       setSelfForm({
         improvements: data.evaluation.improvements ?? "",
@@ -149,7 +161,19 @@ export function MyProfilePage() {
 
   useEffect(() => {
     loadProfile();
+    googleCalendarService.getUserStatus().then(setCalendarStatus).catch(() => {});
   }, [loadProfile]);
+
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const calResult = params.get("calendar");
+    if (calResult === "success") {
+      showToast("Google Calendar conectado com sucesso!", "success");
+      googleCalendarService.getUserStatus().then(setCalendarStatus).catch(() => {});
+    } else if (calResult === "error") {
+      showToast("Erro ao conectar Google Calendar. Tente novamente.", "error");
+    }
+  }, [location.search, showToast]);
 
   // Refresh profile whenever the user comes back to this tab/page
   useEffect(() => {
@@ -160,6 +184,30 @@ export function MyProfilePage() {
     return () => document.removeEventListener("visibilitychange", handleVisibilityChange);
   }, [loadProfile]);
 
+  async function handleConnectCalendar() {
+    setIsConnectingCalendar(true);
+    try {
+      const url = await googleCalendarService.getAuthUrl();
+      window.location.href = url;
+    } catch (error) {
+      showToast(getApiErrorMessage(error), "error");
+      setIsConnectingCalendar(false);
+    }
+  }
+
+  async function handleDisconnectCalendar() {
+    setIsConnectingCalendar(true);
+    try {
+      await googleCalendarService.disconnect();
+      setCalendarStatus((prev) => prev ? { ...prev, connected: false, calendarId: null } : null);
+      showToast("Google Calendar desconectado.", "success");
+    } catch (error) {
+      showToast(getApiErrorMessage(error), "error");
+    } finally {
+      setIsConnectingCalendar(false);
+    }
+  }
+
   const currentPayment = useMemo(() => {
     if (!profile?.payments.length) return null;
     return [...profile.payments].sort((a, b) =>
@@ -167,12 +215,31 @@ export function MyProfilePage() {
     )[0];
   }, [profile]);
 
+  async function handleAvatarChange(event: React.ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    setIsUploadingAvatar(true);
+    try {
+      const result = await profileService.uploadAvatar(file);
+      setAvatarUrl(result.avatarUrl);
+      showToast("Foto atualizada.", "success");
+    } catch (error) {
+      showToast(getApiErrorMessage(error), "error");
+    } finally {
+      setIsUploadingAvatar(false);
+    }
+  }
+
   async function saveProfile(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setIsSavingProfile(true);
 
     try {
-      const data = await profileService.updateMyProfile(contactForm);
+      const data = await profileService.updateMyProfile({
+        email: contactForm.email || null,
+        phone: contactForm.phone || null,
+        birthDate: contactForm.birthDate || null,
+      });
       setProfile(data);
       showToast("Perfil atualizado.", "success");
     } catch (error) {
@@ -238,8 +305,23 @@ export function MyProfilePage() {
       <section className="panel overflow-hidden">
         <div className="bg-pegasus-navy p-6 text-white sm:p-8">
           <div className="flex flex-col gap-5 sm:flex-row sm:items-center">
-            <div className="grid h-20 w-20 shrink-0 place-items-center rounded-3xl bg-white text-2xl font-black text-pegasus-primary">
-              {initials(profileName)}
+            <div className="relative h-20 w-20 shrink-0">
+              {avatarUrl ? (
+                <img src={avatarUrl} alt={profileName} className="h-20 w-20 rounded-3xl object-cover" />
+              ) : (
+                <div className="grid h-20 w-20 place-items-center rounded-3xl bg-white text-2xl font-black text-pegasus-primary">
+                  {initials(profileName)}
+                </div>
+              )}
+              <button
+                type="button"
+                onClick={() => avatarInputRef.current?.click()}
+                disabled={isUploadingAvatar}
+                className="absolute -bottom-1 -right-1 flex h-7 w-7 items-center justify-center rounded-full bg-pegasus-primary text-white shadow-md hover:bg-blue-700"
+              >
+                {isUploadingAvatar ? <Loader2 size={12} className="animate-spin" /> : <Camera size={12} />}
+              </button>
+              <input ref={avatarInputRef} type="file" accept="image/*" className="hidden" onChange={handleAvatarChange} />
             </div>
             <div className="min-w-0 flex-1">
               <p className="text-xs font-black uppercase tracking-[0.16em] text-blue-100">@{profile.user.username}</p>
@@ -300,6 +382,12 @@ export function MyProfilePage() {
               label="Telefone"
               onChange={(event) => setContactForm({ ...contactForm, phone: event.target.value })}
               value={contactForm.phone}
+            />
+            <Input
+              label="Data de nascimento"
+              type="date"
+              onChange={(event) => setContactForm({ ...contactForm, birthDate: event.target.value })}
+              value={contactForm.birthDate}
             />
             <Button disabled={isSavingProfile} type="submit">
               {isSavingProfile ? <Loader2 className="animate-spin" size={17} /> : <Save size={17} />}
@@ -451,6 +539,55 @@ export function MyProfilePage() {
         </article>
       </section>
 
+      {/* 3-month attendance chart */}
+      {profile.monthlyAttendance && profile.monthlyAttendance.length > 0 && (
+        <section className="panel p-6">
+          <h2 className="mb-4 text-xl font-black text-pegasus-navy">Frequência — últimos 3 meses</h2>
+          <div className="flex flex-wrap gap-2">
+            {profile.monthlyAttendance.map((entry) => {
+              const d = new Date(entry.training.date);
+              const label = d.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit", timeZone: "UTC" });
+              const color =
+                entry.status === "presente"
+                  ? "bg-green-500"
+                  : entry.status === "justificada"
+                    ? "bg-yellow-400"
+                    : "bg-red-400";
+              return (
+                <div key={entry.id} title={`${label} — ${entry.status}`} className={`h-8 w-8 rounded-lg ${color} flex items-center justify-center text-xs font-bold text-white`}>
+                  {d.getDate()}
+                </div>
+              );
+            })}
+          </div>
+          <div className="mt-3 flex gap-4 text-xs text-slate-500">
+            <span className="flex items-center gap-1"><span className="h-3 w-3 rounded bg-green-500" />Presente</span>
+            <span className="flex items-center gap-1"><span className="h-3 w-3 rounded bg-yellow-400" />Justificada</span>
+            <span className="flex items-center gap-1"><span className="h-3 w-3 rounded bg-red-400" />Falta</span>
+          </div>
+        </section>
+      )}
+
+      {/* Uniforms received */}
+      {athlete?.uniformDeliveries && athlete.uniformDeliveries.length > 0 && (
+        <section className="panel p-6">
+          <div className="mb-4 flex items-center gap-3">
+            <Package className="text-pegasus-primary" size={20} />
+            <h2 className="text-xl font-black text-pegasus-navy">Uniformes recebidos</h2>
+          </div>
+          <div className="space-y-2">
+            {athlete.uniformDeliveries.map((d) => (
+              <div key={d.id} className="flex items-center justify-between rounded-xl bg-pegasus-surface p-3">
+                <span className="font-medium text-pegasus-navy">{d.uniformItem.name}</span>
+                <span className="text-sm text-slate-500">
+                  {d.quantity} un. · {new Date(d.deliveredAt).toLocaleDateString("pt-BR")}
+                </span>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
+
       <section className="grid gap-6 xl:grid-cols-2">
         <article className="panel p-6">
           <div className="mb-4 flex items-center gap-3">
@@ -469,6 +606,46 @@ export function MyProfilePage() {
           <p className="mt-2 text-sm text-slate-600">Perfis: {profile.user.roles.join(", ") || "-"}</p>
         </article>
       </section>
+
+      {calendarStatus && (
+        <section className="panel p-6">
+          <div className="mb-4 flex items-center gap-3">
+            <CalendarDays className="text-pegasus-primary" size={20} />
+            <h2 className="text-xl font-black text-pegasus-navy">Google Calendar</h2>
+          </div>
+          {!calendarStatus.configured ? (
+            <p className="text-sm text-slate-500">Google Calendar não está configurado no servidor.</p>
+          ) : calendarStatus.connected ? (
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <p className="text-sm font-semibold text-emerald-700">Conectado</p>
+                {calendarStatus.calendarId && (
+                  <p className="mt-0.5 text-xs text-slate-500">{calendarStatus.calendarId}</p>
+                )}
+                <p className="mt-1 text-xs text-slate-400">Os treinos futuros serão adicionados automaticamente ao seu calendário.</p>
+              </div>
+              <Button
+                variant="outline"
+                onClick={handleDisconnectCalendar}
+                disabled={isConnectingCalendar}
+              >
+                {isConnectingCalendar ? <Loader2 size={14} className="animate-spin" /> : null}
+                Desconectar
+              </Button>
+            </div>
+          ) : (
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <p className="text-sm text-slate-600">Conecte sua conta Google para sincronizar treinos automaticamente.</p>
+              </div>
+              <Button onClick={handleConnectCalendar} disabled={isConnectingCalendar}>
+                {isConnectingCalendar ? <Loader2 size={14} className="animate-spin" /> : null}
+                Conectar Google Calendar
+              </Button>
+            </div>
+          )}
+        </section>
+      )}
     </div>
   );
 }
