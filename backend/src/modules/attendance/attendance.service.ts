@@ -618,23 +618,55 @@ export const attendanceService = {
 
     const todayKey = getBrazilDateKey();
 
+    // Build the complete set of official training date keys from the start date to today,
+    // iterating month by month so we don't depend on "falta" records being in the DB.
+    const [startYear, startMonthNum] = OFFICIAL_TRAINING_START_DATE.split("-").map(Number);
+    const now = new Date();
+    const endYear = now.getFullYear();
+    const endMonth = now.getMonth() + 1;
+
+    const allDateKeySet = new Set<string>();
+    let curYear = startYear;
+    let curMonth = startMonthNum;
+    while (curYear < endYear || (curYear === endYear && curMonth <= endMonth)) {
+      const monthDates = await getTrainingDatesForMonth(curYear, curMonth);
+      for (const dateKey of monthDates) {
+        if (dateKey <= todayKey) allDateKeySet.add(dateKey);
+      }
+      curMonth++;
+      if (curMonth > 12) { curMonth = 1; curYear++; }
+    }
+    const allDateKeys = Array.from(allDateKeySet).sort();
+
     const results = await Promise.all(
       athletes.map(async (athlete) => {
+        // Only count training dates from when the athlete was activated
+        const athleteDateKeys = getAthleteTrainingDates(allDateKeys, athlete);
+
         const attendances = await prisma.trainingAttendance.findMany({
-          where: { athleteId: athlete.id },
+          where: {
+            athleteId: athlete.id,
+            training: { date: { lte: new Date() } },
+          },
           include: { training: { select: { date: true } } },
         });
 
-        const activeStartKey = toTrainingDateKey(athlete.activatedAt ?? athlete.createdAt);
-        const counted = attendances.filter((a) => {
-          const dateKey = toTrainingDateKey(a.training.date);
-          return dateKey <= todayKey && dateKey >= activeStartKey;
-        });
+        const attendanceByDate = new Map(
+          attendances.map((a) => [toTrainingDateKey(a.training.date), a.status]),
+        );
 
-        const presencas = counted.filter((a) => a.status === "presente").length;
-        const justificadas = counted.filter((a) => a.status === "justificada").length;
-        const faltas = counted.filter((a) => a.status === "falta").length;
-        const total = presencas + justificadas + faltas;
+        let presencas = 0;
+        let justificadas = 0;
+        let faltas = 0;
+
+        for (const dateKey of athleteDateKeys) {
+          const status = attendanceByDate.get(dateKey);
+          if (status === "presente") presencas++;
+          else if (status === "justificada") justificadas++;
+          else faltas++; // no record = falta
+        }
+
+        const total = athleteDateKeys.length;
         const percentual = total > 0 ? Math.round(((presencas + justificadas) / total) * 100) : null;
 
         return {
