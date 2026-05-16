@@ -5,6 +5,8 @@ import {
   Loader2,
   Megaphone,
   School,
+  Star,
+  TrendingUp,
   Trophy,
   UserCheck,
   UserPlus,
@@ -13,6 +15,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { useAuth } from "../../auth/AuthContext";
 import { PageHeader } from "../../components/ui/PageHeader";
 import { InstallPwaButton } from "../../components/pwa/InstallPwaButton";
@@ -21,6 +24,7 @@ import { useToast } from "../../components/ui/Toast";
 import { athleteApplicationService, type AthleteApplication } from "../../services/athleteApplicationService";
 import { athleteService, type Athlete, type BirthdaysResult } from "../../services/athleteService";
 import { getApiErrorMessage } from "../../services/api";
+import { attendanceService, type MonthlyAttendanceStat, type TotalFrequency } from "../../services/attendanceService";
 import { financeService, type FinanceSummary } from "../../services/financeService";
 import { gamesService, type Game } from "../../services/gamesService";
 import { kanbanService, type ManagementTask } from "../../services/kanbanService";
@@ -108,12 +112,19 @@ function isDashboardStat(stat: DashboardStat | null): stat is DashboardStat {
   return Boolean(stat);
 }
 
+function formatMonth(value: string) {
+  const [year, month] = value.split("-").map(Number);
+  return new Date(year, month - 1).toLocaleDateString("pt-BR", { month: "short", year: "2-digit" });
+}
+
 export function DashboardPage() {
   const { hasPermission, user } = useAuth();
   const { showToast } = useToast();
   const [data, setData] = useState<DashboardData>(emptyDashboardData);
   const [isLoading, setIsLoading] = useState(true);
   const [birthdays, setBirthdays] = useState<BirthdaysResult>({ today: [], week: [] });
+  const [myFrequency, setMyFrequency] = useState<TotalFrequency | null>(null);
+  const [monthlyStats, setMonthlyStats] = useState<MonthlyAttendanceStat[]>([]);
 
   const canSeeRh = hasPermission(["rh"]);
   const canSeeFinance = hasPermission(["financeiro"]);
@@ -121,6 +132,7 @@ export function DashboardPage() {
   const canSeeMarketing = hasPermission(["marketing"]);
   const canSeeTrainings = hasPermission(["treinos"]);
   const canSeeOperational = hasPermission(["operacional"]);
+  const isAthlete = hasPermission(["atleta"]);
 
   const loadDashboard = useCallback(async () => {
     setIsLoading(true);
@@ -180,6 +192,14 @@ export function DashboardPage() {
           // non-critical, ignore
         }
       }
+
+      if (canSeeTrainings) {
+        attendanceService.getMonthlyStats().then(setMonthlyStats).catch(() => {});
+      }
+
+      if (isAthlete) {
+        attendanceService.getMyTotalFrequency().then(setMyFrequency).catch(() => {});
+      }
     } catch (error) {
       showToast(getApiErrorMessage(error), "error");
     } finally {
@@ -192,6 +212,7 @@ export function DashboardPage() {
     canSeeOperational,
     canSeeRh,
     canSeeTrainings,
+    isAthlete,
     showToast,
   ]);
 
@@ -292,6 +313,81 @@ export function DashboardPage() {
               <StatCard key={stat.label} {...stat} />
             ))}
           </section>
+
+          {/* Painel do atleta */}
+          {isAthlete && (
+            <section className="panel overflow-hidden">
+              <div className="flex items-center gap-3 border-b border-blue-100 p-5 dark:border-slate-700">
+                <TrendingUp className="text-pegasus-primary" size={20} />
+                <div>
+                  <h2 className="font-black text-pegasus-navy">Minha Frequência Geral</h2>
+                  <p className="text-sm text-slate-500">Resumo de presença em todos os treinos</p>
+                </div>
+              </div>
+              {myFrequency ? (
+                <div className="grid gap-4 p-5 sm:grid-cols-4">
+                  {[
+                    { label: "Treinos", value: myFrequency.totalTreinos, color: "text-pegasus-navy" },
+                    { label: "Presenças", value: myFrequency.presencas, color: "text-emerald-600" },
+                    { label: "Justificadas", value: myFrequency.justificadas, color: "text-amber-600" },
+                    { label: "Faltas", value: myFrequency.faltas, color: "text-rose-600" },
+                  ].map((item) => (
+                    <div key={item.label} className="rounded-2xl bg-slate-50 p-4 text-center dark:bg-slate-700/50">
+                      <p className={`text-3xl font-black ${item.color}`}>{item.value}</p>
+                      <p className="mt-1 text-sm text-slate-500">{item.label}</p>
+                    </div>
+                  ))}
+                  <div className="col-span-full">
+                    <div className="mb-1.5 flex items-center justify-between">
+                      <span className="text-sm font-semibold text-slate-500">Aproveitamento geral</span>
+                      <span className={`text-lg font-black ${(myFrequency.percentual ?? 0) >= 80 ? "text-emerald-600" : (myFrequency.percentual ?? 0) >= 60 ? "text-amber-600" : "text-rose-600"}`}>
+                        {myFrequency.percentual ?? 0}%
+                      </span>
+                    </div>
+                    <div className="h-3 overflow-hidden rounded-full bg-slate-100 dark:bg-slate-700">
+                      <div
+                        className={`h-full rounded-full transition-all ${(myFrequency.percentual ?? 0) >= 80 ? "bg-emerald-500" : (myFrequency.percentual ?? 0) >= 60 ? "bg-amber-500" : "bg-rose-500"}`}
+                        style={{ width: `${myFrequency.percentual ?? 0}%` }}
+                      />
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div className="flex items-center gap-2 p-5 text-sm text-slate-500">
+                  <Loader2 className="animate-spin" size={16} /> Carregando...
+                </div>
+              )}
+            </section>
+          )}
+
+          {/* Gráfico de frequência mensal */}
+          {canSeeTrainings && monthlyStats.length > 0 && (
+            <section className="panel p-6">
+              <div className="mb-6 flex items-center gap-3">
+                <Star className="text-pegasus-primary" size={20} />
+                <div>
+                  <h2 className="font-black text-pegasus-navy">Frequência por mês</h2>
+                  <p className="text-sm text-slate-500">Percentual de presença do elenco por treino</p>
+                </div>
+              </div>
+              <ResponsiveContainer width="100%" height={220}>
+                <LineChart data={monthlyStats.map((s) => ({ ...s, label: formatMonth(s.month) }))}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+                  <XAxis dataKey="label" tick={{ fontSize: 12 }} />
+                  <YAxis domain={[0, 100]} tick={{ fontSize: 12 }} tickFormatter={(v) => `${v}%`} />
+                  <Tooltip formatter={(v) => [`${v}%`, "Frequência"]} />
+                  <Line
+                    type="monotone"
+                    dataKey="percentual"
+                    stroke="#2563eb"
+                    strokeWidth={2.5}
+                    dot={{ fill: "#2563eb", r: 4 }}
+                    activeDot={{ r: 6 }}
+                  />
+                </LineChart>
+              </ResponsiveContainer>
+            </section>
+          )}
 
           <section className="grid gap-6 xl:grid-cols-[1.2fr_0.8fr]">
             {canSeeTrainings ? (

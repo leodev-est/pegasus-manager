@@ -1,5 +1,6 @@
 import { prisma } from "../../config/prisma";
 import { AppError } from "../../middlewares/error.middleware";
+import { notificationsService } from "../notifications/notifications.service";
 
 type CreatePayload = {
   message: string;
@@ -19,7 +20,7 @@ export const suggestionsService = {
       throw new AppError("Mensagem é obrigatória", 400);
     }
 
-    return prisma.suggestion.create({
+    const suggestion = await prisma.suggestion.create({
       data: {
         message: payload.message.trim(),
         anonymous: payload.anonymous ?? false,
@@ -28,6 +29,18 @@ export const suggestionsService = {
         status: "pendente",
       },
     });
+
+    notificationsService
+      .notifyByRoles(["RH", "Diretor", "Gestao"], {
+        title: "Nova sugestão na Ouvidoria",
+        message: payload.anonymous
+          ? "Uma sugestão anônima foi enviada."
+          : `${payload.authorName ?? "Atleta"} enviou uma sugestão.`,
+        type: "sistema",
+      })
+      .catch(() => {});
+
+    return suggestion;
   },
 
   async findAll(status?: string) {

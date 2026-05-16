@@ -93,6 +93,7 @@ model Athlete {
   uniformDeliveries    UniformDelivery[]
   jerseyAssignment     JerseyAssignment?
   trainingFeedbacks    TrainingFeedback[]
+  gameConvocations     GameConvocation[]
 }
 
 model AthleteApplication {
@@ -340,7 +341,7 @@ model PaymentStatusHistory {
 }
 
 model Game {
-  id            String    @id @default(uuid())
+  id            String             @id @default(uuid())
   date          DateTime
   opponent      String
   location      String
@@ -348,9 +349,26 @@ model Game {
   scoreOpponent Int
   result        String
   notes         String?
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
+  createdAt     DateTime           @default(now())
+  updatedAt     DateTime           @updatedAt
   sets          GameSet[]
+  convocations  GameConvocation[]
+}
+
+model GameConvocation {
+  id        String   @id @default(uuid())
+  gameId    String
+  athleteId String
+  status    String   @default("convocado") // convocado | presente | ausente
+  notes     String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  game      Game     @relation(fields: [gameId], references: [id], onDelete: Cascade)
+  athlete   Athlete  @relation(fields: [athleteId], references: [id], onDelete: Cascade)
+
+  @@unique([gameId, athleteId])
+  @@index([gameId])
+  @@index([athleteId])
 }
 
 model GameSet {

@@ -98,4 +98,20 @@ export const attendanceController = {
       next(error);
     }
   }) satisfies RequestHandler,
+
+  monthlyStats: (async (_request, response, next) => {
+    try {
+      response.json(await attendanceService.getMonthlyStats());
+    } catch (error) {
+      next(error);
+    }
+  }) satisfies RequestHandler,
+
+  myTotalFrequency: (async (request, response, next) => {
+    try {
+      response.json(await attendanceService.getMyTotalFrequency(request.user!.id));
+    } catch (error) {
+      next(error);
+    }
+  }) satisfies RequestHandler,
 };

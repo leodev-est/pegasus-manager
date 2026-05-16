@@ -68,6 +68,12 @@ export const menuGroups: MenuGroup[] = [
         icon: Trophy,
         permissions: ["dashboard"],
       },
+      {
+        label: "Convocação",
+        path: "/app/jogos/convocacao",
+        icon: UserCheck,
+        permissions: ["treinos", "dashboard"],
+      },
     ],
   },
   {

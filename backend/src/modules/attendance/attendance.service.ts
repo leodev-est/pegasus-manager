@@ -512,6 +512,8 @@ export const attendanceService = {
       },
     });
 
+    const frequencyMap = await this.getAthletesSummary();
+
     return {
       available: true,
       date: dateKey,
@@ -526,6 +528,7 @@ export const attendanceService = {
         category: athlete.category,
         attendanceId: athlete.attendances[0]?.id ?? null,
         status: athlete.attendances[0]?.status ?? null,
+        frequencyPercent: frequencyMap[athlete.id] ?? null,
       })),
     };
   },
@@ -688,6 +691,52 @@ export const attendanceService = {
       if (b.percentual === null) return -1;
       return b.percentual - a.percentual;
     });
+  },
+
+  async getMonthlyStats() {
+    const [startYear, startMonthNum] = OFFICIAL_TRAINING_START_DATE.split("-").map(Number);
+    const now = new Date();
+    const endYear = now.getFullYear();
+    const endMonth = now.getMonth() + 1;
+    const todayKey = getBrazilDateKey();
+
+    const stats: Array<{ month: string; presencas: number; faltas: number; justificadas: number; total: number; percentual: number | null }> = [];
+
+    let curYear = startYear;
+    let curMonth = startMonthNum;
+
+    while (curYear < endYear || (curYear === endYear && curMonth <= endMonth)) {
+      const dateKeys = await getTrainingDatesForMonth(curYear, curMonth);
+      const countedKeys = dateKeys.filter((k) => k <= todayKey);
+
+      if (countedKeys.length > 0) {
+        const { start, end } = monthRange(curYear, curMonth);
+        const attendances = await prisma.trainingAttendance.findMany({
+          where: { training: { date: { gte: start, lt: end } } },
+          select: { status: true },
+        });
+
+        const presencas = attendances.filter((a) => a.status === "presente").length;
+        const justificadas = attendances.filter((a) => a.status === "justificada").length;
+        const faltas = attendances.filter((a) => a.status === "falta").length;
+        const total = presencas + justificadas + faltas;
+        const percentual = total > 0 ? Math.round(((presencas + justificadas) / total) * 100) : null;
+
+        stats.push({
+          month: `${curYear}-${String(curMonth).padStart(2, "0")}`,
+          presencas,
+          justificadas,
+          faltas,
+          total,
+          percentual,
+        });
+      }
+
+      curMonth++;
+      if (curMonth > 12) { curMonth = 1; curYear++; }
+    }
+
+    return stats;
   },
 
   async updateAttendance(id: string, payload: { notes?: string | null; status?: string }) {

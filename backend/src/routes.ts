@@ -28,6 +28,7 @@ import { usersRoutes } from "./modules/users/users.routes";
 import { whatsAppRoutes } from "./modules/whatsapp/whatsapp.routes";
 import { suggestionsRoutes } from "./modules/suggestions/suggestions.routes";
 import { trainingFeedbackRoutes } from "./modules/training-feedback/training-feedback.routes";
+import { gameConvocationsRouter } from "./modules/game-convocations/game-convocations.routes";
 
 export const routes = Router();
 
@@ -67,3 +68,4 @@ routes.use("/permissions", permissionsRoutes);
 routes.use("/whatsapp", whatsAppRoutes);
 routes.use("/suggestions", suggestionsRoutes);
 routes.use("/training-feedback", trainingFeedbackRoutes);
+routes.use("/games", gameConvocationsRouter);

@@ -28,6 +28,7 @@ const AthleteApplicationsPage = lazy(() => import("../pages/rh/AthleteApplicatio
 const AthletesPage = lazy(() => import("../pages/rh/AthletesPage").then((m) => ({ default: m.AthletesPage })));
 const ComunicadosPage = lazy(() => import("../pages/rh/ComunicadosPage").then((m) => ({ default: m.ComunicadosPage })));
 const GamesPage = lazy(() => import("../pages/games/GamesPage").then((m) => ({ default: m.GamesPage })));
+const ConvocacaoPage = lazy(() => import("../pages/games/ConvocacaoPage").then((m) => ({ default: m.ConvocacaoPage })));
 const TestesPage = lazy(() => import("../pages/rh/TestesPage").then((m) => ({ default: m.TestesPage })));
 const TacticalCourtPage = lazy(() => import("../pages/tactical/TacticalCourtPage").then((m) => ({ default: m.TacticalCourtPage })));
 const TrainingCalendarPage = lazy(() => import("../pages/trainings/TrainingCalendarPage").then((m) => ({ default: m.TrainingCalendarPage })));
@@ -133,6 +134,14 @@ export function AppRoutes() {
             element={
               <ProtectedRoute permissions={["dashboard"]}>
                 <GamesPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="jogos/convocacao"
+            element={
+              <ProtectedRoute permissions={["treinos", "dashboard"]}>
+                <ConvocacaoPage />
               </ProtectedRoute>
             }
           />

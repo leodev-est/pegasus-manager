@@ -65,6 +65,25 @@ export type ChamadaAthlete = {
   category: string | null;
   attendanceId: string | null;
   status: ChamadaAttendanceStatus | null;
+  frequencyPercent: number | null;
+};
+
+export type TotalFrequency = {
+  presencas: number;
+  faltas: number;
+  justificadas: number;
+  percentual: number;
+  totalTreinos: number;
+  details: FrequencyDetail[];
+};
+
+export type MonthlyAttendanceStat = {
+  month: string;
+  presencas: number;
+  faltas: number;
+  justificadas: number;
+  total: number;
+  percentual: number | null;
 };
 
 export type Chamada = {
@@ -116,6 +135,16 @@ export const attendanceService = {
 
   async getAthletesSummary() {
     const { data } = await api.get<Record<string, number | null>>("/attendance/athletes-summary");
+    return data;
+  },
+
+  async getMyTotalFrequency() {
+    const { data } = await api.get<TotalFrequency>("/attendance/my-total-frequency");
+    return data;
+  },
+
+  async getMonthlyStats() {
+    const { data } = await api.get<MonthlyAttendanceStat[]>("/attendance/monthly-stats");
     return data;
   },
 };

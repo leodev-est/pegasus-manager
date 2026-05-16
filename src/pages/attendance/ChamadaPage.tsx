@@ -222,9 +222,19 @@ export function ChamadaPage() {
                     )}
                     <div className="min-w-0">
                       <p className="truncate text-sm font-semibold text-pegasus-navy">{athlete.name}</p>
-                      {athlete.category && (
-                        <p className="text-xs text-pegasus-medium">{athlete.category}</p>
-                      )}
+                      <div className="flex items-center gap-2">
+                        {athlete.category && (
+                          <p className="text-xs text-pegasus-medium">{athlete.category}</p>
+                        )}
+                        {athlete.frequencyPercent !== null && (
+                          <span className={`text-xs font-bold ${
+                            athlete.frequencyPercent >= 80 ? "text-emerald-600" :
+                            athlete.frequencyPercent >= 60 ? "text-amber-600" : "text-rose-600"
+                          }`}>
+                            {athlete.frequencyPercent}% freq.
+                          </span>
+                        )}
+                      </div>
                     </div>
                   </div>
                   <div className="flex shrink-0 gap-1.5">
