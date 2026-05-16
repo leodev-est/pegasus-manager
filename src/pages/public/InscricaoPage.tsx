@@ -1,6 +1,6 @@
 import { ArrowLeft, ArrowRight, CheckCircle2, Loader2, LogIn, Trophy } from "lucide-react";
 import { OFFICIAL_TRAINING } from "../../data/trainingConfig";
-import { FormEvent, useState } from "react";
+import { FormEvent, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import logoFull from "../../assets/logo/logo-full.png";
 import {
@@ -203,16 +203,72 @@ function validate(form: FormData): string | null {
   return null;
 }
 
+// ── Persistência local ─────────────────────────────────────────────────────────
+
+const DRAFT_KEY = "pegasus:inscricao:draft";
+
+function loadDraft(): FormData {
+  try {
+    const raw = localStorage.getItem(DRAFT_KEY);
+    if (!raw) return EMPTY;
+    const parsed = JSON.parse(raw);
+    return { ...EMPTY, ...parsed };
+  } catch {
+    return EMPTY;
+  }
+}
+
+function saveDraft(data: FormData) {
+  try {
+    localStorage.setItem(DRAFT_KEY, JSON.stringify(data));
+  } catch {
+    // Storage not available — silent fail
+  }
+}
+
+function clearDraft() {
+  try {
+    localStorage.removeItem(DRAFT_KEY);
+  } catch {}
+}
+
+// ── Banner de erro ──────────────────────────────────────────────────────────────
+
+function ErrorBanner({ message }: { message: string }) {
+  return (
+    <div className="flex items-start gap-3 rounded-2xl border-2 border-rose-300 bg-rose-50 px-4 py-4">
+      <span className="mt-0.5 text-xl text-rose-500">⚠</span>
+      <div>
+        <p className="text-sm font-bold text-rose-700">Sua inscrição não foi enviada</p>
+        <p className="mt-0.5 text-sm text-rose-600">{message}</p>
+        <p className="mt-1 text-xs text-rose-500">
+          Verifique sua conexão e tente novamente. Se o problema persistir, entre em contato pelo Instagram{" "}
+          <strong>@projetopegasus</strong>.
+        </p>
+      </div>
+    </div>
+  );
+}
+
 // ── Página Principal ───────────────────────────────────────────────────────────
 
 export function InscricaoPage() {
   const navigate = useNavigate();
-  const [form, setForm] = useState<FormData>(EMPTY);
+  const [form, setForm] = useState<FormData>(loadDraft);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [hasDraft] = useState(() => {
+    const draft = loadDraft();
+    return draft.name.trim().length > 0;
+  });
+  const submitErrorRef = useRef<HTMLDivElement>(null);
 
   function set<K extends keyof FormData>(key: K, value: FormData[K]) {
-    setForm((prev) => ({ ...prev, [key]: value }));
+    setForm((prev) => {
+      const next = { ...prev, [key]: value };
+      saveDraft(next);
+      return next;
+    });
     setError(null);
   }
 
@@ -247,15 +303,19 @@ export function InscricaoPage() {
       };
 
       await athleteApplicationService.submitPublic(payload);
+      clearDraft();
       navigate("/inscricao/enviada");
     } catch (err: any) {
       const msg =
         err?.response?.data?.message ??
         err?.response?.data?.error ??
         err?.message ??
-        "Erro ao enviar inscrição. Tente novamente.";
+        "Não foi possível conectar ao servidor. Verifique sua internet e tente novamente.";
       setError(msg);
-      window.scrollTo({ top: 0, behavior: "smooth" });
+      // Scroll to the error near the submit button (visible on mobile)
+      setTimeout(() => {
+        submitErrorRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+      }, 50);
     } finally {
       setIsSubmitting(false);
     }
@@ -301,11 +361,18 @@ export function InscricaoPage() {
       {/* Formulário */}
       <div className="mx-auto max-w-4xl px-4 py-8 sm:px-6">
 
-        {/* Error banner */}
+        {/* Error banner — top (visible when user scrolls up) */}
         {error && (
-          <div className="mb-6 flex items-start gap-3 rounded-2xl border border-rose-200 bg-rose-50 px-4 py-4">
-            <span className="mt-0.5 text-rose-500">⚠</span>
-            <p className="text-sm font-semibold text-rose-700">{error}</p>
+          <div className="mb-6">
+            <ErrorBanner message={error} />
+          </div>
+        )}
+
+        {/* Draft restored notice */}
+        {hasDraft && !error && (
+          <div className="mb-6 flex items-center gap-2 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">
+            <CheckCircle2 size={16} className="shrink-0 text-emerald-500" />
+            <span>Suas respostas anteriores foram restauradas. Continue de onde parou.</span>
           </div>
         )}
 
@@ -499,6 +566,13 @@ export function InscricaoPage() {
               Os valores serão informados após análise da sua inscrição.
             </p>
           </div>
+
+          {/* Error banner — bottom (visible on mobile without needing to scroll up) */}
+          {error && (
+            <div ref={submitErrorRef}>
+              <ErrorBanner message={error} />
+            </div>
+          )}
 
           {/* Botões */}
           <div className="flex flex-col gap-3 sm:flex-row">
