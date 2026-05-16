@@ -640,14 +640,8 @@ export const attendanceService = {
 
     const results = await Promise.all(
       athletes.map(async (athlete) => {
-        // Only count training dates from when the athlete was activated
-        const athleteDateKeys = getAthleteTrainingDates(allDateKeys, athlete);
-
         const attendances = await prisma.trainingAttendance.findMany({
-          where: {
-            athleteId: athlete.id,
-            training: { date: { lte: new Date() } },
-          },
+          where: { athleteId: athlete.id },
           include: { training: { select: { date: true } } },
         });
 
@@ -655,18 +649,26 @@ export const attendanceService = {
           attendances.map((a) => [toTrainingDateKey(a.training.date), a.status]),
         );
 
+        // Official dates from activation onwards
+        const athleteDateKeys = getAthleteTrainingDates(allDateKeys, athlete);
+        // Also include dates with real attendance records even if before activatedAt
+        const attendanceDateKeys = attendances
+          .map((a) => toTrainingDateKey(a.training.date))
+          .filter((key) => allDateKeys.includes(key));
+        const mergedDateKeys = Array.from(new Set([...athleteDateKeys, ...attendanceDateKeys])).sort();
+
         let presencas = 0;
         let justificadas = 0;
         let faltas = 0;
 
-        for (const dateKey of athleteDateKeys) {
+        for (const dateKey of mergedDateKeys) {
           const status = attendanceByDate.get(dateKey);
           if (status === "presente") presencas++;
           else if (status === "justificada") justificadas++;
-          else faltas++; // no record = falta
+          else faltas++;
         }
 
-        const total = athleteDateKeys.length;
+        const total = mergedDateKeys.length;
         const percentual = total > 0 ? Math.round(((presencas + justificadas) / total) * 100) : null;
 
         return {
