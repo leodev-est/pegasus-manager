@@ -67,6 +67,7 @@ app.use(
   }),
 );
 app.use(express.json({ limit: "1mb" }));
+app.get("/health", (_req, res) => res.json({ status: "ok" }));
 app.use(routes);
 app.use((_request, response) => {
   response.status(404).json({ message: "Rota não encontrada." });
