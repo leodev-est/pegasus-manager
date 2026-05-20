@@ -157,14 +157,44 @@ async function main() {
     return dst.user.createMany({ data: rows, skipDuplicates: true });
   });
 
+  await step("Role (upsert extras)", async () => {
+    const srcRoles = await src.role.findMany();
+    const dstRoles = await dst.role.findMany();
+    const dstRoleIds = new Set(dstRoles.map((r) => r.id));
+    const missing = srcRoles.filter((r) => !dstRoleIds.has(r.id));
+    if (missing.length === 0) return { count: 0 };
+    return dst.role.createMany({ data: missing, skipDuplicates: true });
+  });
+
+  await step("Permission (upsert extras)", async () => {
+    const srcPerms = await src.permission.findMany();
+    const dstPerms = await dst.permission.findMany();
+    const dstPermIds = new Set(dstPerms.map((p) => p.id));
+    const missing = srcPerms.filter((p) => !dstPermIds.has(p.id));
+    if (missing.length === 0) return { count: 0 };
+    return dst.permission.createMany({ data: missing, skipDuplicates: true });
+  });
+
   await step("RolePermission", async () => {
     const rows = await src.rolePermission.findMany();
-    return dst.rolePermission.createMany({ data: rows, skipDuplicates: true });
+    const dstRoles = await dst.role.findMany();
+    const dstPerms = await dst.permission.findMany();
+    const validRoleIds = new Set(dstRoles.map((r) => r.id));
+    const validPermIds = new Set(dstPerms.map((p) => p.id));
+    const valid = rows.filter((r) => validRoleIds.has(r.roleId) && validPermIds.has(r.permissionId));
+    if (valid.length === 0) return { count: 0 };
+    return dst.rolePermission.createMany({ data: valid, skipDuplicates: true });
   });
 
   await step("UserRole", async () => {
     const rows = await src.userRole.findMany();
-    return dst.userRole.createMany({ data: rows, skipDuplicates: true });
+    const dstRoles = await dst.role.findMany();
+    const dstUsers = await dst.user.findMany();
+    const validRoleIds = new Set(dstRoles.map((r) => r.id));
+    const validUserIds = new Set(dstUsers.map((u) => u.id));
+    const valid = rows.filter((r) => validRoleIds.has(r.roleId) && validUserIds.has(r.userId));
+    if (valid.length === 0) return { count: 0 };
+    return dst.userRole.createMany({ data: valid, skipDuplicates: true });
   });
 
   await step("PushSubscription", async () => {
@@ -174,7 +204,11 @@ async function main() {
 
   await step("Notification", async () => {
     const rows = await src.notification.findMany();
-    return dst.notification.createMany({ data: rows, skipDuplicates: true });
+    const dstUsers = await dst.user.findMany();
+    const validUserIds = new Set(dstUsers.map((u) => u.id));
+    const valid = rows.filter((r) => !r.userId || validUserIds.has(r.userId));
+    if (valid.length === 0) return { count: 0 };
+    return dst.notification.createMany({ data: valid, skipDuplicates: true });
   });
 
   // ── 3. Dependem de Atleta ─────────────────────────────────────────────────
