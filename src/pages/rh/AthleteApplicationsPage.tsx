@@ -1,4 +1,4 @@
-import { ArrowRightCircle, Download, ExternalLink, Loader2, Plus, UserPlus, XCircle } from "lucide-react";
+import { ArrowRightCircle, Check, Copy, Download, ExternalLink, Loader2, Plus, UserPlus, XCircle } from "lucide-react";
 import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { useAuth } from "../../auth/AuthContext";
@@ -157,6 +157,45 @@ function formatBirthDate(value: string | null) {
   return new Intl.DateTimeFormat("pt-BR").format(new Date(value));
 }
 
+// ── Helpers ───────────────────────────────────────────────────────────────────
+
+function calcAge(birthDate: string | null): string {
+  if (!birthDate) return "";
+  const age = Math.floor((Date.now() - new Date(birthDate).getTime()) / (365.25 * 24 * 60 * 60 * 1000));
+  return ` (${age} anos)`;
+}
+
+function formatWhatsAppMessage(a: AthleteApplication): string {
+  const lines: string[] = [];
+  lines.push(`📋 *Nova Inscrição — Projeto Pegasus*`);
+  lines.push(``);
+  lines.push(`👤 *Nome:* ${a.name}`);
+  if (a.birthDate) lines.push(`📅 *Nascimento:* ${formatBirthDate(a.birthDate)}${calcAge(a.birthDate)}`);
+  if (a.phone) lines.push(`📞 *Telefone:* ${a.phone}`);
+  if (a.position) lines.push(`🏐 *Posição:* ${a.position}`);
+  if (a.level) lines.push(`📊 *Nível:* ${a.level}`);
+  if (a.experienceTime) lines.push(`⏱️ *Experiência:* ${a.experienceTime}`);
+  if (a.currentTeam !== null) {
+    const teamText = a.currentTeam
+      ? `Sim${a.currentTeamName ? ` — ${a.currentTeamName}` : ""}`
+      : "Não";
+    lines.push(`🏆 *Joga em time:* ${teamText}`);
+  }
+  if (a.availableSaturdays !== null)
+    lines.push(`📅 *Disponível sábados:* ${boolLabel(a.availableSaturdays)}`);
+  if (a.willingToCompete !== null)
+    lines.push(`🥇 *Disposto a campeonatos:* ${boolLabel(a.willingToCompete)}`);
+  if (a.motivation) {
+    lines.push(``);
+    lines.push(`💬 *Motivação:* ${a.motivation}`);
+  }
+  if (a.notes) {
+    lines.push(``);
+    lines.push(`📝 *Obs:* ${a.notes}`);
+  }
+  return lines.join("\n");
+}
+
 // ── Drawer de detalhes ────────────────────────────────────────────────────────
 
 function DetailField({ label: fieldLabel, value }: { label: string; value: React.ReactNode }) {
@@ -175,9 +214,35 @@ function ApplicationDetailModal({
   application: AthleteApplication | null;
   onClose: () => void;
 }) {
+  const { showToast } = useToast();
+  const [copied, setCopied] = useState(false);
+
   if (!application) return null;
+
+  function handleCopy() {
+    navigator.clipboard.writeText(formatWhatsAppMessage(application!)).then(() => {
+      setCopied(true);
+      showToast("Mensagem copiada! Cole no WhatsApp.", "success");
+      setTimeout(() => setCopied(false), 2500);
+    });
+  }
+
   return (
     <Modal isOpen={!!application} onClose={onClose} title={application.name} description="Detalhes completos da inscrição">
+      <div className="mb-4">
+        <button
+          type="button"
+          onClick={handleCopy}
+          className={`flex w-full items-center justify-center gap-2 rounded-xl border-2 py-2.5 text-sm font-bold transition ${
+            copied
+              ? "border-emerald-400 bg-emerald-50 text-emerald-700 dark:bg-emerald-900/20 dark:text-emerald-400"
+              : "border-slate-200 text-slate-600 hover:border-pegasus-primary hover:bg-pegasus-ice hover:text-pegasus-primary dark:border-slate-700 dark:text-slate-300"
+          }`}
+        >
+          {copied ? <Check size={15} /> : <Copy size={15} />}
+          {copied ? "Copiado!" : "Copiar resumo para WhatsApp"}
+        </button>
+      </div>
       <div className="grid gap-5 sm:grid-cols-2">
         <DetailField label="Nome" value={application.name} />
         <DetailField label="Data de Nascimento" value={formatBirthDate(application.birthDate)} />
