@@ -299,6 +299,9 @@ export function AthleteApplicationsPage() {
   const [editingApplication, setEditingApplication] = useState<AthleteApplication | null>(null);
   const [detailApplication, setDetailApplication] = useState<AthleteApplication | null>(null);
   const [form, setForm] = useState<ApplicationForm>(emptyApplication);
+  const [classifyMode, setClassifyMode] = useState(false);
+  const [classifications, setClassifications] = useState<Record<string, "sim" | "talvez" | "nao">>({});
+  const [copyAllDone, setCopyAllDone] = useState(false);
   const [approveTarget, setApproveTarget] = useState<AthleteApplication | null>(null);
   const [rejectTarget, setRejectTarget] = useState<AthleteApplication | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<AthleteApplication | null>(null);
@@ -429,6 +432,57 @@ export function AthleteApplicationsPage() {
     }
   }
 
+  function setRating(id: string, rating: "sim" | "talvez" | "nao") {
+    setClassifications((prev) =>
+      prev[id] === rating ? { ...prev, [id]: undefined as unknown as "sim" } : { ...prev, [id]: rating },
+    );
+  }
+
+  function formatClassifiedForWhatsApp() {
+    const sim = applications.filter((a) => classifications[a.id] === "sim");
+    const talvez = applications.filter((a) => classifications[a.id] === "talvez");
+    const nao = applications.filter((a) => classifications[a.id] === "nao");
+    const sem = applications.filter((a) => !classifications[a.id]);
+
+    function line(a: AthleteApplication) {
+      const parts: string[] = [a.name];
+      if (a.position) parts.push(a.position);
+      if (a.level) parts.push(a.level);
+      if (a.availableSaturdays !== null) parts.push(a.availableSaturdays ? "Sáb ✅" : "Sáb ❌");
+      return `• ${parts.join(" — ")}`;
+    }
+
+    const out: string[] = [`📋 *Classificação de Inscrições — Projeto Pegasus*`];
+
+    if (sim.length > 0) {
+      out.push("", `✅ *BOA IDEIA (${sim.length})*`);
+      sim.forEach((a) => out.push(line(a)));
+    }
+    if (talvez.length > 0) {
+      out.push("", `🤔 *TALVEZ (${talvez.length})*`);
+      talvez.forEach((a) => out.push(line(a)));
+    }
+    if (nao.length > 0) {
+      out.push("", `❌ *NÃO AGORA (${nao.length})*`);
+      nao.forEach((a) => out.push(line(a)));
+    }
+    if (sem.length > 0) {
+      out.push("", `⏳ *SEM CLASSIFICAÇÃO (${sem.length})*`);
+      sem.forEach((a) => out.push(line(a)));
+    }
+
+    return out.join("\n").trim();
+  }
+
+  function handleCopyAll() {
+    navigator.clipboard.writeText(formatClassifiedForWhatsApp()).then(() => {
+      setCopyAllDone(true);
+      setTimeout(() => setCopyAllDone(false), 2500);
+    });
+  }
+
+  const classifiedCount = Object.values(classifications).filter(Boolean).length;
+
   return (
     <div className="space-y-8">
       <PageHeader
@@ -501,12 +555,28 @@ export function AthleteApplicationsPage() {
       </FilterBar>
 
       <section className="panel overflow-hidden">
-        <div className="flex items-center gap-3 border-b border-blue-100 p-6">
-          <UserPlus className="text-pegasus-primary" size={22} />
-          <div>
-            <h2 className="text-xl font-bold text-pegasus-navy">Inscrições recebidas</h2>
-            <p className="text-sm text-slate-500">{applications.length} registro(s) encontrados.</p>
+        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-blue-100 p-6">
+          <div className="flex items-center gap-3">
+            <UserPlus className="text-pegasus-primary" size={22} />
+            <div>
+              <h2 className="text-xl font-bold text-pegasus-navy">Inscrições recebidas</h2>
+              <p className="text-sm text-slate-500">{applications.length} registro(s) encontrados.</p>
+            </div>
           </div>
+          {applications.length > 0 && (
+            <button
+              type="button"
+              onClick={() => { setClassifyMode((v) => !v); setClassifications({}); }}
+              className={`flex items-center gap-2 rounded-xl border-2 px-4 py-2 text-sm font-bold transition ${
+                classifyMode
+                  ? "border-pegasus-primary bg-pegasus-primary text-white"
+                  : "border-slate-200 text-slate-600 hover:border-pegasus-primary hover:text-pegasus-primary dark:border-slate-700 dark:text-slate-300"
+              }`}
+            >
+              <Copy size={14} />
+              {classifyMode ? "Sair da classificação" : "Classificar para WhatsApp"}
+            </button>
+          )}
         </div>
 
         {isLoading ? (
@@ -536,7 +606,21 @@ export function AthleteApplicationsPage() {
                     <p><strong className="text-pegasus-navy">Campeonatos:</strong> {boolLabel(application.willingToCompete)}</p>
                     <p className="col-span-2"><strong className="text-pegasus-navy">Entrada:</strong> {formatDate(application.createdAt)}</p>
                   </div>
-                  {(application.status === "pendente" || application.status === "em_analise") && (canCreate || canUpdate) ? (
+                  {classifyMode && (
+                    <div className="mt-3 flex gap-2 border-t border-blue-50 pt-3">
+                      {(["sim", "talvez", "nao"] as const).map((r) => {
+                        const cfg = { sim: { emoji: "✅", label: "Boa ideia" }, talvez: { emoji: "🤔", label: "Talvez" }, nao: { emoji: "❌", label: "Não agora" } }[r];
+                        const active = classifications[application.id] === r;
+                        return (
+                          <button key={r} type="button" onClick={() => setRating(application.id, r)}
+                            className={`flex flex-1 items-center justify-center gap-1 rounded-xl py-2 text-xs font-bold transition ${active ? "bg-pegasus-primary text-white" : "border border-slate-200 text-slate-500 hover:border-pegasus-primary hover:text-pegasus-primary dark:border-slate-700"}`}>
+                            {cfg.emoji} {cfg.label}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
+                  {!classifyMode && (application.status === "pendente" || application.status === "em_analise") && (canCreate || canUpdate) ? (
                     <div className="mt-3 flex gap-2 border-t border-blue-50 pt-3">
                       {canCreate ? (
                         <Button className="flex-1" onClick={() => setApproveTarget(application)}>
@@ -607,19 +691,34 @@ export function AthleteApplicationsPage() {
                     <td className="px-6 py-4 text-slate-600">{formatDate(application.createdAt)}</td>
                     <td className="px-6 py-4">
                       <div className="flex flex-wrap items-center gap-2">
-                        <Button className="h-8 px-3 text-xs" onClick={() => setDetailApplication(application)} variant="secondary">
-                          Detalhes
-                        </Button>
-                        {(application.status === "pendente" || application.status === "em_analise") && canCreate ? (
-                          <Button className="h-8 px-3 text-xs" onClick={() => setApproveTarget(application)}>
-                            <ArrowRightCircle size={13} />Testes
-                          </Button>
-                        ) : null}
-                        {(application.status === "pendente" || application.status === "em_analise") && canUpdate ? (
-                          <Button className="h-8 px-3 text-xs" onClick={() => setRejectTarget(application)} variant="danger">
-                            <XCircle size={13} />Recusar
-                          </Button>
-                        ) : null}
+                        {classifyMode ? (
+                          (["sim", "talvez", "nao"] as const).map((r) => {
+                            const cfg = { sim: { emoji: "✅", label: "Boa ideia" }, talvez: { emoji: "🤔", label: "Talvez" }, nao: { emoji: "❌", label: "Não" } }[r];
+                            const active = classifications[application.id] === r;
+                            return (
+                              <button key={r} type="button" onClick={() => setRating(application.id, r)}
+                                className={`flex items-center gap-1 rounded-xl px-3 py-1.5 text-xs font-bold transition ${active ? "bg-pegasus-primary text-white" : "border border-slate-200 text-slate-500 hover:border-pegasus-primary hover:text-pegasus-primary dark:border-slate-700"}`}>
+                                {cfg.emoji} {cfg.label}
+                              </button>
+                            );
+                          })
+                        ) : (
+                          <>
+                            <Button className="h-8 px-3 text-xs" onClick={() => setDetailApplication(application)} variant="secondary">
+                              Detalhes
+                            </Button>
+                            {(application.status === "pendente" || application.status === "em_analise") && canCreate ? (
+                              <Button className="h-8 px-3 text-xs" onClick={() => setApproveTarget(application)}>
+                                <ArrowRightCircle size={13} />Testes
+                              </Button>
+                            ) : null}
+                            {(application.status === "pendente" || application.status === "em_analise") && canUpdate ? (
+                              <Button className="h-8 px-3 text-xs" onClick={() => setRejectTarget(application)} variant="danger">
+                                <XCircle size={13} />Recusar
+                              </Button>
+                            ) : null}
+                          </>
+                        )}
                         {application.status === "aprovado" && application.athleteId ? (
                           <Link to="/app/rh/atletas">
                             <Button className="h-8 px-3 text-xs" variant="secondary">
@@ -732,6 +831,34 @@ export function AthleteApplicationsPage() {
         onConfirm={confirmDelete}
         title="Confirmar exclusão"
       />
+
+      {/* Barra flutuante de classificação */}
+      {classifyMode && (
+        <div className="fixed bottom-4 left-1/2 z-40 flex -translate-x-1/2 items-center gap-3 rounded-2xl border border-blue-100 bg-white px-5 py-3 shadow-xl dark:border-slate-700 dark:bg-slate-800">
+          <span className="text-sm text-slate-500">
+            {classifiedCount} de {applications.length} classificados
+          </span>
+          <button
+            type="button"
+            onClick={handleCopyAll}
+            className={`flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-bold transition ${
+              copyAllDone
+                ? "bg-emerald-500 text-white"
+                : "bg-pegasus-primary text-white hover:bg-pegasus-primary/90"
+            }`}
+          >
+            {copyAllDone ? <Check size={15} /> : <Copy size={15} />}
+            {copyAllDone ? "Copiado!" : "Copiar tudo para WhatsApp"}
+          </button>
+          <button
+            type="button"
+            onClick={() => { setClassifyMode(false); setClassifications({}); }}
+            className="rounded-xl border border-slate-200 px-3 py-2 text-sm font-bold text-slate-500 hover:border-rose-300 hover:text-rose-500 dark:border-slate-700"
+          >
+            Cancelar
+          </button>
+        </div>
+      )}
     </div>
   );
 }
