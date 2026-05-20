@@ -2,6 +2,7 @@
   CalendarDays,
   ClipboardList,
   FileSpreadsheet,
+  HelpCircle,
   Inbox,
   Landmark,
   LayoutDashboard,
@@ -216,9 +217,10 @@ export const menuGroups: MenuGroup[] = [
 type SidebarProps = {
   isMobileOpen?: boolean;
   onNavigate?: () => void;
+  onOpenTour?: () => void;
 };
 
-export function Sidebar({ isMobileOpen = false, onNavigate }: SidebarProps) {
+export function Sidebar({ isMobileOpen = false, onNavigate, onOpenTour }: SidebarProps) {
   const { hasPermission } = useAuth();
   const visibleGroups = menuGroups
     .map((group) => ({
@@ -278,6 +280,19 @@ export function Sidebar({ isMobileOpen = false, onNavigate }: SidebarProps) {
           </div>
         ))}
       </nav>
+
+      {onOpenTour && (
+        <div className="border-t border-white/10 px-4 py-3">
+          <button
+            type="button"
+            onClick={onOpenTour}
+            className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-blue-200 transition hover:bg-white/10 hover:text-white"
+          >
+            <HelpCircle size={18} />
+            Tutorial do App
+          </button>
+        </div>
+      )}
     </aside>
   );
 }

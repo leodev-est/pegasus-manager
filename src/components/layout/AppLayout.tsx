@@ -1,16 +1,32 @@
 import { useState } from "react";
 import { Outlet } from "react-router-dom";
+import { useAuth } from "../../auth/AuthContext";
+import { AthleteWelcomeTour, useAthleteWelcomeTour } from "../athlete/AthleteWelcomeTour";
 import { usePushSetup } from "../../hooks/usePushSetup";
 import { Sidebar } from "./Sidebar";
 import { Topbar } from "./Topbar";
 
 export function AppLayout() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const { user } = useAuth();
   usePushSetup();
+
+  const isAthlete =
+    user?.permissions?.includes("atleta") &&
+    !user?.permissions?.includes("rh") &&
+    !user?.permissions?.includes("gestao") &&
+    !user?.permissions?.includes("financeiro") &&
+    !user?.permissions?.includes("treinos");
+
+  const tour = useAthleteWelcomeTour();
 
   return (
     <div className="min-h-screen bg-pegasus-surface dark:bg-slate-900">
-      <Sidebar isMobileOpen={isSidebarOpen} onNavigate={() => setIsSidebarOpen(false)} />
+      <Sidebar
+        isMobileOpen={isSidebarOpen}
+        onNavigate={() => setIsSidebarOpen(false)}
+        onOpenTour={isAthlete ? tour.reopen : undefined}
+      />
       {isSidebarOpen ? (
         <button
           aria-label="Fechar menu"
@@ -25,6 +41,8 @@ export function AppLayout() {
           <Outlet />
         </main>
       </div>
+
+      {isAthlete && tour.open && <AthleteWelcomeTour onClose={tour.close} />}
     </div>
   );
 }
