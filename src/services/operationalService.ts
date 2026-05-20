@@ -63,7 +63,7 @@ function cleanFilters(filters?: SchoolFilters) {
 
 export const operationalService = {
   async getSchoolContacts() {
-    const { data } = await api.get<SchoolContact[]>("/schools/contacts/google-sheets");
+    const { data } = await api.get<School[]>("/schools");
     return data;
   },
   async getSchools(filters?: SchoolFilters) {

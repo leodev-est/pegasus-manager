@@ -174,9 +174,6 @@ export function DashboardPage() {
         .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
         .slice(0, 5);
 
-      console.log("[Dashboard] athletes:", athletes?.length, athletes?.[0]?.status);
-      console.log("[Dashboard] canSeeRh:", canSeeRh, "canSeeTrainings:", canSeeTrainings);
-
       setData({
         athletes,
         applications,
