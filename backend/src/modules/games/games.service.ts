@@ -4,9 +4,9 @@ import { AppError } from "../../middlewares/error.middleware";
 type GamePayload = {
   date: string;
   opponent: string;
-  location: string;
-  scorePegasus: number;
-  scoreOpponent: number;
+  location?: string;
+  scorePegasus?: number;
+  scoreOpponent?: number;
   notes?: string | null;
 };
 
@@ -24,16 +24,23 @@ function calcResult(scorePegasus: number, scoreOpponent: number): string {
 
 function buildData(payload: GamePayload) {
   if (!payload.opponent?.trim()) throw new AppError("Adversário é obrigatório", 400);
-  if (!["casa", "fora"].includes(payload.location)) throw new AppError("Local deve ser 'casa' ou 'fora'", 400);
-  if (payload.scorePegasus < 0 || payload.scoreOpponent < 0) throw new AppError("Placar não pode ser negativo", 400);
+  const location = payload.location ?? "casa";
+  if (!["casa", "fora"].includes(location)) throw new AppError("Local deve ser 'casa' ou 'fora'", 400);
+
+  const scorePegasus = payload.scorePegasus ?? 0;
+  const scoreOpponent = payload.scoreOpponent ?? 0;
+  if (scorePegasus < 0 || scoreOpponent < 0) throw new AppError("Placar não pode ser negativo", 400);
+
+  // Se nenhum placar foi informado, o jogo ainda não aconteceu → pendente
+  const hasScores = payload.scorePegasus !== undefined || payload.scoreOpponent !== undefined;
 
   return {
     date: new Date(payload.date),
     opponent: payload.opponent.trim(),
-    location: payload.location,
-    scorePegasus: payload.scorePegasus,
-    scoreOpponent: payload.scoreOpponent,
-    result: calcResult(payload.scorePegasus, payload.scoreOpponent),
+    location,
+    scorePegasus,
+    scoreOpponent,
+    result: hasScores ? calcResult(scorePegasus, scoreOpponent) : "pendente",
     notes: payload.notes?.trim() || null,
   };
 }
@@ -98,6 +105,7 @@ export const gamesService = {
     const current = await this.findById(id);
     const scorePegasus = payload.scorePegasus ?? current.scorePegasus;
     const scoreOpponent = payload.scoreOpponent ?? current.scoreOpponent;
+    const scoresUpdated = payload.scorePegasus !== undefined || payload.scoreOpponent !== undefined;
 
     const data: Record<string, unknown> = {};
     if (payload.date !== undefined) data.date = new Date(payload.date);
@@ -106,7 +114,8 @@ export const gamesService = {
     if (payload.scorePegasus !== undefined) data.scorePegasus = payload.scorePegasus;
     if (payload.scoreOpponent !== undefined) data.scoreOpponent = payload.scoreOpponent;
     if (payload.notes !== undefined) data.notes = payload.notes?.trim() || null;
-    data.result = calcResult(scorePegasus, scoreOpponent);
+    // Só recalcula resultado se placar foi atualizado, senão preserva (pode estar "pendente")
+    data.result = scoresUpdated ? calcResult(scorePegasus, scoreOpponent) : current.result;
 
     return prisma.game.update({ where: { id }, data, include: { sets: { orderBy: { setNumber: "asc" } } } });
   },

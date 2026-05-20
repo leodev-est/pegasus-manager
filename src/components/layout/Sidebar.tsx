@@ -148,7 +148,13 @@ export const menuGroups: MenuGroup[] = [
         icon: UserRound,
         permissions: ["atleta", "trainings:update"],
       },
-{
+      {
+        label: "Minhas Convocações",
+        path: "/app/jogos/minhas-convocacoes",
+        icon: Trophy,
+        permissions: ["atleta"],
+      },
+      {
         label: "Minha Frequência",
         path: "/app/atleta/frequencia",
         icon: UserCheck,

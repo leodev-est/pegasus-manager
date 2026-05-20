@@ -1,6 +1,6 @@
 import { api } from "./api";
 
-export type GameResult = "vitoria" | "derrota" | "empate";
+export type GameResult = "vitoria" | "derrota" | "empate" | "pendente";
 export type GameLocation = "casa" | "fora";
 
 export type GameSet = {
@@ -37,9 +37,9 @@ export type GameStats = {
 export type GamePayload = {
   date: string;
   opponent: string;
-  location: GameLocation;
-  scorePegasus: number;
-  scoreOpponent: number;
+  location?: GameLocation;
+  scorePegasus?: number;
+  scoreOpponent?: number;
   notes?: string | null;
 };
 

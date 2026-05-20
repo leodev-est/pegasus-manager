@@ -3,7 +3,18 @@ import { gameConvocationsService } from "./game-convocations.service";
 
 export const gameConvocationsController = {
   async getByGame(req: Request, res: Response) {
-    const data = await gameConvocationsService.getByGame(req.params.gameId);
+    const { gender } = req.query as { gender?: string };
+    const data = await gameConvocationsService.getByGame(req.params.gameId, gender);
+    res.json(data);
+  },
+
+  async getMyConvocations(req: Request, res: Response) {
+    const athleteId = req.user?.athleteId;
+    if (!athleteId) {
+      res.status(200).json([]);
+      return;
+    }
+    const data = await gameConvocationsService.getMyConvocations(athleteId);
     res.json(data);
   },
 
@@ -24,6 +35,13 @@ export const gameConvocationsController = {
     const { gameId } = req.params;
     const { athleteIds } = req.body as { athleteIds: string[] };
     const result = await gameConvocationsService.bulkSet(gameId, athleteIds ?? []);
+    res.json(result);
+  },
+
+  async bulkSetAndNotify(req: Request, res: Response) {
+    const { gameId } = req.params;
+    const { athleteIds } = req.body as { athleteIds: string[] };
+    const result = await gameConvocationsService.bulkSetAndNotify(gameId, athleteIds ?? []);
     res.json(result);
   },
 };

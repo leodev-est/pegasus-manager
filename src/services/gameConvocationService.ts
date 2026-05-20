@@ -7,6 +7,7 @@ export type ConvocationAthlete = {
   name: string;
   category: string | null;
   position: string | null;
+  gender: string | null;
   convocation: {
     id: string;
     status: ConvocationStatus;
@@ -27,9 +28,35 @@ export type GameConvocationData = {
   athletes: ConvocationAthlete[];
 };
 
+export type MyConvocation = {
+  id: string;
+  gameId: string;
+  athleteId: string;
+  status: ConvocationStatus;
+  game: {
+    id: string;
+    date: string;
+    opponent: string;
+    location: string;
+    result: string;
+  };
+};
+
 export const gameConvocationService = {
-  async getByGame(gameId: string): Promise<GameConvocationData> {
-    const { data } = await api.get(`/games/${gameId}/convocations`);
+  async getByGame(gameId: string, gender?: string): Promise<GameConvocationData> {
+    const { data } = await api.get(`/games/${gameId}/convocations`, {
+      params: gender && gender !== "misto" ? { gender } : undefined,
+    });
+    return data;
+  },
+
+  async getMyConvocations(): Promise<MyConvocation[]> {
+    const { data } = await api.get("/games/convocations/mine");
+    return data;
+  },
+
+  async bulkSetAndNotify(gameId: string, athleteIds: string[]) {
+    const { data } = await api.put(`/games/${gameId}/convocations`, { athleteIds });
     return data;
   },
 
