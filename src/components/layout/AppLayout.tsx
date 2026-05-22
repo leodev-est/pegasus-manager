@@ -15,8 +15,7 @@ export function AppLayout() {
     user?.permissions?.includes("atleta") &&
     !user?.permissions?.includes("rh") &&
     !user?.permissions?.includes("gestao") &&
-    !user?.permissions?.includes("financeiro") &&
-    !user?.permissions?.includes("treinos");
+    !user?.permissions?.includes("financeiro");
 
   const tour = useAthleteWelcomeTour();
 

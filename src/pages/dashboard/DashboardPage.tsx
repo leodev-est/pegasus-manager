@@ -25,7 +25,9 @@ import { athleteApplicationService, type AthleteApplication } from "../../servic
 import { athleteService, type Athlete, type BirthdaysResult } from "../../services/athleteService";
 import { getApiErrorMessage } from "../../services/api";
 import { attendanceService, type MonthlyAttendanceStat, type TotalFrequency } from "../../services/attendanceService";
+import { evaluationService, type AthleteEvaluation } from "../../services/evaluationService";
 import { financeService, type FinanceSummary } from "../../services/financeService";
+import { gameConvocationService, type MyConvocation } from "../../services/gameConvocationService";
 import { gamesService, type Game } from "../../services/gamesService";
 import { kanbanService, type ManagementTask } from "../../services/kanbanService";
 import { marketingService, type MarketingTask } from "../../services/marketingService";
@@ -125,6 +127,8 @@ export function DashboardPage() {
   const [birthdays, setBirthdays] = useState<BirthdaysResult>({ today: [], week: [] });
   const [myFrequency, setMyFrequency] = useState<TotalFrequency | null>(null);
   const [monthlyStats, setMonthlyStats] = useState<MonthlyAttendanceStat[]>([]);
+  const [myEvaluation, setMyEvaluation] = useState<AthleteEvaluation | null>(null);
+  const [myConvocations, setMyConvocations] = useState<MyConvocation[]>([]);
 
   const canSeeRh = hasPermission(["rh"]);
   const canSeeFinance = hasPermission(["financeiro"]);
@@ -199,6 +203,8 @@ export function DashboardPage() {
 
       if (isAthlete) {
         attendanceService.getMyTotalFrequency().then(setMyFrequency).catch(() => {});
+        evaluationService.getMyEvaluation().then(setMyEvaluation).catch(() => {});
+        gameConvocationService.getMyConvocations().then(setMyConvocations).catch(() => {});
       }
     } catch (error) {
       showToast(getApiErrorMessage(error), "error");
@@ -316,47 +322,195 @@ export function DashboardPage() {
 
           {/* Painel do atleta */}
           {isAthlete && (
-            <section className="panel overflow-hidden">
-              <div className="flex items-center gap-3 border-b border-blue-100 p-5 dark:border-slate-700">
-                <TrendingUp className="text-pegasus-primary" size={20} />
-                <div>
-                  <h2 className="font-black text-pegasus-navy">Minha Frequência Geral</h2>
-                  <p className="text-sm text-slate-500">Resumo de presença em todos os treinos</p>
-                </div>
-              </div>
-              {myFrequency ? (
-                <div className="grid gap-4 p-5 sm:grid-cols-4">
-                  {[
-                    { label: "Treinos", value: myFrequency.totalTreinos, color: "text-pegasus-navy" },
-                    { label: "Presenças", value: myFrequency.presencas, color: "text-emerald-600" },
-                    { label: "Justificadas", value: myFrequency.justificadas, color: "text-amber-600" },
-                    { label: "Faltas", value: myFrequency.faltas, color: "text-rose-600" },
-                  ].map((item) => (
-                    <div key={item.label} className="rounded-2xl bg-slate-50 p-4 text-center dark:bg-slate-700/50">
-                      <p className={`text-3xl font-black ${item.color}`}>{item.value}</p>
-                      <p className="mt-1 text-sm text-slate-500">{item.label}</p>
-                    </div>
-                  ))}
-                  <div className="col-span-full">
-                    <div className="mb-1.5 flex items-center justify-between">
-                      <span className="text-sm font-semibold text-slate-500">Aproveitamento geral</span>
-                      <span className={`text-lg font-black ${(myFrequency.percentual ?? 0) >= 80 ? "text-emerald-600" : (myFrequency.percentual ?? 0) >= 60 ? "text-amber-600" : "text-rose-600"}`}>
-                        {myFrequency.percentual ?? 0}%
+            <section className="space-y-5">
+              {/* Próximo treino — destaque */}
+              <div className="rounded-3xl bg-pegasus-navy p-5 text-white">
+                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-blue-200">
+                  Próximo treino
+                </p>
+                {nextTraining ? (
+                  <>
+                    <p className="mt-1 text-2xl font-black">{nextTraining.title}</p>
+                    <p className="mt-1 text-sm text-blue-100">{formatDateTime(nextTraining.date)}</p>
+                    {nextTraining.category && (
+                      <span className="mt-2 inline-block rounded-full bg-white/10 px-3 py-0.5 text-xs font-semibold text-blue-100">
+                        {nextTraining.category}
                       </span>
-                    </div>
-                    <div className="h-3 overflow-hidden rounded-full bg-slate-100 dark:bg-slate-700">
-                      <div
-                        className={`h-full rounded-full transition-all ${(myFrequency.percentual ?? 0) >= 80 ? "bg-emerald-500" : (myFrequency.percentual ?? 0) >= 60 ? "bg-amber-500" : "bg-rose-500"}`}
-                        style={{ width: `${myFrequency.percentual ?? 0}%` }}
-                      />
+                    )}
+                  </>
+                ) : (
+                  <p className="mt-1 text-lg font-bold text-blue-200">
+                    Nenhum treino futuro agendado.
+                  </p>
+                )}
+              </div>
+
+              {/* Convocações + Avaliação */}
+              <div className="grid gap-5 xl:grid-cols-2">
+                {/* Minhas convocações */}
+                <div className="panel p-5">
+                  <div className="mb-4 flex items-center gap-3">
+                    <Trophy className="text-pegasus-primary" size={20} />
+                    <div>
+                      <h2 className="font-black text-pegasus-navy">Minhas Convocações</h2>
+                      <p className="text-sm text-slate-500">Jogos futuros em que você está convocado(a)</p>
                     </div>
                   </div>
+                  {myConvocations.length === 0 ? (
+                    <p className="rounded-2xl bg-pegasus-surface p-4 text-sm text-slate-500">
+                      Nenhuma convocação para jogos futuros.
+                    </p>
+                  ) : (
+                    <div className="space-y-2">
+                      {myConvocations.map((conv) => {
+                        const daysUntil = Math.ceil(
+                          (new Date(conv.game.date).getTime() - Date.now()) / 86_400_000,
+                        );
+                        return (
+                          <div
+                            key={conv.id}
+                            className="flex items-center justify-between rounded-2xl bg-pegasus-surface p-3"
+                          >
+                            <div>
+                              <p className="text-sm font-bold text-pegasus-navy">
+                                vs {conv.game.opponent}
+                              </p>
+                              <p className="text-xs text-slate-500">
+                                {new Date(conv.game.date).toLocaleDateString("pt-BR", {
+                                  weekday: "short",
+                                  day: "2-digit",
+                                  month: "short",
+                                  timeZone: "UTC",
+                                })}
+                              </p>
+                            </div>
+                            <span
+                              className={`rounded-full px-2.5 py-0.5 text-xs font-bold ${
+                                daysUntil <= 0
+                                  ? "bg-rose-100 text-rose-700"
+                                  : daysUntil === 1
+                                  ? "bg-amber-100 text-amber-700"
+                                  : "bg-blue-100 text-blue-700"
+                              }`}
+                            >
+                              {daysUntil <= 0 ? "Hoje!" : daysUntil === 1 ? "Amanhã!" : `Em ${daysUntil} dias`}
+                            </span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
                 </div>
-              ) : (
-                <div className="flex items-center gap-2 p-5 text-sm text-slate-500">
-                  <Loader2 className="animate-spin" size={16} /> Carregando...
+
+                {/* Avaliação do treinador */}
+                <div className="panel p-5">
+                  <div className="mb-4 flex items-center gap-3">
+                    <Star className="text-pegasus-primary" size={20} />
+                    <div>
+                      <h2 className="font-black text-pegasus-navy">Avaliação do Treinador</h2>
+                      <p className="text-sm text-slate-500">Notas mais recentes</p>
+                    </div>
+                  </div>
+                  {!myEvaluation || myEvaluation.overall === null ? (
+                    <p className="rounded-2xl bg-pegasus-surface p-4 text-sm text-slate-500">
+                      Nenhuma avaliação do treinador ainda.
+                    </p>
+                  ) : (
+                    <div className="space-y-2">
+                      {(
+                        [
+                          { label: "Técnico", value: myEvaluation.technical },
+                          { label: "Físico", value: myEvaluation.physical },
+                          { label: "Tático", value: myEvaluation.tactical },
+                          { label: "Mental", value: myEvaluation.mental },
+                        ] as { label: string; value: number | null }[]
+                      )
+                        .filter((i) => i.value !== null)
+                        .map((item) => (
+                          <div key={item.label} className="flex items-center gap-3">
+                            <span className="w-16 text-xs font-semibold text-slate-500">
+                              {item.label}
+                            </span>
+                            <div className="h-2 flex-1 overflow-hidden rounded-full bg-slate-100 dark:bg-slate-700">
+                              <div
+                                className="h-full rounded-full bg-pegasus-primary"
+                                style={{ width: `${((item.value ?? 0) / 10) * 100}%` }}
+                              />
+                            </div>
+                            <span className="w-6 text-right text-sm font-bold text-pegasus-navy">
+                              {item.value}
+                            </span>
+                          </div>
+                        ))}
+                      <div className="mt-3 rounded-2xl bg-pegasus-ice p-3 text-center dark:bg-slate-700/50">
+                        <p className="text-xs text-slate-500">Nota geral</p>
+                        <p className="text-3xl font-black text-pegasus-primary">{myEvaluation.overall}</p>
+                      </div>
+                    </div>
+                  )}
                 </div>
-              )}
+              </div>
+
+              {/* Frequência */}
+              <div className="panel overflow-hidden">
+                <div className="flex items-center gap-3 border-b border-blue-100 p-5 dark:border-slate-700">
+                  <TrendingUp className="text-pegasus-primary" size={20} />
+                  <div>
+                    <h2 className="font-black text-pegasus-navy">Minha Frequência</h2>
+                    <p className="text-sm text-slate-500">Presença em todos os treinos</p>
+                  </div>
+                </div>
+                {myFrequency ? (
+                  <div className="grid gap-4 p-5 sm:grid-cols-4">
+                    {[
+                      { label: "Treinos", value: myFrequency.totalTreinos, color: "text-pegasus-navy" },
+                      { label: "Presenças", value: myFrequency.presencas, color: "text-emerald-600" },
+                      { label: "Justificadas", value: myFrequency.justificadas, color: "text-amber-600" },
+                      { label: "Faltas", value: myFrequency.faltas, color: "text-rose-600" },
+                    ].map((item) => (
+                      <div
+                        key={item.label}
+                        className="rounded-2xl bg-slate-50 p-4 text-center dark:bg-slate-700/50"
+                      >
+                        <p className={`text-3xl font-black ${item.color}`}>{item.value}</p>
+                        <p className="mt-1 text-sm text-slate-500">{item.label}</p>
+                      </div>
+                    ))}
+                    <div className="col-span-full">
+                      <div className="mb-1.5 flex items-center justify-between">
+                        <span className="text-sm font-semibold text-slate-500">Aproveitamento geral</span>
+                        <span
+                          className={`text-lg font-black ${
+                            (myFrequency.percentual ?? 0) >= 80
+                              ? "text-emerald-600"
+                              : (myFrequency.percentual ?? 0) >= 60
+                              ? "text-amber-600"
+                              : "text-rose-600"
+                          }`}
+                        >
+                          {myFrequency.percentual ?? 0}%
+                        </span>
+                      </div>
+                      <div className="h-3 overflow-hidden rounded-full bg-slate-100 dark:bg-slate-700">
+                        <div
+                          className={`h-full rounded-full transition-all ${
+                            (myFrequency.percentual ?? 0) >= 80
+                              ? "bg-emerald-500"
+                              : (myFrequency.percentual ?? 0) >= 60
+                              ? "bg-amber-500"
+                              : "bg-rose-500"
+                          }`}
+                          style={{ width: `${myFrequency.percentual ?? 0}%` }}
+                        />
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-2 p-5 text-sm text-slate-500">
+                    <Loader2 className="animate-spin" size={16} /> Carregando...
+                  </div>
+                )}
+              </div>
             </section>
           )}
 
@@ -429,6 +583,7 @@ export function DashboardPage() {
               </article>
             ) : null}
 
+            {(canSeeRh || canSeeFinance || canSeeOperational) && (
             <article className="panel p-6">
               <div className="flex items-center gap-3">
                 <span className="rounded-2xl bg-pegasus-ice p-3 text-pegasus-primary">
@@ -467,6 +622,7 @@ export function DashboardPage() {
                 ) : null}
               </div>
             </article>
+            )}
           </section>
 
           {data.upcomingGames.length > 0 ? (

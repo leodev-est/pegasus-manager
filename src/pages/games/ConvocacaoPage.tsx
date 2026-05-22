@@ -418,7 +418,9 @@ export function ConvocacaoPage() {
   const [loading, setLoading] = useState(true);
   const [showCreate, setShowCreate] = useState(false);
 
-  const canManage = user?.permissions?.includes("treinos") || user?.permissions?.includes("gestao");
+  const canManage =
+    (user?.permissions?.includes("treinos") || user?.permissions?.includes("gestao")) &&
+    !user?.permissions?.includes("atleta");
 
   function loadGames() {
     setLoading(true);
