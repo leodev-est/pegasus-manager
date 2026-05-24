@@ -1,4 +1,5 @@
-﻿import cors from "cors";
+﻿import compression from "compression";
+import cors from "cors";
 import express from "express";
 import helmet from "helmet";
 import morgan from "morgan";
@@ -51,6 +52,7 @@ const authLimiter = rateLimit({
   message: { error: "Muitas tentativas de login. Aguarde 15 minutos." },
 });
 
+app.use(compression());
 app.use(helmet());
 app.use(morgan(isProduction ? "combined" : "dev"));
 app.use(globalLimiter);
