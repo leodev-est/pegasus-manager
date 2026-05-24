@@ -1,4 +1,4 @@
-﻿import { ClockArrowUp, Download, FileDown, Loader2, Plus, UserCheck, VenetianMask } from "lucide-react";
+﻿import { ClockArrowUp, Download, FileDown, Loader2, Plus, UserCheck } from "lucide-react";
 import { FormEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useAuth } from "../../auth/AuthContext";
 import { ActionButtons } from "../../components/ui/ActionButtons";
@@ -136,7 +136,7 @@ export function AthletesPage() {
   const [paymentHistory, setPaymentHistory] = useState<PaymentStatusHistoryEntry[]>([]);
   const [isLoadingHistory, setIsLoadingHistory] = useState(false);
   const [genderSuggestion, setGenderSuggestion] = useState<{ gender: AthleteGender; probability: number } | null>(null);
-  const [showNoGender, setShowNoGender] = useState(false);
+  const [genderFilter, setGenderFilter] = useState<"todos" | "masculino" | "feminino">("todos");
   const genderizeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const filters = useMemo(
@@ -149,15 +149,10 @@ export function AthletesPage() {
       if (a.status === "teste") return false;
       if (status === "ativo" && a.status !== "ativo") return false;
       if (status === "inativo" && a.status !== "inativo") return false;
-      if (showNoGender && a.gender) return false;
+      if (genderFilter !== "todos" && a.gender !== genderFilter) return false;
       return true;
     });
-  }, [athletes, status, showNoGender]);
-
-  const noGenderCount = useMemo(
-    () => athletes.filter((a) => a.status === "ativo" && !a.gender).length,
-    [athletes],
-  );
+  }, [athletes, status, genderFilter]);
 
   const loadAthletes = useCallback(async () => {
     setIsLoading(true);
@@ -381,20 +376,28 @@ export function AthletesPage() {
           options={statusOptions}
           value={status}
         />
-        <div className="flex items-end">
-          <button
-            type="button"
-            onClick={() => setShowNoGender((v) => !v)}
-            className={`flex items-center gap-2 rounded-xl border px-3 py-2 text-sm font-medium transition ${showNoGender ? "border-amber-400 bg-amber-50 text-amber-700" : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50"}`}
-          >
-            <VenetianMask size={15} />
-            Sem gênero
-            {noGenderCount > 0 && (
-              <span className={`rounded-full px-1.5 py-0.5 text-xs font-bold ${showNoGender ? "bg-amber-200 text-amber-800" : "bg-slate-100 text-slate-500"}`}>
-                {noGenderCount}
-              </span>
-            )}
-          </button>
+        <div className="flex flex-col gap-1">
+          <span className="text-xs font-medium text-slate-500">Sexo</span>
+          <div className="flex rounded-xl border border-slate-200 bg-white overflow-hidden text-sm font-medium">
+            {(["todos", "masculino", "feminino"] as const).map((opt) => (
+              <button
+                key={opt}
+                type="button"
+                onClick={() => setGenderFilter(opt)}
+                className={`px-3 py-2 transition ${
+                  genderFilter === opt
+                    ? opt === "masculino"
+                      ? "bg-blue-100 text-blue-700"
+                      : opt === "feminino"
+                        ? "bg-pink-100 text-pink-700"
+                        : "bg-slate-100 text-slate-700"
+                    : "text-slate-500 hover:bg-slate-50"
+                }`}
+              >
+                {opt === "todos" ? "Todos" : opt === "masculino" ? "Masc." : "Fem."}
+              </button>
+            ))}
+          </div>
         </div>
       </FilterBar>
 
@@ -461,7 +464,7 @@ export function AthletesPage() {
             </div>
             <div className="hidden md:block">
               <Table
-                headers={["Nome", "Posição", "Gênero", "Status", "Frequência", "Ações"]}
+                headers={["Nome", "Posição", "Sexo", "Status", "Frequência", "Ações"]}
                 minWidth="920px"
               >
                 {displayedAthletes.map((athlete) => {
@@ -603,7 +606,7 @@ export function AthletesPage() {
             />
             <div>
               <Select
-                label="Gênero"
+                label="Sexo"
                 onChange={(event) => setForm({ ...form, gender: event.target.value as AthleteGender | "" })}
                 options={[
                   { label: "Não definido", value: "" },
