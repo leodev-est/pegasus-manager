@@ -310,15 +310,20 @@ export const athletesService = {
           WHERE id = ${existing[0].id}
         `;
       } else {
-        const lastAmount = await prisma.$queryRaw<{ amount: number }[]>`
-          SELECT amount FROM "Payment"
-          WHERE "athleteId" = ${id}
-            AND type = 'receita'
-            AND (LOWER(category) LIKE '%mensalidade%' OR LOWER(description) LIKE '%mensalidade%')
-          ORDER BY "createdAt" DESC
-          LIMIT 1
-        `;
-        const amount = lastAmount.length > 0 ? Number(lastAmount[0].amount) : 0;
+        // Use the standard monthly fee from settings; prorate for first month
+        const setting = await prisma.trainingSetting.findFirst({ select: { monthlyFeeAmount: true } });
+        const defaultAmount = Number(setting?.monthlyFeeAmount ?? 0);
+
+        let amount = defaultAmount;
+        if (athlete.activatedAt) {
+          const activated = new Date(athlete.activatedAt);
+          const activatedYear = activated.getUTCFullYear();
+          const activatedMonth = activated.getUTCMonth() + 1;
+          if (activatedYear === year && activatedMonth === month + 1) {
+            const activatedDay = activated.getUTCDate();
+            amount = activatedDay > 15 ? defaultAmount / 2 : defaultAmount;
+          }
+        }
 
         await prisma.$queryRaw`
           INSERT INTO "Payment" (id, "athleteId", description, amount, type, category, status, "dueDate", "referenceMonth", "paidAt", "updatedAt")

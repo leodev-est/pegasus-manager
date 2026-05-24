@@ -529,9 +529,9 @@ export const financeService = {
     const setting = await prisma.trainingSetting.findFirst({ select: { monthlyFeeAmount: true } });
     const defaultAmount = Number(setting?.monthlyFeeAmount ?? 0);
 
-    type AthleteRow = { id: string; name: string };
+    type AthleteRow = { id: string; name: string; activatedAt: Date | null };
     const athletes = await prisma.$queryRaw<AthleteRow[]>`
-      SELECT id, name FROM "Athlete"
+      SELECT id, name, "activatedAt" FROM "Athlete"
       WHERE status = 'ativo' AND "monthlyPaymentStatus" != 'isento'
       ORDER BY name ASC
     `;
@@ -576,17 +576,29 @@ export const financeService = {
 
     for (const athlete of athletes) {
       if (!existingByAthleteId.has(athlete.id)) {
+        // Prorate the first month: days 1–15 → full amount, days 16–31 → 50%
+        let amount = defaultAmount;
+        if (athlete.activatedAt) {
+          const activated = new Date(athlete.activatedAt);
+          const activatedYear = activated.getUTCFullYear();
+          const activatedMonth = activated.getUTCMonth() + 1;
+          if (activatedYear === year && activatedMonth === mon) {
+            const activatedDay = activated.getUTCDate();
+            amount = activatedDay > 15 ? defaultAmount / 2 : defaultAmount;
+          }
+        }
+
         const newId = randomUUID();
         await prisma.$executeRaw`
           INSERT INTO "Payment" (id, "athleteId", description, amount, type, category, status, "dueDate", "referenceMonth", "updatedAt")
-          VALUES (${newId}, ${athlete.id}, 'Mensalidade', ${defaultAmount}, 'receita', 'Mensalidade', 'pendente', ${dueDate}, ${month}, NOW())
+          VALUES (${newId}, ${athlete.id}, 'Mensalidade', ${amount}, 'receita', 'Mensalidade', 'pendente', ${dueDate}, ${month}, NOW())
         `;
         existingByAthleteId.set(athlete.id, {
           id: newId,
           athleteId: athlete.id,
           status: "pendente",
           paidAt: null,
-          amount: new Prisma.Decimal(defaultAmount),
+          amount: new Prisma.Decimal(amount),
           referenceMonth: month,
         });
       }
