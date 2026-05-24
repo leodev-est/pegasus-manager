@@ -541,6 +541,7 @@ export const financeService = {
     type MensalidadeRow = {
       id: string;
       athleteId: string | null;
+      description: string;
       status: string;
       paidAt: Date | null;
       amount: Prisma.Decimal;
@@ -548,7 +549,7 @@ export const financeService = {
     };
 
     const existing = await prisma.$queryRaw<MensalidadeRow[]>`
-      SELECT id, "athleteId", status, "paidAt", amount, "referenceMonth"
+      SELECT id, "athleteId", description, status, "paidAt", amount, "referenceMonth"
       FROM "Payment"
       WHERE LOWER(category) = 'mensalidade'
         AND (
@@ -578,24 +579,29 @@ export const financeService = {
       if (!existingByAthleteId.has(athlete.id)) {
         // Prorate the first month: days 1–15 → full amount, days 16–31 → 50%
         let amount = defaultAmount;
+        let description = "Mensalidade";
         if (athlete.activatedAt) {
           const activated = new Date(athlete.activatedAt);
           const activatedYear = activated.getUTCFullYear();
           const activatedMonth = activated.getUTCMonth() + 1;
           if (activatedYear === year && activatedMonth === mon) {
             const activatedDay = activated.getUTCDate();
-            amount = activatedDay > 15 ? defaultAmount / 2 : defaultAmount;
+            if (activatedDay > 15) {
+              amount = defaultAmount / 2;
+              description = "Mensalidade (proporcional)";
+            }
           }
         }
 
         const newId = randomUUID();
         await prisma.$executeRaw`
           INSERT INTO "Payment" (id, "athleteId", description, amount, type, category, status, "dueDate", "referenceMonth", "updatedAt")
-          VALUES (${newId}, ${athlete.id}, 'Mensalidade', ${amount}, 'receita', 'Mensalidade', 'pendente', ${dueDate}, ${month}, NOW())
+          VALUES (${newId}, ${athlete.id}, ${description}, ${amount}, 'receita', 'Mensalidade', 'pendente', ${dueDate}, ${month}, NOW())
         `;
         existingByAthleteId.set(athlete.id, {
           id: newId,
           athleteId: athlete.id,
+          description,
           status: "pendente",
           paidAt: null,
           amount: new Prisma.Decimal(amount),
@@ -612,6 +618,7 @@ export const financeService = {
           id: payment.id,
           athleteId: athlete.id,
           athleteName: athlete.name,
+          description: payment.description ?? "Mensalidade",
           amount: Number(payment.amount),
           status: payment.status as PaymentStatus,
           paidAt: payment.paidAt instanceof Date ? payment.paidAt.toISOString() : null,

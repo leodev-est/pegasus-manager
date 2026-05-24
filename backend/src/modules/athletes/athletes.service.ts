@@ -315,20 +315,24 @@ export const athletesService = {
         const defaultAmount = Number(setting?.monthlyFeeAmount ?? 0);
 
         let amount = defaultAmount;
+        let firstMonthDesc = "Mensalidade";
         if (athlete.activatedAt) {
           const activated = new Date(athlete.activatedAt);
           const activatedYear = activated.getUTCFullYear();
           const activatedMonth = activated.getUTCMonth() + 1;
           if (activatedYear === year && activatedMonth === month + 1) {
             const activatedDay = activated.getUTCDate();
-            amount = activatedDay > 15 ? defaultAmount / 2 : defaultAmount;
+            if (activatedDay > 15) {
+              amount = defaultAmount / 2;
+              firstMonthDesc = "Mensalidade (proporcional)";
+            }
           }
         }
 
         await prisma.$queryRaw`
           INSERT INTO "Payment" (id, "athleteId", description, amount, type, category, status, "dueDate", "referenceMonth", "paidAt", "updatedAt")
           VALUES (
-            ${randomUUID()}, ${id}, 'Mensalidade', ${amount}, 'receita', 'Mensalidade',
+            ${randomUUID()}, ${id}, ${firstMonthDesc}, ${amount}, 'receita', 'Mensalidade',
             ${paymentStatus}, ${dueDate}, ${refMonth}, ${paidAt}, NOW()
           )
         `;

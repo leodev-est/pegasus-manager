@@ -775,6 +775,11 @@ export function FinancePage() {
                     <div className="flex items-start justify-between gap-3">
                       <div>
                         <h3 className="font-bold text-pegasus-navy">{m.athleteName}</h3>
+                        {m.description?.toLowerCase().includes("proporcional") && (
+                          <span className="mt-1 inline-block rounded-full bg-violet-100 px-2 py-0.5 text-xs font-semibold text-violet-700">
+                            Proporcional (1º mês)
+                          </span>
+                        )}
                         <p className="mt-1 text-sm text-slate-500">
                           {m.paidAt ? formatDate(m.paidAt) : "Não pago"}
                         </p>
@@ -816,7 +821,14 @@ export function FinancePage() {
                 >
                   {mensalidades.map((m) => (
                     <tr key={m.id} className="bg-white">
-                      <td className="px-6 py-4 font-bold text-pegasus-navy">{m.athleteName}</td>
+                      <td className="px-6 py-4">
+                        <p className="font-bold text-pegasus-navy">{m.athleteName}</p>
+                        {m.description?.toLowerCase().includes("proporcional") && (
+                          <span className="mt-0.5 inline-block rounded-full bg-violet-100 px-2 py-0.5 text-xs font-semibold text-violet-700">
+                            Proporcional (1º mês)
+                          </span>
+                        )}
+                      </td>
                       <td className="px-6 py-4 text-slate-600">{formatCurrency(m.amount)}</td>
                       <td className="px-6 py-4">
                         <StatusBadge label={label(m.status)} tone={badgeTone(m.status)} />

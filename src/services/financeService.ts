@@ -23,6 +23,7 @@ export type MensalidadeEntry = {
   id: string;
   athleteId: string;
   athleteName: string;
+  description: string;
   amount: number;
   status: FinanceStatus;
   paidAt: string | null;
