@@ -153,17 +153,21 @@ export function DashboardPage() {
         return d.toISOString().slice(0, 7);
       })();
 
+      function ok<T>(result: PromiseSettledResult<T>, fallback: T): T {
+        return result.status === "fulfilled" ? result.value : fallback;
+      }
+
       const [
-        athletes,
-        applications,
-        trainings,
-        financeSummary,
-        managementTasks,
-        marketingTasks,
-        schools,
-        gamesThisMonth,
-        gamesNextMonth,
-      ] = await Promise.all([
+        athletesRes,
+        applicationsRes,
+        trainingsRes,
+        financeSummaryRes,
+        managementTasksRes,
+        marketingTasksRes,
+        schoolsRes,
+        gamesThisMonthRes,
+        gamesNextMonthRes,
+      ] = await Promise.allSettled([
         canSeeRh ? athleteService.getAll() : Promise.resolve([]),
         canSeeRh ? athleteApplicationService.getAll() : Promise.resolve([]),
         canSeeTrainings ? trainingService.getAll() : Promise.resolve([]),
@@ -175,30 +179,27 @@ export function DashboardPage() {
         gamesService.getAll(nextMonth),
       ]);
 
+      const gamesThisMonth = ok(gamesThisMonthRes, []);
+      const gamesNextMonth = ok(gamesNextMonthRes, []);
       const now = new Date();
-      const allGames = [...gamesThisMonth, ...gamesNextMonth];
-      const upcomingGames = allGames
+      const upcomingGames = [...gamesThisMonth, ...gamesNextMonth]
         .filter((g) => new Date(g.date) >= now)
         .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
         .slice(0, 5);
 
       setData({
-        athletes,
-        applications,
-        trainings,
-        financeSummary,
-        managementTasks,
-        marketingTasks,
-        schools,
+        athletes: ok(athletesRes, []),
+        applications: ok(applicationsRes, []),
+        trainings: ok(trainingsRes, []),
+        financeSummary: ok(financeSummaryRes, null),
+        managementTasks: ok(managementTasksRes, []),
+        marketingTasks: ok(marketingTasksRes, []),
+        schools: ok(schoolsRes, []),
         upcomingGames,
       });
 
       if (canSeeRh) {
-        try {
-          setBirthdays(await athleteService.getBirthdays());
-        } catch {
-          // non-critical, ignore
-        }
+        athleteService.getBirthdays().then(setBirthdays).catch(() => {});
       }
 
       if (canSeeTrainings) {
