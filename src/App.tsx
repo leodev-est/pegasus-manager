@@ -4,6 +4,7 @@ import { AppRoutes } from "./routes/AppRoutes";
 import { ToastProvider } from "./components/ui/Toast";
 import { ErrorBoundary } from "./components/ui/ErrorBoundary";
 import { ThemeProvider } from "./contexts/ThemeContext";
+import { PwaUpdatePrompt } from "./components/pwa/PwaUpdatePrompt";
 
 export default function App() {
   return (
@@ -17,6 +18,7 @@ export default function App() {
           </AuthProvider>
         </ErrorBoundary>
       </ToastProvider>
+      <PwaUpdatePrompt />
     </ThemeProvider>
   );
 }

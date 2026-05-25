@@ -136,7 +136,11 @@ export function DashboardPage() {
   const canSeeMarketing = hasPermission(["marketing"]);
   const canSeeTrainings = hasPermission(["treinos"]);
   const canSeeOperational = hasPermission(["operacional"]);
-  const isAthlete = hasPermission(["atleta"]);
+  const isAthlete =
+    hasPermission(["atleta"]) &&
+    !hasPermission(["rh"]) &&
+    !hasPermission(["gestao"]) &&
+    !hasPermission(["financeiro"]);
 
   const loadDashboard = useCallback(async () => {
     setIsLoading(true);

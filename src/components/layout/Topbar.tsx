@@ -338,8 +338,8 @@ export function Topbar({ onMenuClick }: TopbarProps) {
                       >
                         <div className="flex items-start justify-between gap-3">
                           <div>
-                            <p className="font-black text-pegasus-navy">{notification.title}</p>
-                            <p className="mt-1 text-sm leading-5 text-slate-600">{notification.message}</p>
+                            <p className="break-words font-black text-pegasus-navy">{notification.title}</p>
+                            <p className="mt-1 break-words text-sm leading-5 text-slate-600">{notification.message}</p>
                           </div>
                           {!notification.read ? (
                             <span className="mt-1 h-2.5 w-2.5 shrink-0 rounded-full bg-pegasus-primary" />
