@@ -10,6 +10,16 @@ import { startWhatsAppScheduler } from "./modules/whatsapp/whatsapp-scheduler";
 
 const PORT = process.env.PORT || 3000;
 
+function startKeepAlive(baseUrl: string) {
+  // Ping own /health every 14 min to prevent Render free-tier spin-down
+  setInterval(
+    () => {
+      fetch(`${baseUrl}/health`).catch(() => {});
+    },
+    14 * 60 * 1000,
+  );
+}
+
 app.listen(PORT, async () => {
   console.log(`Pegasus Manager API running on port ${PORT}`);
   await whatsAppService.init();
@@ -19,4 +29,9 @@ app.listen(PORT, async () => {
   startPaymentNotificationScheduler();
   startAnnouncementsScheduler();
   startReportScheduler();
+
+  const selfUrl = process.env.RENDER_EXTERNAL_URL;
+  if (selfUrl) {
+    startKeepAlive(selfUrl);
+  }
 });

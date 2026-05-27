@@ -155,10 +155,10 @@ export function Topbar({ onMenuClick }: TopbarProps) {
     loadNotifications();
   }, [loadNotifications]);
 
-  // Poll for new notifications every 30 seconds
+  // Poll for new notifications every 60 seconds (push notifications handle real-time delivery)
   useEffect(() => {
     if (!user) return;
-    const interval = setInterval(loadNotifications, 30_000);
+    const interval = setInterval(loadNotifications, 60_000);
     return () => clearInterval(interval);
   }, [user, loadNotifications]);
 

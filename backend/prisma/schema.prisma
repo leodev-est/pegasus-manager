@@ -139,6 +139,11 @@ model Payment {
   createdAt      DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
   athlete     Athlete?  @relation(fields: [athleteId], references: [id], onDelete: SetNull)
+
+  @@index([athleteId])
+  @@index([status])
+  @@index([referenceMonth])
+  @@index([dueDate])
 }
 
 model CashMovement {
@@ -274,6 +279,9 @@ model Notification {
   read      Boolean  @default(false)
   createdAt DateTime @default(now())
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([userId, read])
 }
 
 model Formation {
