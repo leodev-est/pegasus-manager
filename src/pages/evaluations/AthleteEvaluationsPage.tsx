@@ -15,6 +15,7 @@ import { athleteService, type Athlete } from "../../services/athleteService";
 import {
   evaluationService,
   type AthleteEvaluation,
+  type AthleteEvaluationSummary,
   type CoachEvaluationPayload,
   type EvaluationHistoryEntry,
 } from "../../services/evaluationService";
@@ -108,6 +109,7 @@ function RatingInput({
 export function AthleteEvaluationsPage() {
   const { showToast } = useToast();
   const [athletes, setAthletes] = useState<Athlete[]>([]);
+  const [summaries, setSummaries] = useState<AthleteEvaluationSummary[]>([]);
   const [selectedAthleteId, setSelectedAthleteId] = useState("");
   const [evaluation, setEvaluation] = useState<AthleteEvaluation>(emptyEvaluation);
   const [form, setForm] = useState<CoachEvaluationPayload>({
@@ -134,9 +136,12 @@ export function AthleteEvaluationsPage() {
     setIsLoading(true);
 
     try {
-      const data = await athleteService.getAll({ status: "ativo" });
-      setAthletes(data);
-      setSelectedAthleteId((current) => current || data[0]?.id || "");
+      const [athleteData, summaryData] = await Promise.all([
+        athleteService.getAll({ status: "ativo" }),
+        evaluationService.getAllSummaries(),
+      ]);
+      setAthletes(athleteData);
+      setSummaries(summaryData);
     } catch (error) {
       showToast(getApiErrorMessage(error), "error");
     } finally {
@@ -233,11 +238,51 @@ export function AthleteEvaluationsPage() {
           Carregando atletas
         </section>
       ) : !selectedAthlete ? (
-        <EmptyState
-          description="Escolha um atleta ativo para iniciar a avaliação técnica."
-          icon={UserRound}
-          title="Nenhum atleta selecionado"
-        />
+        <section className="space-y-4">
+          <div className="flex items-center gap-2">
+            <Star className="text-pegasus-primary" size={18} />
+            <h2 className="text-lg font-black text-pegasus-navy">Visão geral do elenco</h2>
+            <span className="rounded-full bg-pegasus-ice px-3 py-0.5 text-xs font-bold text-pegasus-primary">
+              {summaries.filter((s) => s.overall !== null).length} avaliados
+            </span>
+          </div>
+          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+            {summaries.map((s) => (
+              <button
+                key={s.id}
+                type="button"
+                onClick={() => setSelectedAthleteId(s.id)}
+                className="panel group p-5 text-left transition hover:ring-2 hover:ring-pegasus-primary"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-pegasus-navy text-sm font-black text-white">
+                    {initials(s.name)}
+                  </div>
+                  <div className="min-w-0">
+                    <p className="truncate font-black text-pegasus-navy group-hover:text-pegasus-primary">{s.name}</p>
+                    <p className="text-xs text-slate-500">{s.position ?? s.category ?? "—"}</p>
+                  </div>
+                  <div className={`ml-auto text-3xl font-black ${s.overall !== null ? overallTone(s.overall).includes("emerald") ? "text-emerald-600" : overallTone(s.overall).includes("amber") ? "text-amber-500" : "text-rose-600" : "text-slate-300"}`}>
+                    {s.overall ?? "—"}
+                  </div>
+                </div>
+                {s.overall !== null && (
+                  <div className="mt-3 grid grid-cols-4 gap-2 text-center">
+                    {([["Téc", s.technical], ["Fís", s.physical], ["Tát", s.tactical], ["Men", s.mental]] as [string, number | null][]).map(([abbr, val]) => (
+                      <div key={abbr} className="rounded-lg bg-pegasus-surface py-1.5">
+                        <p className="text-[10px] font-bold uppercase text-slate-400">{abbr}</p>
+                        <p className="text-sm font-black text-pegasus-navy">{val ?? "—"}</p>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                {s.overall === null && (
+                  <p className="mt-3 text-xs text-slate-400">Sem avaliação técnica ainda</p>
+                )}
+              </button>
+            ))}
+          </div>
+        </section>
       ) : (
         <section data-tour="aval-form" className="grid gap-6 xl:grid-cols-[0.85fr_1.15fr]">
           <aside className="space-y-6">

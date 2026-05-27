@@ -30,6 +30,7 @@ function ensureDirectorOrCoach(request: Request, _response: Response, next: Next
   next(new AppError("Acesso exclusivo para Diretor ou Técnico.", 403));
 }
 
+evaluationsRoutes.get("/", ensureDirectorOrCoach, evaluationsController.getAll);
 evaluationsRoutes.get("/me", ensureAthleteOrStaff, evaluationsController.getMe);
 evaluationsRoutes.patch("/self", ensureAthleteOrStaff, evaluationsController.updateSelf);
 evaluationsRoutes.get("/:athleteId/history", ensureDirectorOrCoach, evaluationsController.getHistory);

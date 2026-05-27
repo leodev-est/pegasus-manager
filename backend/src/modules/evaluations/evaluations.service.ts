@@ -115,6 +115,45 @@ async function ensureAthlete(athleteId: string) {
 }
 
 export const evaluationsService = {
+  async getAllSummaries() {
+    const athletes = await prisma.athlete.findMany({
+      where: { status: "ativo" },
+      orderBy: { name: "asc" },
+      select: { id: true, name: true, position: true, category: true },
+    });
+
+    const evaluations = await prisma.athleteEvaluation.findMany({
+      where: {
+        athleteId: { in: athletes.map((a) => a.id) },
+        evaluatedBy: { not: null },
+      },
+      orderBy: { createdAt: "desc" },
+    });
+
+    const latestByAthlete = new Map<string, typeof evaluations[0]>();
+    for (const ev of evaluations) {
+      if (!latestByAthlete.has(ev.athleteId)) {
+        latestByAthlete.set(ev.athleteId, ev);
+      }
+    }
+
+    return athletes.map((athlete) => {
+      const ev = latestByAthlete.get(athlete.id) ?? null;
+      return {
+        id: athlete.id,
+        name: athlete.name,
+        position: athlete.position,
+        category: athlete.category,
+        technical: ev?.technical ?? null,
+        physical: ev?.physical ?? null,
+        tactical: ev?.tactical ?? null,
+        mental: ev?.mental ?? null,
+        overall: calculateOverall(ev),
+        evaluatedAt: ev?.createdAt ?? null,
+      };
+    });
+  },
+
   async getMyEvaluation(userId: string) {
     const athlete = await getAthleteForUser(userId);
     return formatEvaluation(await getEvaluationByAthleteId(athlete.id));

@@ -42,7 +42,25 @@ export type CoachEvaluationPayload = {
   coachNotes?: string | null;
 };
 
+export type AthleteEvaluationSummary = {
+  id: string;
+  name: string;
+  position: string | null;
+  category: string | null;
+  technical: number | null;
+  physical: number | null;
+  tactical: number | null;
+  mental: number | null;
+  overall: number | null;
+  evaluatedAt: string | null;
+};
+
 export const evaluationService = {
+  async getAllSummaries() {
+    const { data } = await api.get<AthleteEvaluationSummary[]>("/evaluations");
+    return data;
+  },
+
   async getMyEvaluation() {
     const { data } = await api.get<AthleteEvaluation>("/evaluations/me");
     return data;

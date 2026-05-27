@@ -6,6 +6,14 @@ function getParamId(id: string | string[]) {
 }
 
 export const evaluationsController = {
+  getAll: (async (_request, response, next) => {
+    try {
+      response.json(await evaluationsService.getAllSummaries());
+    } catch (error) {
+      next(error);
+    }
+  }) satisfies RequestHandler,
+
   getMe: (async (request, response, next) => {
     try {
       response.json(await evaluationsService.getMyEvaluation(request.user!.id));
