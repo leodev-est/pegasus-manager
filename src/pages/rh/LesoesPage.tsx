@@ -1,5 +1,6 @@
 import { Activity, Loader2, Pencil, Plus, Trash2 } from "lucide-react";
-import { FormEvent, useCallback, useEffect, useState } from "react";
+import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
+import { useAthletes } from "../../hooks/useAthletes";
 import { Button } from "../../components/ui/Button";
 import { ConfirmDialog } from "../../components/ui/ConfirmDialog";
 import { EmptyState } from "../../components/ui/EmptyState";
@@ -94,8 +95,13 @@ export function LesoesPage() {
   const { showToast } = useToast();
 
   const [injuries, setInjuries] = useState<Injury[]>([]);
-  const [athletes, setAthletes] = useState<Athlete[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const { data: allAthletes = [], isLoading: isLoadingAthletes } = useAthletes();
+  const athletes = useMemo(
+    () => allAthletes.filter((a) => a.status === "ativo" || a.status === "teste"),
+    [allAthletes],
+  );
+  const [isLoadingInjuries, setIsLoadingInjuries] = useState(true);
+  const isLoading = isLoadingAthletes || isLoadingInjuries;
   const [filterAthleteId, setFilterAthleteId] = useState("");
 
   useTour("lesoes-rh:v1", isLoading ? [] : TOUR_STEPS);
@@ -110,18 +116,13 @@ export function LesoesPage() {
   const [deleteTarget, setDeleteTarget] = useState<Injury | null>(null);
 
   const load = useCallback(async () => {
-    setIsLoading(true);
+    setIsLoadingInjuries(true);
     try {
-      const [inj, ath] = await Promise.all([
-        injuryService.list(),
-        athleteService.getAll(),
-      ]);
-      setInjuries(inj);
-      setAthletes(ath.filter((a) => a.status === "ativo" || a.status === "teste"));
+      setInjuries(await injuryService.list());
     } catch {
       // silent
     } finally {
-      setIsLoading(false);
+      setIsLoadingInjuries(false);
     }
   }, []);
 

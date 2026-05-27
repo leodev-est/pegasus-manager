@@ -1,5 +1,6 @@
 import { ClipboardList, Loader2, Pencil, Plus, Trash2, X } from "lucide-react";
-import { FormEvent, useCallback, useEffect, useState } from "react";
+import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
+import { useAthletes } from "../../hooks/useAthletes";
 import { Button } from "../../components/ui/Button";
 import { ConfirmDialog } from "../../components/ui/ConfirmDialog";
 import { EmptyState } from "../../components/ui/EmptyState";
@@ -73,10 +74,13 @@ const emptyForm: PlanForm = {
 export function PlanosIndividuaisPage() {
   const { showToast } = useToast();
 
-  const [athletes, setAthletes] = useState<Athlete[]>([]);
+  const { data: allAthletes = [], isLoading: isLoadingAthletes } = useAthletes();
+  const athletes = useMemo(
+    () => allAthletes.filter((a) => a.status === "ativo" || a.status === "teste"),
+    [allAthletes],
+  );
   const [selectedAthleteId, setSelectedAthleteId] = useState("");
   const [plans, setPlans] = useState<TrainingPlan[]>([]);
-  const [isLoadingAthletes, setIsLoadingAthletes] = useState(true);
   const [isLoadingPlans, setIsLoadingPlans] = useState(false);
 
   useTour("planos-individuais:v1", isLoadingAthletes ? [] : TOUR_STEPS);
@@ -86,13 +90,6 @@ export function PlanosIndividuaisPage() {
   const [form, setForm] = useState<PlanForm>(emptyForm);
   const [isSaving, setIsSaving] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<TrainingPlan | null>(null);
-
-  useEffect(() => {
-    athleteService.getAll()
-      .then((all) => setAthletes(all.filter((a) => a.status === "ativo" || a.status === "teste")))
-      .catch(() => {})
-      .finally(() => setIsLoadingAthletes(false));
-  }, []);
 
   const loadPlans = useCallback(async (athleteId: string) => {
     if (!athleteId) { setPlans([]); return; }

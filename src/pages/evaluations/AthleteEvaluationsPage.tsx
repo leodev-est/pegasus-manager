@@ -1,6 +1,7 @@
 import { ChevronDown, ChevronUp, History, Loader2, Save, Shield, Star, TrendingUp, UserRound } from "lucide-react";
 import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 import { useTour } from "../../tours/useTour";
+import { useAthletes } from "../../hooks/useAthletes";
 import { CartesianGrid, Legend, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { Button } from "../../components/ui/Button";
 import { EmptyState } from "../../components/ui/EmptyState";
@@ -11,7 +12,7 @@ import { StatusBadge } from "../../components/ui/StatusBadge";
 import { Textarea } from "../../components/ui/Textarea";
 import { useToast } from "../../components/ui/Toast";
 import { getApiErrorMessage } from "../../services/api";
-import { athleteService, type Athlete } from "../../services/athleteService";
+import { type Athlete } from "../../services/athleteService";
 import {
   evaluationService,
   type AthleteEvaluation,
@@ -108,7 +109,7 @@ function RatingInput({
 
 export function AthleteEvaluationsPage() {
   const { showToast } = useToast();
-  const [athletes, setAthletes] = useState<Athlete[]>([]);
+  const { data: athletes = [], isLoading: isLoadingAthletes } = useAthletes({ status: "ativo" });
   const [summaries, setSummaries] = useState<AthleteEvaluationSummary[]>([]);
   const [selectedAthleteId, setSelectedAthleteId] = useState("");
   const [evaluation, setEvaluation] = useState<AthleteEvaluation>(emptyEvaluation);
@@ -121,7 +122,8 @@ export function AthleteEvaluationsPage() {
   });
   const [history, setHistory] = useState<EvaluationHistoryEntry[]>([]);
   const [expandedHistoryId, setExpandedHistoryId] = useState<string | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoadingSummaries, setIsLoadingSummaries] = useState(true);
+  const isLoading = isLoadingAthletes || isLoadingSummaries;
   const [isLoadingEvaluation, setIsLoadingEvaluation] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
 
@@ -132,20 +134,14 @@ export function AthleteEvaluationsPage() {
     [athletes, selectedAthleteId],
   );
 
-  const loadAthletes = useCallback(async () => {
-    setIsLoading(true);
-
+  const loadSummaries = useCallback(async () => {
+    setIsLoadingSummaries(true);
     try {
-      const [athleteData, summaryData] = await Promise.all([
-        athleteService.getAll({ status: "ativo" }),
-        evaluationService.getAllSummaries(),
-      ]);
-      setAthletes(athleteData);
-      setSummaries(summaryData);
+      setSummaries(await evaluationService.getAllSummaries());
     } catch (error) {
       showToast(getApiErrorMessage(error), "error");
     } finally {
-      setIsLoading(false);
+      setIsLoadingSummaries(false);
     }
   }, [showToast]);
 
@@ -188,8 +184,8 @@ export function AthleteEvaluationsPage() {
   );
 
   useEffect(() => {
-    loadAthletes();
-  }, [loadAthletes]);
+    loadSummaries();
+  }, [loadSummaries]);
 
   useEffect(() => {
     loadEvaluation(selectedAthleteId);

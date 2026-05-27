@@ -1,5 +1,6 @@
 import { AlertTriangle, Edit2, Package, Plus, Shirt, Trash2, UserCheck } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { useAthletes } from "../../hooks/useAthletes";
 import { useAuth } from "../../auth/AuthContext";
 import { useTour } from "../../tours/useTour";
 import { Button } from "../../components/ui/Button";
@@ -8,7 +9,7 @@ import { Modal } from "../../components/ui/Modal";
 import { PageHeader } from "../../components/ui/PageHeader";
 import { useToast } from "../../components/ui/Toast";
 import { getApiErrorMessage } from "../../services/api";
-import { athleteService, type Athlete, type AthleteGender } from "../../services/athleteService";
+import { type Athlete, type AthleteGender } from "../../services/athleteService";
 import { jerseyService, type JerseyAssignment } from "../../services/jerseyService";
 import { uniformsService, type DeliveryPayload, type UniformDelivery, type UniformItem } from "../../services/uniformsService";
 
@@ -209,12 +210,13 @@ export function UniformsPage() {
   const { showToast } = useToast();
   const canEdit = hasPermission(["gestao", "admin"]);
 
+  const { data: athletes = [], isLoading: isLoadingAthletes } = useAthletes();
   const [tab, setTab] = useState<Tab>("masculino");
-  const [athletes, setAthletes] = useState<Athlete[]>([]);
   const [assignments, setAssignments] = useState<{ masculino: JerseyAssignment[]; feminino: JerseyAssignment[] }>({ masculino: [], feminino: [] });
   const [items, setItems] = useState<UniformItem[]>([]);
   const [deliveries, setDeliveries] = useState<UniformDelivery[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoadingData, setIsLoadingData] = useState(true);
+  const isLoading = isLoadingAthletes || isLoadingData;
   const [isSaving, setIsSaving] = useState(false);
 
   const [itemModal, setItemModal] = useState(false);
@@ -242,15 +244,10 @@ export function UniformsPage() {
   }, []);
 
   useEffect(() => {
-    setIsLoading(true);
-    Promise.all([
-      athleteService.getAll().then(setAthletes),
-      loadJerseys(),
-      loadItems(),
-      loadDeliveries(),
-    ])
+    setIsLoadingData(true);
+    Promise.all([loadJerseys(), loadItems(), loadDeliveries()])
       .catch(() => showToast("Erro ao carregar dados", "error"))
-      .finally(() => setIsLoading(false));
+      .finally(() => setIsLoadingData(false));
   }, [loadJerseys, loadItems, loadDeliveries, showToast]);
 
   useTour("uniformes:v1", isLoading ? [] : TOUR_STEPS);

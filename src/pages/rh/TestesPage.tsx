@@ -1,6 +1,7 @@
 import { CheckCircle, ClipboardList, Loader2, MessageSquare, XCircle } from "lucide-react";
-import { useCallback, useEffect, useState } from "react";
+import { useState } from "react";
 import { useTour } from "../../tours/useTour";
+import { useAthletes, useInvalidateAthletes } from "../../hooks/useAthletes";
 
 const TOUR_STEPS = [
   {
@@ -35,8 +36,8 @@ function formatDate(date: string) {
 
 export function TestesPage() {
   const { showToast } = useToast();
-  const [athletes, setAthletes] = useState<Athlete[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const { data: athletes = [], isLoading } = useAthletes({ status: "teste" });
+  const invalidateAthletes = useInvalidateAthletes();
 
   useTour("testes:v1", isLoading ? [] : TOUR_STEPS);
   const [isSaving, setIsSaving] = useState(false);
@@ -45,22 +46,6 @@ export function TestesPage() {
   const [rejectTarget, setRejectTarget] = useState<Athlete | null>(null);
   const [notesTarget, setNotesTarget] = useState<Athlete | null>(null);
   const [notes, setNotes] = useState("");
-
-  const load = useCallback(async () => {
-    setIsLoading(true);
-    try {
-      const data = await athleteService.getAll({ status: "teste" });
-      setAthletes(data);
-    } catch (error) {
-      showToast(getApiErrorMessage(error), "error");
-    } finally {
-      setIsLoading(false);
-    }
-  }, [showToast]);
-
-  useEffect(() => {
-    load();
-  }, [load]);
 
   function openNotes(athlete: Athlete) {
     setNotesTarget(athlete);
@@ -79,7 +64,7 @@ export function TestesPage() {
         "success",
       );
       setApproveTarget(null);
-      await load();
+      invalidateAthletes();
     } catch (error) {
       showToast(getApiErrorMessage(error), "error");
     } finally {
@@ -94,7 +79,7 @@ export function TestesPage() {
       await athleteService.update(rejectTarget.id, { status: "inativo" });
       showToast("Teste recusado. Atleta movido para inativos.", "success");
       setRejectTarget(null);
-      await load();
+      invalidateAthletes();
     } catch (error) {
       showToast(getApiErrorMessage(error), "error");
     } finally {
@@ -109,7 +94,7 @@ export function TestesPage() {
       await athleteService.update(notesTarget.id, { notes });
       showToast("Observação salva.", "success");
       setNotesTarget(null);
-      await load();
+      invalidateAthletes();
     } catch (error) {
       showToast(getApiErrorMessage(error), "error");
     } finally {

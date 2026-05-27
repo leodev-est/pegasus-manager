@@ -1,11 +1,13 @@
 import { Bell, LogOut, Menu, Moon, Search, ShieldCheck, Sun } from "lucide-react";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "../../auth/AuthContext";
 import { useTheme } from "../../contexts/ThemeContext";
 import logoIcon from "../../assets/logo/logo-icon.png";
 import { api } from "../../services/api";
-import { notificationService, type Notification } from "../../services/notificationService";
+import { type Notification } from "../../services/notificationService";
+import { useMarkAllAsRead, useMarkAsRead, useNotifications, NOTIFICATIONS_KEY } from "../../hooks/useNotifications";
 import { Button } from "../ui/Button";
 import { NotificationsButton } from "../pwa/NotificationsButton";
 
@@ -124,43 +126,23 @@ export function Topbar({ onMenuClick }: TopbarProps) {
   const { logout, user } = useAuth();
   const { theme, toggleTheme } = useTheme();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const userRole = getHighestRole(user?.roleLabels, user?.roles);
   const dropdownRef = useRef<HTMLDivElement | null>(null);
   const searchRef = useRef<HTMLDivElement | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
-  const [notifications, setNotifications] = useState<Notification[]>([]);
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
-  const [isLoadingNotifications, setIsLoadingNotifications] = useState(false);
+
+  const { data: notifications = [], isFetching: isLoadingNotifications } = useNotifications();
+  const { mutate: markAsRead } = useMarkAsRead();
+  const { mutate: markAllAsRead } = useMarkAllAsRead();
+
   const unreadCount = useMemo(
-    () => notifications.filter((notification) => !notification.read).length,
+    () => notifications.filter((n) => !n.read).length,
     [notifications],
   );
-
-  const loadNotifications = useCallback(async () => {
-    if (!user) return;
-    setIsLoadingNotifications(true);
-
-    try {
-      setNotifications(await notificationService.getNotifications());
-    } catch {
-      setNotifications([]);
-    } finally {
-      setIsLoadingNotifications(false);
-    }
-  }, [user]);
-
-  useEffect(() => {
-    loadNotifications();
-  }, [loadNotifications]);
-
-  // Poll for new notifications every 60 seconds (push notifications handle real-time delivery)
-  useEffect(() => {
-    if (!user) return;
-    const interval = setInterval(loadNotifications, 60_000);
-    return () => clearInterval(interval);
-  }, [user, loadNotifications]);
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
@@ -195,17 +177,22 @@ export function Topbar({ onMenuClick }: TopbarProps) {
     navigate("/login", { replace: true });
   }
 
-  async function handleNotificationClick(notification: Notification) {
-    if (!notification.read) {
-      const updated = await notificationService.markAsRead(notification.id);
-      setNotifications((current) =>
-        current.map((item) => (item.id === updated.id ? updated : item)),
-      );
+  function handleOpenNotifications() {
+    const willOpen = !isNotificationsOpen;
+    setIsNotificationsOpen(willOpen);
+    if (willOpen) {
+      queryClient.invalidateQueries({ queryKey: [NOTIFICATIONS_KEY] });
     }
   }
 
-  async function handleMarkAllAsRead() {
-    setNotifications(await notificationService.markAllAsRead());
+  function handleNotificationClick(notification: Notification) {
+    if (!notification.read) {
+      markAsRead(notification.id);
+    }
+  }
+
+  function handleMarkAllAsRead() {
+    markAllAsRead();
   }
 
   return (
@@ -292,10 +279,7 @@ export function Topbar({ onMenuClick }: TopbarProps) {
             <button
               aria-label="Notificações"
               className="focus-ring relative grid h-10 w-10 place-items-center rounded-full border border-blue-100 bg-white text-pegasus-primary shadow-sm dark:border-slate-700 dark:bg-slate-800 dark:text-blue-400"
-              onClick={() => {
-                setIsNotificationsOpen((current) => !current);
-                loadNotifications();
-              }}
+              onClick={handleOpenNotifications}
               type="button"
             >
               <Bell size={18} />

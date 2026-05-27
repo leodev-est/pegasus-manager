@@ -26,7 +26,8 @@ import { StatCard } from "../../components/ui/StatCard";
 import { useToast } from "../../components/ui/Toast";
 import { athleteApplicationService, type AthleteApplication } from "../../services/athleteApplicationService";
 import { muralService, type MuralPost } from "../../services/muralService";
-import { athleteService, type Athlete, type BirthdaysResult } from "../../services/athleteService";
+import { athleteService, type BirthdaysResult } from "../../services/athleteService";
+import { useAthletes } from "../../hooks/useAthletes";
 import { getApiErrorMessage } from "../../services/api";
 import { attendanceService, type MonthlyAttendanceStat, type TotalFrequency } from "../../services/attendanceService";
 import { evaluationService, type AthleteEvaluation } from "../../services/evaluationService";
@@ -39,7 +40,6 @@ import { operationalService, type SchoolContact } from "../../services/operation
 import { trainingService, type Training } from "../../services/trainingService";
 
 type DashboardData = {
-  athletes: Athlete[];
   applications: AthleteApplication[];
   trainings: Training[];
   financeSummary: FinanceSummary | null;
@@ -57,7 +57,6 @@ type DashboardStat = {
 };
 
 const emptyDashboardData: DashboardData = {
-  athletes: [],
   applications: [],
   trainings: [],
   financeSummary: null,
@@ -161,6 +160,7 @@ export function DashboardPage() {
   const [muralPosts, setMuralPosts] = useState<MuralPost[]>([]);
 
   const canSeeRh = hasPermission(["rh"]);
+  const { data: athletes = [] } = useAthletes(undefined, { enabled: canSeeRh });
   const canSeeFinance = hasPermission(["financeiro"]);
   const canSeeManagement = hasPermission(["gestao"]);
   const canSeeMarketing = hasPermission(["marketing"]);
@@ -188,7 +188,6 @@ export function DashboardPage() {
       }
 
       const [
-        athletesRes,
         applicationsRes,
         trainingsRes,
         financeSummaryRes,
@@ -198,7 +197,6 @@ export function DashboardPage() {
         gamesThisMonthRes,
         gamesNextMonthRes,
       ] = await Promise.allSettled([
-        canSeeRh ? athleteService.getAll() : Promise.resolve([]),
         canSeeRh ? athleteApplicationService.getAll() : Promise.resolve([]),
         canSeeTrainings ? trainingService.getAll() : Promise.resolve([]),
         canSeeFinance ? financeService.getSummary() : Promise.resolve(null),
@@ -218,7 +216,6 @@ export function DashboardPage() {
         .slice(0, 5);
 
       setData({
-        athletes: ok(athletesRes, []),
         applications: ok(applicationsRes, []),
         trainings: ok(trainingsRes, []),
         financeSummary: ok(financeSummaryRes, null),
@@ -267,8 +264,8 @@ export function DashboardPage() {
   const upcomingTrainings = useMemo(() => getUpcomingTrainings(data.trainings), [data.trainings]);
   const nextTraining = upcomingTrainings[0];
   const trainingsThisWeek = data.trainings.filter((training) => isThisWeek(training.date)).length;
-  const activeAthletes = countByStatus(data.athletes, "ativo");
-  const testeAthletes = countByStatus(data.athletes, "teste");
+  const activeAthletes = countByStatus(athletes, "ativo");
+  const testeAthletes = countByStatus(athletes, "teste");
   const pendingApplications = countByStatus(data.applications, "pendente");
   const activeTasks = [
     ...data.managementTasks.filter((task) => task.status !== "done"),
@@ -813,9 +810,9 @@ export function DashboardPage() {
                 <div className="mt-6 grid gap-4">
                   {[
                     ["Ativos", activeAthletes],
-                    ["Teste", countByStatus(data.athletes, "teste")],
-                    ["Inativos", countByStatus(data.athletes, "inativo")],
-                    ["Isentos", data.athletes.filter((athlete) => athlete.monthlyPaymentStatus === "isento").length],
+                    ["Teste", countByStatus(athletes, "teste")],
+                    ["Inativos", countByStatus(athletes, "inativo")],
+                    ["Isentos", athletes.filter((athlete) => athlete.monthlyPaymentStatus === "isento").length],
                   ].map(([label, value]) => (
                     <div
                       key={label}

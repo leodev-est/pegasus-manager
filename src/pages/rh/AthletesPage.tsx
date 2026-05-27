@@ -1,5 +1,6 @@
 ﻿import { ClockArrowUp, Download, FileDown, Loader2, Plus, UserCheck } from "lucide-react";
 import { FormEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useAthletes, useInvalidateAthletes } from "../../hooks/useAthletes";
 import { useAuth } from "../../auth/AuthContext";
 import { useTour } from "../../tours/useTour";
 import { ActionButtons } from "../../components/ui/ActionButtons";
@@ -145,10 +146,9 @@ export function AthletesPage() {
   const canCreate = hasPermission(["athletes:create"]);
   const canUpdate = hasPermission(["athletes:update"]);
   const canDelete = hasPermission(["athletes:delete"]);
-  const [athletes, setAthletes] = useState<Athlete[]>([]);
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState("ativo");
-  const [isLoading, setIsLoading] = useState(true);
+  const invalidateAthletes = useInvalidateAthletes();
   const [isSaving, setIsSaving] = useState(false);
   const [isImporting, setIsImporting] = useState(false);
   const [importSummary, setImportSummary] = useState<AthleteImportSummary | null>(null);
@@ -164,13 +164,15 @@ export function AthletesPage() {
   const [genderSuggestion, setGenderSuggestion] = useState<{ gender: AthleteGender; probability: number } | null>(null);
   const [genderFilter, setGenderFilter] = useState<"todos" | "masculino" | "feminino">("todos");
 
-  useTour("atletas-rh:v1", isLoading ? [] : TOUR_STEPS);
-  const genderizeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-
   const filters = useMemo(
     () => ({ search, status: status as AthleteStatus | "todos" }),
     [search, status],
   );
+
+  const { data: athletes = [], isLoading } = useAthletes(filters);
+
+  useTour("atletas-rh:v1", isLoading ? [] : TOUR_STEPS);
+  const genderizeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const displayedAthletes = useMemo(() => {
     return athletes.filter((a) => {
@@ -181,22 +183,6 @@ export function AthletesPage() {
       return true;
     });
   }, [athletes, status, genderFilter]);
-
-  const loadAthletes = useCallback(async () => {
-    setIsLoading(true);
-    try {
-      const data = await athleteService.getAll(filters);
-      setAthletes(data);
-    } catch (error) {
-      showToast(getApiErrorMessage(error), "error");
-    } finally {
-      setIsLoading(false);
-    }
-  }, [filters, showToast]);
-
-  useEffect(() => {
-    loadAthletes();
-  }, [loadAthletes]);
 
   useEffect(() => {
     attendanceService.getAthletesSummary().then(setFrequencyMap).catch(() => {});
@@ -279,7 +265,7 @@ export function AthletesPage() {
       }
 
       setIsModalOpen(false);
-      await loadAthletes();
+      invalidateAthletes();
     } catch (error) {
       showToast(getApiErrorMessage(error), "error");
     } finally {
@@ -296,7 +282,7 @@ export function AthletesPage() {
       await athleteService.remove(deleteTarget.id);
       showToast("Atleta inativado com sucesso.", "success");
       setDeleteTarget(null);
-      await loadAthletes();
+      invalidateAthletes();
     } catch (error) {
       showToast(getApiErrorMessage(error), "error");
     } finally {
@@ -311,7 +297,7 @@ export function AthletesPage() {
       await athleteService.update(reactivateTarget.id, { status: "ativo" });
       showToast("Atleta reativado com sucesso.", "success");
       setReactivateTarget(null);
-      await loadAthletes();
+      invalidateAthletes();
     } catch (error) {
       showToast(getApiErrorMessage(error), "error");
     } finally {
@@ -327,7 +313,7 @@ export function AthletesPage() {
       const summary = await athleteService.importFromGoogleSheets();
       setImportSummary(summary);
       showToast("Importação concluída.", "success");
-      await loadAthletes();
+      invalidateAthletes();
     } catch (error) {
       showToast(getApiErrorMessage(error), "error");
     } finally {

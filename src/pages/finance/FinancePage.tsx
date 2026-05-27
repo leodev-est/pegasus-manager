@@ -1,5 +1,6 @@
 ﻿import { Banknote, BarChart2, Clipboard, FileDown, FileText, Loader2, Plus, WalletCards } from "lucide-react";
 import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
+import { useAthletes } from "../../hooks/useAthletes";
 import { useTour } from "../../tours/useTour";
 import { Bar, BarChart, CartesianGrid, Legend, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { useAuth } from "../../auth/AuthContext";
@@ -18,7 +19,7 @@ import { Textarea } from "../../components/ui/Textarea";
 import { useToast } from "../../components/ui/Toast";
 import { getApiErrorMessage } from "../../services/api";
 import { exportToCSV } from "../../utils/exportUtils";
-import { athleteService, type Athlete } from "../../services/athleteService";
+import { type Athlete } from "../../services/athleteService";
 import { reportsService, type MonthlyReport } from "../../services/reportsService";
 import {
   financeService,
@@ -225,9 +226,9 @@ export function FinancePage() {
     mensalidadesPaidCount: 0,
     mensalidadesTotalCount: 0,
   });
+  const { data: athletes = [] } = useAthletes();
   const [payments, setPayments] = useState<Payment[]>([]);
   const [movements, setMovements] = useState<CashMovement[]>([]);
-  const [athletes, setAthletes] = useState<Athlete[]>([]);
   const [type, setType] = useState("todos");
   const [status, setStatus] = useState("todos");
   const [month, setMonth] = useState(currentMonth);
@@ -258,7 +259,7 @@ export function FinancePage() {
     setIsLoading(true);
 
     try {
-      const [summaryData, paymentsData, movementsData, athletesData] = await Promise.all([
+      const [summaryData, paymentsData, movementsData] = await Promise.all([
         financeService.getSummary(month),
         financeService.getPayments({
           month,
@@ -266,13 +267,11 @@ export function FinancePage() {
           type: type as PaymentType | "todos",
         }),
         financeService.getMovements(),
-        athleteService.getAll(),
       ]);
 
       setSummary(summaryData);
       setPayments(paymentsData);
       setMovements(movementsData);
-      setAthletes(athletesData);
     } catch (error) {
       showToast(getApiErrorMessage(error), "error");
     } finally {

@@ -1,10 +1,14 @@
 ﻿import { Prisma } from "@prisma/client";
 import { randomUUID } from "crypto";
 import { prisma } from "../../config/prisma";
+import { cache } from "../../config/cache";
 import { AppError } from "../../middlewares/error.middleware";
 import { syncActiveAthleteUser } from "./athlete-user-sync";
 import { whatsAppService } from "../whatsapp/whatsapp.service";
 import { notificationsService } from "../notifications/notifications.service";
+
+const CACHE_PREFIX = "athletes:";
+const CACHE_TTL = 60_000;
 
 const allowedStatuses = ["ativo", "teste", "inativo"] as const;
 const allowedPaymentStatuses = ["pago", "pendente", "atrasado", "isento"] as const;
@@ -137,12 +141,23 @@ function buildData(payload: AthletePayload, requireName: boolean) {
   return data;
 }
 
+function invalidateAthleteCache() {
+  cache.delPrefix(CACHE_PREFIX);
+}
+
 export const athletesService = {
   async findAll(filters: AthleteFilters) {
-    return prisma.athlete.findMany({
+    const key = CACHE_PREFIX + JSON.stringify(filters);
+    const cached = cache.get<Awaited<ReturnType<typeof prisma.athlete.findMany>>>(key);
+    if (cached) return cached;
+
+    const result = await prisma.athlete.findMany({
       where: buildWhere(filters),
       orderBy: { name: "asc" },
     });
+
+    cache.set(key, result, CACHE_TTL);
+    return result;
   },
 
   async findBirthdays() {
@@ -205,6 +220,7 @@ export const athletesService = {
       await syncActiveAthleteUser(athlete);
     }
 
+    invalidateAthleteCache();
     return prisma.athlete.findUniqueOrThrow({
       where: { id: athlete.id },
       include: includeUser,
@@ -254,6 +270,7 @@ export const athletesService = {
           .catch(() => {});
       }
     }
+    invalidateAthleteCache();
     return prisma.athlete.findUniqueOrThrow({
       where: { id: athlete.id },
       include: includeUser,
@@ -263,12 +280,12 @@ export const athletesService = {
   async softDelete(id: string) {
     await this.findById(id);
 
-    return prisma.athlete.update({
+    const result = await prisma.athlete.update({
       where: { id },
-      data: {
-        status: "inativo",
-      },
+      data: { status: "inativo" },
     });
+    invalidateAthleteCache();
+    return result;
   },
 
   async updatePaymentStatus(id: string, status: string, changedBy: string, notes?: string) {
@@ -349,11 +366,13 @@ export const athletesService = {
       },
     });
 
-    return prisma.athlete.update({
+    const updated = await prisma.athlete.update({
       where: { id },
       data: { monthlyPaymentStatus: status as MonthlyPaymentStatus },
       include: includeUser,
     });
+    invalidateAthleteCache();
+    return updated;
   },
 
   async getPaymentStatusHistory(id: string) {

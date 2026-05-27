@@ -661,70 +661,52 @@ export const financeService = {
   },
 
   async getChartData(months = 6) {
-    const result: Array<{
-      month: string;
-      expected: number;
-      paid: number;
-      pending: number;
-      overdue: number;
-      overdueCount: number;
-    }> = [];
-
     const now = new Date();
+    const monthStrings: string[] = [];
     for (let i = months - 1; i >= 0; i--) {
       const d = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - i, 1));
-      const monthStr = d.toISOString().slice(0, 7);
-      const range = parseMonth(monthStr)!;
-
-      type AggRow = { value: Prisma.Decimal };
-      type CountRow = { count: bigint };
-
-      const [paid, pending, overdue, overdueCount, totalAthletes] = await Promise.all([
-        prisma.$queryRaw<AggRow[]>`
-          SELECT COALESCE(SUM(amount), 0) AS value FROM "Payment"
-          WHERE LOWER(category) = 'mensalidade' AND status = 'pago'
-            AND COALESCE("paidAt","dueDate","createdAt") >= ${range.start}
-            AND COALESCE("paidAt","dueDate","createdAt") < ${range.end}
-        `,
-        prisma.$queryRaw<AggRow[]>`
-          SELECT COALESCE(SUM(amount), 0) AS value FROM "Payment"
-          WHERE LOWER(category) = 'mensalidade' AND status = 'pendente'
-            AND COALESCE("dueDate","createdAt") >= ${range.start}
-            AND COALESCE("dueDate","createdAt") < ${range.end}
-        `,
-        prisma.$queryRaw<AggRow[]>`
-          SELECT COALESCE(SUM(amount), 0) AS value FROM "Payment"
-          WHERE LOWER(category) = 'mensalidade' AND status = 'atrasado'
-            AND COALESCE("dueDate","createdAt") >= ${range.start}
-            AND COALESCE("dueDate","createdAt") < ${range.end}
-        `,
-        prisma.$queryRaw<CountRow[]>`
-          SELECT COUNT(DISTINCT "athleteId") AS count FROM "Payment"
-          WHERE LOWER(category) = 'mensalidade' AND status = 'atrasado'
-            AND COALESCE("dueDate","createdAt") >= ${range.start}
-            AND COALESCE("dueDate","createdAt") < ${range.end}
-        `,
-        prisma.$queryRaw<CountRow[]>`
-          SELECT COUNT(*) AS count FROM "Athlete" WHERE status = 'ativo' AND "monthlyPaymentStatus" != 'isento'
-        `,
-      ]);
-
-      const paidVal = Number(paid[0]?.value ?? 0);
-      const pendingVal = Number(pending[0]?.value ?? 0);
-      const overdueVal = Number(overdue[0]?.value ?? 0);
-      const expected = paidVal + pendingVal + overdueVal;
-
-      result.push({
-        month: monthStr,
-        expected,
-        paid: paidVal,
-        pending: pendingVal,
-        overdue: overdueVal,
-        overdueCount: Number(overdueCount[0]?.count ?? 0),
-      });
+      monthStrings.push(d.toISOString().slice(0, 7));
     }
 
-    return result;
+    type AggRow = {
+      referenceMonth: string;
+      paid: Prisma.Decimal;
+      pending: Prisma.Decimal;
+      overdue: Prisma.Decimal;
+      overdueCount: bigint;
+    };
+
+    const monthParams = Prisma.join(monthStrings.map((m) => Prisma.sql`${m}`));
+
+    const rows = await prisma.$queryRaw<AggRow[]>`
+      SELECT
+        "referenceMonth",
+        COALESCE(SUM(CASE WHEN status = 'pago'     THEN amount ELSE 0 END), 0) AS paid,
+        COALESCE(SUM(CASE WHEN status = 'pendente' THEN amount ELSE 0 END), 0) AS pending,
+        COALESCE(SUM(CASE WHEN status = 'atrasado' THEN amount ELSE 0 END), 0) AS overdue,
+        COUNT(DISTINCT CASE WHEN status = 'atrasado' THEN "athleteId" END)      AS "overdueCount"
+      FROM "Payment"
+      WHERE LOWER(category) = 'mensalidade'
+        AND "referenceMonth" IN (${monthParams})
+      GROUP BY "referenceMonth"
+    `;
+
+    const byMonth = new Map(rows.map((r) => [r.referenceMonth, r]));
+
+    return monthStrings.map((monthStr) => {
+      const row = byMonth.get(monthStr);
+      const paidVal    = Number(row?.paid    ?? 0);
+      const pendingVal = Number(row?.pending ?? 0);
+      const overdueVal = Number(row?.overdue ?? 0);
+      return {
+        month:        monthStr,
+        expected:     paidVal + pendingVal + overdueVal,
+        paid:         paidVal,
+        pending:      pendingVal,
+        overdue:      overdueVal,
+        overdueCount: Number(row?.overdueCount ?? 0),
+      };
+    });
   },
 };
 

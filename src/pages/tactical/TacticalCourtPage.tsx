@@ -14,6 +14,7 @@ import {
 import { CSS } from "@dnd-kit/utilities";
 import { Check, Loader2, RotateCcw, Save, Trash2, Volleyball } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { useAthletes } from "../../hooks/useAthletes";
 import { useAuth } from "../../auth/AuthContext";
 import { useTour } from "../../tours/useTour";
 import { Button } from "../../components/ui/Button";
@@ -23,7 +24,7 @@ import { PageHeader } from "../../components/ui/PageHeader";
 import { Select } from "../../components/ui/Select";
 import { useToast } from "../../components/ui/Toast";
 import { getApiErrorMessage } from "../../services/api";
-import { athleteService, type Athlete } from "../../services/athleteService";
+import { type Athlete } from "../../services/athleteService";
 import {
   formationService,
   type Formation,
@@ -238,13 +239,14 @@ export function TacticalCourtPage() {
   const canManageFormation = canCreate || canEdit;
   // All authenticated users can view the court (athletes, gestao, etc.)
   const canView = Boolean(user);
-  const [athletes, setAthletes] = useState<Athlete[]>([]);
+  const { data: athletes = [], isLoading: isLoadingAthletes } = useAthletes({ status: "ativo" });
   const [formations, setFormations] = useState<Formation[]>([]);
   const [selectedFormationId, setSelectedFormationId] = useState("base");
   const [formationName, setFormationName] = useState("Formação base");
   const [positions, setPositions] = useState<FormationPositions>(emptyPositions);
   const [activeAthleteId, setActiveAthleteId] = useState<string | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoadingFormations, setIsLoadingFormations] = useState(true);
+  const isLoading = isLoadingAthletes || isLoadingFormations;
   const [isSaving, setIsSaving] = useState(false);
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
@@ -260,27 +262,26 @@ export function TacticalCourtPage() {
   );
   const activeAthlete = activeAthleteId ? athletesById.get(activeAthleteId) ?? null : null;
 
-  const loadData = useCallback(async () => {
-    setIsLoading(true);
+  useEffect(() => {
+    if (!isLoadingAthletes) {
+      setPositions(buildBaseFormation(athletes));
+    }
+  }, [isLoadingAthletes, athletes]);
 
+  const loadFormations = useCallback(async () => {
+    setIsLoadingFormations(true);
     try {
-      const [athletesData, formationsData] = await Promise.all([
-        athleteService.getAll({ status: "ativo" }),
-        formationService.getAll(),
-      ]);
-      setAthletes(athletesData);
-      setFormations(formationsData);
-      setPositions(buildBaseFormation(athletesData));
+      setFormations(await formationService.getAll());
     } catch (error) {
       showToast(getApiErrorMessage(error), "error");
     } finally {
-      setIsLoading(false);
+      setIsLoadingFormations(false);
     }
   }, [showToast]);
 
   useEffect(() => {
-    loadData();
-  }, [loadData]);
+    loadFormations();
+  }, [loadFormations]);
 
   useTour("quadra-tatica:v1", isLoading ? [] : TOUR_STEPS);
 
