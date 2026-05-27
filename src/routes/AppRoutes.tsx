@@ -39,6 +39,13 @@ const SugestoesPage = lazy(() => import("../pages/athlete/SugestoesPage").then((
 const OuvidoriaPage = lazy(() => import("../pages/rh/OuvidoriaPage").then((m) => ({ default: m.OuvidoriaPage })));
 const AvaliarTreinoPage = lazy(() => import("../pages/athlete/AvaliarTreinoPage").then((m) => ({ default: m.AvaliarTreinoPage })));
 const RankingFrequenciaPage = lazy(() => import("../pages/attendance/RankingFrequenciaPage").then((m) => ({ default: m.RankingFrequenciaPage })));
+const MuralPage = lazy(() => import("../pages/comunicados/MuralPage").then((m) => ({ default: m.MuralPage })));
+const MinhasMensalidadesPage = lazy(() => import("../pages/athlete/MinhasMensalidadesPage").then((m) => ({ default: m.MinhasMensalidadesPage })));
+const MinhasAvaliacoesPage = lazy(() => import("../pages/athlete/MinhasAvaliacoesPage").then((m) => ({ default: m.MinhasAvaliacoesPage })));
+const MinhasLesoesPage = lazy(() => import("../pages/athlete/MinhasLesoesPage").then((m) => ({ default: m.MinhasLesoesPage })));
+const MeuPlanoPage = lazy(() => import("../pages/athlete/MeuPlanoPage").then((m) => ({ default: m.MeuPlanoPage })));
+const LesoesPage = lazy(() => import("../pages/rh/LesoesPage").then((m) => ({ default: m.LesoesPage })));
+const PlanosIndividuaisPage = lazy(() => import("../pages/trainings/PlanosIndividuaisPage").then((m) => ({ default: m.PlanosIndividuaisPage })));
 
 export function AppRoutes() {
   return (
@@ -288,6 +295,62 @@ export function AppRoutes() {
             element={
               <ProtectedRoute permissions={["admin"]}>
                 <ConfiguracoesPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="comunicados"
+            element={
+              <ProtectedRoute permissions={["dashboard"]}>
+                <MuralPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="atleta/mensalidades"
+            element={
+              <ProtectedRoute permissions={["atleta"]}>
+                <MinhasMensalidadesPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="atleta/avaliacoes"
+            element={
+              <ProtectedRoute permissions={["atleta"]}>
+                <MinhasAvaliacoesPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="atleta/saude"
+            element={
+              <ProtectedRoute permissions={["atleta"]}>
+                <MinhasLesoesPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="atleta/plano"
+            element={
+              <ProtectedRoute permissions={["atleta"]}>
+                <MeuPlanoPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="rh/lesoes"
+            element={
+              <ProtectedRoute permissions={["rh"]}>
+                <LesoesPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="treinos/planos"
+            element={
+              <ProtectedRoute permissions={["treinos"]}>
+                <PlanosIndividuaisPage />
               </ProtectedRoute>
             }
           />

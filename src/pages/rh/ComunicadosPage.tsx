@@ -8,6 +8,7 @@ import {
   FileText,
   Loader2,
   MessageCircle,
+  MessageSquare,
   Pencil,
   Plus,
   RefreshCw,
@@ -19,6 +20,7 @@ import {
 } from "lucide-react";
 import { FormEvent, useCallback, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
+import { useAuth } from "../../auth/AuthContext";
 import { Button } from "../../components/ui/Button";
 import { ConfirmDialog } from "../../components/ui/ConfirmDialog";
 import { EmptyState } from "../../components/ui/EmptyState";
@@ -35,14 +37,16 @@ import {
   type AnnouncementTemplate,
   type ScheduledAnnouncement,
 } from "../../services/announcementsService";
+import { muralService, type MuralPost } from "../../services/muralService";
 import { whatsappService, type WhatsAppGroup } from "../../services/whatsappService";
 
-type ComunicadosTab = "enviar" | "templates" | "agendados";
+type ComunicadosTab = "enviar" | "templates" | "agendados" | "mural";
 
 const tabs: Array<{ label: string; value: ComunicadosTab }> = [
   { label: "Enviar", value: "enviar" },
   { label: "Templates", value: "templates" },
   { label: "Agendados", value: "agendados" },
+  { label: "Mural", value: "mural" },
 ];
 
 function scheduledStatusTone(status: string): StatusTone {
@@ -75,6 +79,8 @@ function formatDateTime(value: string) {
 
 export function ComunicadosPage() {
   const { showToast } = useToast();
+  const { hasPermission } = useAuth();
+  const canManageMural = hasPermission(["management:create"]);
   const [activeTab, setActiveTab] = useState<ComunicadosTab>("enviar");
 
   // ── Enviar state ────────────────────────────────────────────────────────────
@@ -94,6 +100,14 @@ export function ComunicadosPage() {
   const [templateForm, setTemplateForm] = useState({ title: "", body: "" });
   const [isSavingTemplate, setIsSavingTemplate] = useState(false);
   const [deleteTemplateTarget, setDeleteTemplateTarget] = useState<AnnouncementTemplate | null>(null);
+
+  // ── Mural state ─────────────────────────────────────────────────────────────
+  const [muralPosts, setMuralPosts] = useState<MuralPost[]>([]);
+  const [isLoadingMural, setIsLoadingMural] = useState(false);
+  const [muralModal, setMuralModal] = useState(false);
+  const [isSavingMural, setIsSavingMural] = useState(false);
+  const [muralForm, setMuralForm] = useState({ title: "", body: "", category: "info" });
+  const [deleteMuralTarget, setDeleteMuralTarget] = useState<MuralPost | null>(null);
 
   // ── Agendados state ─────────────────────────────────────────────────────────
   const [scheduled, setScheduled] = useState<ScheduledAnnouncement[]>([]);
@@ -139,12 +153,20 @@ export function ComunicadosPage() {
     finally { setIsLoadingScheduled(false); }
   }, []);
 
+  const loadMural = useCallback(async () => {
+    setIsLoadingMural(true);
+    try { setMuralPosts(await muralService.list()); }
+    catch { /* silent */ }
+    finally { setIsLoadingMural(false); }
+  }, []);
+
   useEffect(() => { loadGroups(); }, [loadGroups]);
 
   useEffect(() => {
     if (activeTab === "templates") loadTemplates();
     if (activeTab === "agendados") { loadTemplates(); loadScheduled(); }
-  }, [activeTab, loadTemplates, loadScheduled]);
+    if (activeTab === "mural") loadMural();
+  }, [activeTab, loadTemplates, loadScheduled, loadMural]);
 
   // ── Enviar handlers ─────────────────────────────────────────────────────────
   function toggleGroup(id: string) {
@@ -284,6 +306,10 @@ export function ComunicadosPage() {
           ) : activeTab === "agendados" ? (
             <Button onClick={openCreateScheduled}>
               <Plus size={17} />Agendar comunicado
+            </Button>
+          ) : activeTab === "mural" && canManageMural ? (
+            <Button onClick={() => { setMuralForm({ title: "", body: "", category: "info" }); setMuralModal(true); }}>
+              <Plus size={17} />Publicar aviso
             </Button>
           ) : null
         }
@@ -636,6 +662,129 @@ export function ComunicadosPage() {
         onClose={() => setCancelTarget(null)}
         onConfirm={confirmCancel}
         title="Cancelar comunicado"
+      />
+
+      {/* ── Mural Tab ──────────────────────────────────────────────────────────── */}
+      {activeTab === "mural" ? (
+        <section className="panel overflow-hidden">
+          <div className="flex items-center gap-3 border-b border-blue-100 p-6">
+            <MessageSquare className="text-pegasus-primary" size={22} />
+            <div>
+              <h2 className="text-xl font-bold text-pegasus-navy">Mural de Avisos</h2>
+              <p className="text-sm text-slate-500">{muralPosts.length} aviso(s) publicado(s).</p>
+            </div>
+          </div>
+          {isLoadingMural ? (
+            <div className="flex items-center gap-3 p-6 text-sm font-bold text-pegasus-primary">
+              <Loader2 className="animate-spin" size={18} />Carregando avisos
+            </div>
+          ) : muralPosts.length === 0 ? (
+            <div className="p-6">
+              <p className="text-sm text-slate-400">Nenhum aviso publicado. Clique em "Publicar aviso" para criar.</p>
+            </div>
+          ) : (
+            <div className="divide-y divide-blue-50">
+              {muralPosts.map((post) => (
+                <div className="flex items-start justify-between gap-4 p-5" key={post.id}>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className={`rounded-full px-2.5 py-0.5 text-xs font-bold ${
+                        post.category === "urgente" ? "bg-rose-100 text-rose-700" :
+                        post.category === "evento" ? "bg-violet-100 text-violet-700" :
+                        "bg-blue-100 text-blue-700"
+                      }`}>
+                        {post.category === "urgente" ? "Urgente" : post.category === "evento" ? "Evento" : "Informativo"}
+                      </span>
+                      <span className="text-xs text-slate-400">
+                        {new Intl.DateTimeFormat("pt-BR", { day: "2-digit", month: "short", year: "numeric" }).format(new Date(post.createdAt))}
+                      </span>
+                    </div>
+                    <p className="mt-1 font-bold text-pegasus-navy">{post.title}</p>
+                    <p className="mt-1 line-clamp-2 text-sm text-slate-500">{post.body}</p>
+                  </div>
+                  {canManageMural && (
+                    <Button
+                      className="h-8 shrink-0 px-3 text-xs"
+                      onClick={() => setDeleteMuralTarget(post)}
+                      variant="danger"
+                    >
+                      <Trash2 size={13} />
+                    </Button>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+        </section>
+      ) : null}
+
+      {/* Mural modal */}
+      <Modal isOpen={muralModal} onClose={() => setMuralModal(false)} title="Publicar aviso no mural">
+        <form className="grid gap-4" onSubmit={async (e) => {
+          e.preventDefault();
+          setIsSavingMural(true);
+          try {
+            await muralService.create(muralForm);
+            setMuralModal(false);
+            await loadMural();
+          } catch (err) {
+            alert(getApiErrorMessage(err));
+          } finally {
+            setIsSavingMural(false);
+          }
+        }}>
+          <Input
+            disabled={isSavingMural}
+            label="Título"
+            onChange={(e) => setMuralForm({ ...muralForm, title: e.target.value })}
+            required
+            value={muralForm.title}
+          />
+          <Select
+            disabled={isSavingMural}
+            label="Categoria"
+            onChange={(e) => setMuralForm({ ...muralForm, category: e.target.value })}
+            options={[
+              { label: "Informativo", value: "info" },
+              { label: "Urgente", value: "urgente" },
+              { label: "Evento", value: "evento" },
+            ]}
+            value={muralForm.category}
+          />
+          <Textarea
+            disabled={isSavingMural}
+            label="Corpo do aviso"
+            onChange={(e) => setMuralForm({ ...muralForm, body: e.target.value })}
+            rows={5}
+            value={muralForm.body}
+          />
+          <div className="flex flex-col gap-3 sm:flex-row">
+            <Button disabled={isSavingMural} type="submit">
+              {isSavingMural ? <Loader2 className="animate-spin" size={17} /> : <Plus size={17} />}
+              Publicar
+            </Button>
+            <Button disabled={isSavingMural} onClick={() => setMuralModal(false)} variant="secondary">Cancelar</Button>
+          </div>
+        </form>
+      </Modal>
+
+      {/* Confirm delete mural post */}
+      <ConfirmDialog
+        confirmLabel={isSavingMural ? "Removendo..." : "Remover aviso"}
+        description={`Deseja remover o aviso "${deleteMuralTarget?.title ?? ""}"?`}
+        isOpen={Boolean(deleteMuralTarget)}
+        onClose={() => setDeleteMuralTarget(null)}
+        onConfirm={async () => {
+          if (!deleteMuralTarget) return;
+          setIsSavingMural(true);
+          try {
+            await muralService.remove(deleteMuralTarget.id);
+            setDeleteMuralTarget(null);
+            await loadMural();
+          } catch { /* silent */ }
+          finally { setIsSavingMural(false); }
+        }}
+        title="Remover aviso"
       />
     </div>
   );

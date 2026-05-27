@@ -66,6 +66,7 @@ export type ChamadaAthlete = {
   attendanceId: string | null;
   status: ChamadaAttendanceStatus | null;
   frequencyPercent: number | null;
+  injured: boolean;
 };
 
 export type TotalFrequency = {

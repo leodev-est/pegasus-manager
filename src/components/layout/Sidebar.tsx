@@ -1,6 +1,8 @@
 ﻿import {
+  Activity,
   CalendarDays,
   ClipboardList,
+  CreditCard,
   FileSpreadsheet,
   HelpCircle,
   Inbox,
@@ -8,6 +10,7 @@
   LayoutDashboard,
   Megaphone,
   MessageCircle,
+  MessageSquare,
   MessageSquarePlus,
   Radio,
   Settings,
@@ -85,6 +88,7 @@ export const menuGroups: MenuGroup[] = [
       { label: "Inscrições", path: "/app/rh/inscricoes", icon: UserPlus, permissions: ["rh"] },
       { label: "Comunicados", path: "/app/rh/comunicados", icon: Radio, permissions: ["rh"] },
       { label: "Ouvidoria", path: "/app/rh/ouvidoria", icon: Inbox, permissions: ["rh"] },
+      { label: "Lesões", path: "/app/rh/lesoes", icon: Activity, permissions: ["rh"] },
     ],
   },
   {
@@ -138,6 +142,12 @@ export const menuGroups: MenuGroup[] = [
         icon: Star,
         permissions: ["trainings:update"],
       },
+      {
+        label: "Planos Individuais",
+        path: "/app/treinos/planos",
+        icon: ClipboardList,
+        permissions: ["treinos"],
+      },
     ],
   },
   {
@@ -172,6 +182,41 @@ export const menuGroups: MenuGroup[] = [
         path: "/app/atleta/sugestoes",
         icon: MessageSquarePlus,
         permissions: ["atleta"],
+      },
+      {
+        label: "Mensalidades",
+        path: "/app/atleta/mensalidades",
+        icon: CreditCard,
+        permissions: ["atleta"],
+      },
+      {
+        label: "Minhas Avaliações",
+        path: "/app/atleta/avaliacoes",
+        icon: Star,
+        permissions: ["atleta"],
+      },
+      {
+        label: "Saúde",
+        path: "/app/atleta/saude",
+        icon: Activity,
+        permissions: ["atleta"],
+      },
+      {
+        label: "Meu Plano",
+        path: "/app/atleta/plano",
+        icon: ClipboardList,
+        permissions: ["atleta"],
+      },
+    ],
+  },
+  {
+    title: "Geral",
+    items: [
+      {
+        label: "Mural de Avisos",
+        path: "/app/comunicados",
+        icon: MessageSquare,
+        permissions: ["dashboard"],
       },
     ],
   },

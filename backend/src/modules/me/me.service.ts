@@ -138,6 +138,35 @@ export const meService = {
     };
   },
 
+  async getMyPayments(userId: string) {
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { athlete: { select: { id: true } } },
+    });
+    if (!user?.athlete) return [];
+    const payments = await prisma.payment.findMany({
+      where: { athleteId: user.athlete.id, type: "receita" },
+      orderBy: { dueDate: "desc" },
+    });
+    return payments.map((p) => ({ ...p, amount: Number(p.amount) }));
+  },
+
+  async getMyEvaluationHistory(userId: string) {
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { athlete: { select: { id: true } } },
+    });
+    if (!user?.athlete) return [];
+    const evals = await prisma.athleteEvaluation.findMany({
+      where: { athleteId: user.athlete.id },
+      orderBy: { createdAt: "asc" },
+    });
+    return evals.map((e) => ({
+      ...formatEvaluation(e),
+      createdAt: e.createdAt,
+    }));
+  },
+
   async updateAvatar(userId: string, buffer: Buffer, mimeType: string) {
     const base64 = buffer.toString("base64");
     const dataUrl = `data:${mimeType};base64,${base64}`;

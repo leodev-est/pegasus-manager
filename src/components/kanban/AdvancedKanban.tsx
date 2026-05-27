@@ -597,11 +597,16 @@ export function AdvancedKanban<TTask extends KanbanTaskBase, TStatus extends str
     // Block dragging from the scheduled column entirely
     if (scheduledColumn && active.status === scheduledColumn) return;
 
-    // Block dragging out of the approval column — must go through the approval flow
     if (approvalColumn) {
       const approvalIdx = columns.findIndex((c) => c.value === approvalColumn);
+      const activeIdx = columns.findIndex((c) => c.value === active.status);
       const nextIdx = columns.findIndex((c) => c.value === nextStatus);
+
+      // Block dragging out of the approval column — must use the approve button
       if (active.status === approvalColumn && nextIdx > approvalIdx) return;
+
+      // Block skipping approval — cards before review cannot jump past it
+      if (activeIdx < approvalIdx && nextIdx > approvalIdx) return;
     }
 
     await onMove(active, nextStatus as TStatus);

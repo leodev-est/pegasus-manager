@@ -1,5 +1,6 @@
 import { prisma } from "../../config/prisma";
 import { AppError } from "../../middlewares/error.middleware";
+import { injuriesService } from "../injuries/injuries.service";
 import { notificationsService } from "../notifications/notifications.service";
 import {
   OFFICIAL_TRAINING_MODALITY,
@@ -512,7 +513,11 @@ export const attendanceService = {
       },
     });
 
-    const frequencyMap = await this.getAthletesSummary();
+    const athleteIds = athletes.map((a) => a.id);
+    const [frequencyMap, injuredSet] = await Promise.all([
+      this.getAthletesSummary(),
+      injuriesService.getActiveForAthletes(athleteIds),
+    ]);
 
     return {
       available: true,
@@ -529,6 +534,7 @@ export const attendanceService = {
         attendanceId: athlete.attendances[0]?.id ?? null,
         status: athlete.attendances[0]?.status ?? null,
         frequencyPercent: frequencyMap[athlete.id] ?? null,
+        injured: injuredSet.has(athlete.id),
       })),
     };
   },

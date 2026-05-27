@@ -47,6 +47,16 @@ export const profileService = {
     return data;
   },
 
+  async getMyPayments() {
+    const { data } = await api.get<(Payment & { referenceMonth: string | null })[]>("/me/payments");
+    return data;
+  },
+
+  async getMyEvaluationHistory() {
+    const { data } = await api.get<AthleteEvaluation[]>("/me/evaluations");
+    return data;
+  },
+
   async uploadAvatar(file: File) {
     const form = new FormData();
     form.append("avatar", file);

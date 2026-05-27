@@ -4,6 +4,7 @@ import {
   ClipboardList,
   Loader2,
   Megaphone,
+  MessageSquare,
   School,
   Star,
   TrendingUp,
@@ -15,6 +16,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { Link } from "react-router-dom";
 import { CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { useAuth } from "../../auth/AuthContext";
 import { PageHeader } from "../../components/ui/PageHeader";
@@ -22,6 +24,7 @@ import { InstallPwaButton } from "../../components/pwa/InstallPwaButton";
 import { StatCard } from "../../components/ui/StatCard";
 import { useToast } from "../../components/ui/Toast";
 import { athleteApplicationService, type AthleteApplication } from "../../services/athleteApplicationService";
+import { muralService, type MuralPost } from "../../services/muralService";
 import { athleteService, type Athlete, type BirthdaysResult } from "../../services/athleteService";
 import { getApiErrorMessage } from "../../services/api";
 import { attendanceService, type MonthlyAttendanceStat, type TotalFrequency } from "../../services/attendanceService";
@@ -129,6 +132,7 @@ export function DashboardPage() {
   const [monthlyStats, setMonthlyStats] = useState<MonthlyAttendanceStat[]>([]);
   const [myEvaluation, setMyEvaluation] = useState<AthleteEvaluation | null>(null);
   const [myConvocations, setMyConvocations] = useState<MyConvocation[]>([]);
+  const [muralPosts, setMuralPosts] = useState<MuralPost[]>([]);
 
   const canSeeRh = hasPermission(["rh"]);
   const canSeeFinance = hasPermission(["financeiro"]);
@@ -211,6 +215,7 @@ export function DashboardPage() {
         evaluationService.getMyEvaluation().then(setMyEvaluation).catch(() => {});
         gameConvocationService.getMyConvocations().then(setMyConvocations).catch(() => {});
       }
+      muralService.list().then((posts) => setMuralPosts(posts.slice(0, 3))).catch(() => {});
     } catch (error) {
       showToast(getApiErrorMessage(error), "error");
     } finally {
@@ -517,6 +522,49 @@ export function DashboardPage() {
                 )}
               </div>
             </section>
+          )}
+
+          {/* Mural de Avisos */}
+          {muralPosts.length > 0 && (
+            <article className="panel p-6">
+              <div className="mb-4 flex items-center justify-between gap-3">
+                <div className="flex items-center gap-3">
+                  <span className="rounded-2xl bg-pegasus-ice p-3 text-pegasus-primary">
+                    <MessageSquare size={20} />
+                  </span>
+                  <div>
+                    <h2 className="text-xl font-bold text-pegasus-navy">Avisos do clube</h2>
+                    <p className="text-sm text-slate-500">Comunicados recentes</p>
+                  </div>
+                </div>
+                <Link
+                  to="/app/comunicados"
+                  className="text-sm font-semibold text-pegasus-primary hover:underline"
+                >
+                  Ver todos
+                </Link>
+              </div>
+              <div className="space-y-3">
+                {muralPosts.map((post) => (
+                  <div key={post.id} className="rounded-2xl bg-pegasus-surface p-4">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className={`rounded-full px-2.5 py-0.5 text-xs font-bold ${
+                        post.category === "urgente" ? "bg-rose-100 text-rose-700" :
+                        post.category === "evento" ? "bg-violet-100 text-violet-700" :
+                        "bg-blue-100 text-blue-700"
+                      }`}>
+                        {post.category === "urgente" ? "Urgente" : post.category === "evento" ? "Evento" : "Info"}
+                      </span>
+                      <span className="text-xs text-slate-400">
+                        {new Intl.DateTimeFormat("pt-BR", { day: "2-digit", month: "short" }).format(new Date(post.createdAt))}
+                      </span>
+                    </div>
+                    <p className="mt-1.5 font-bold text-pegasus-navy">{post.title}</p>
+                    <p className="mt-1 line-clamp-2 text-sm text-slate-500">{post.body}</p>
+                  </div>
+                ))}
+              </div>
+            </article>
           )}
 
           {/* Gráfico de frequência mensal */}

@@ -2,6 +2,7 @@ import "dotenv/config";
 import { app } from "./app";
 import { startAnnouncementsScheduler } from "./modules/announcements/announcements-scheduler";
 import { startFinanceScheduler } from "./modules/finance/finance-scheduler";
+import { startPaymentNotificationScheduler } from "./modules/finance/payment-notification-scheduler";
 import { startReportScheduler } from "./modules/reports/report-scheduler";
 import { startTasksScheduler } from "./modules/tasks/tasks-scheduler";
 import { whatsAppService } from "./modules/whatsapp/whatsapp.service";
@@ -15,6 +16,7 @@ app.listen(PORT, async () => {
   startWhatsAppScheduler();
   startTasksScheduler();
   startFinanceScheduler();
+  startPaymentNotificationScheduler();
   startAnnouncementsScheduler();
   startReportScheduler();
 });

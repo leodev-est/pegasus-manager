@@ -18,6 +18,22 @@ export const meController = {
     }
   }) satisfies RequestHandler,
 
+  getMyPayments: (async (request, response, next) => {
+    try {
+      response.json(await meService.getMyPayments(request.user!.id));
+    } catch (error) {
+      next(error);
+    }
+  }) satisfies RequestHandler,
+
+  getMyEvaluations: (async (request, response, next) => {
+    try {
+      response.json(await meService.getMyEvaluationHistory(request.user!.id));
+    } catch (error) {
+      next(error);
+    }
+  }) satisfies RequestHandler,
+
   uploadAvatar: (async (request, response, next) => {
     try {
       const file = (request as typeof request & { file?: Express.Multer.File }).file;

@@ -34,14 +34,14 @@ export const rolePermissions: Record<Role, Permission[]> = {
     "operacional",
     "admin",
   ],
-  Gestao: ["dashboard", "gestao", "treinos"],
+  Gestao: ["dashboard", "gestao", "treinos", "operacional"],
   RH: ["dashboard", "rh", "gestao"],
   Financeiro: ["dashboard", "financeiro", "gestao"],
   Marketing: ["dashboard", "marketing", "gestao"],
   ChefeMarketing: ["dashboard", "marketing", "gestao"],
-  Gestor: ["dashboard", "gestao"],
+  Gestor: ["dashboard", "gestao", "treinos", "operacional"],
   Tecnico: ["dashboard", "treinos", "chamada"],
-  Operacional: ["dashboard", "operacional", "gestao"],
+  Operacional: ["dashboard", "gestao", "treinos", "operacional"],
   Atleta: ["dashboard", "atleta", "treinos"],
 };
 
@@ -70,7 +70,7 @@ export function canEditArea(roles: Role[], permission: Permission) {
     financeiro: ["Financeiro"],
     marketing: ["Marketing"],
     treinos: ["Tecnico"],
-    operacional: ["Operacional"],
+    operacional: ["Operacional", "Gestao", "Gestor"],
   };
 
   return editorByPermission[permission]?.some((role) => roles.includes(role)) ?? false;

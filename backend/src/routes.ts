@@ -29,6 +29,9 @@ import { whatsAppRoutes } from "./modules/whatsapp/whatsapp.routes";
 import { suggestionsRoutes } from "./modules/suggestions/suggestions.routes";
 import { trainingFeedbackRoutes } from "./modules/training-feedback/training-feedback.routes";
 import { gameConvocationsRouter } from "./modules/game-convocations/game-convocations.routes";
+import { muralRoutes } from "./modules/mural/mural.routes";
+import { injuriesRoutes } from "./modules/injuries/injuries.routes";
+import { trainingPlansRoutes } from "./modules/training-plans/training-plans.routes";
 
 export const routes = Router();
 
@@ -69,3 +72,6 @@ routes.use("/whatsapp", whatsAppRoutes);
 routes.use("/suggestions", suggestionsRoutes);
 routes.use("/training-feedback", trainingFeedbackRoutes);
 routes.use("/games", gameConvocationsRouter);
+routes.use("/mural", muralRoutes);
+routes.use("/injuries", injuriesRoutes);
+routes.use("/training-plans", trainingPlansRoutes);

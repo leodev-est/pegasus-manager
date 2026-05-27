@@ -19,3 +19,5 @@ meRoutes.use(authMiddleware);
 meRoutes.get("/profile", meController.getProfile);
 meRoutes.patch("/profile", meController.updateProfile);
 meRoutes.post("/avatar", upload.single("avatar"), meController.uploadAvatar);
+meRoutes.get("/payments", meController.getMyPayments);
+meRoutes.get("/evaluations", meController.getMyEvaluations);
