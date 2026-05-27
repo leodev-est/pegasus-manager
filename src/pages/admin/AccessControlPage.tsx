@@ -1,5 +1,23 @@
 ﻿import { ShieldCheck, Users } from "lucide-react";
 import { useEffect, useState } from "react";
+import { useTour } from "../../tours/useTour";
+
+const TOUR_STEPS = [
+  {
+    popover: {
+      title: "🔐 Controle de Acesso",
+      description: "Gerencie os cargos e permissões de cada usuário do sistema. As permissões de cada cargo determinam quais telas e funcionalidades o usuário pode acessar.",
+    },
+  },
+  {
+    element: "[data-tour='acesso-usuarios']",
+    popover: {
+      title: "Usuários e cargos",
+      description: "Lista de todos os usuários com seus cargos atuais. Use os checkboxes para adicionar ou remover um cargo de um usuário. Cargos múltiplos acumulam permissões.",
+      side: "bottom" as const,
+    },
+  },
+];
 import type { AuthUser } from "../../auth/AuthContext";
 import { PageHeader } from "../../components/ui/PageHeader";
 import { StatusBadge } from "../../components/ui/StatusBadge";
@@ -34,6 +52,8 @@ export function AccessControlPage() {
   const [users, setUsers] = useState<AuthUser[]>([]);
   const [roles, setRoles] = useState<RoleRecord[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+
+  useTour("acesso:v1", isLoading ? [] : TOUR_STEPS);
   const [savingUserId, setSavingUserId] = useState("");
   const [error, setError] = useState("");
 
@@ -100,7 +120,7 @@ export function AccessControlPage() {
       />
 
       <section className="grid gap-6 xl:grid-cols-[1.2fr_0.8fr]">
-        <article className="panel overflow-hidden">
+        <article data-tour="acesso-usuarios" className="panel overflow-hidden">
           <div className="flex items-center gap-3 border-b border-blue-100 p-6">
             <Users className="text-pegasus-primary" size={22} />
             <div>

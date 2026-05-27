@@ -1,5 +1,23 @@
 import { ClipboardList } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { useTour } from "../../tours/useTour";
+
+const TOUR_STEPS = [
+  {
+    popover: {
+      title: "📋 Kanban de Gestão",
+      description: "Gerencie as tarefas administrativas do clube. Arraste os cards entre as colunas (A Fazer → Em Andamento → Concluído) para atualizar o status.",
+    },
+  },
+  {
+    element: "[data-tour='kanban-filtros']",
+    popover: {
+      title: "Filtros do Kanban",
+      description: "Filtre por título, responsável ou prioridade para encontrar tarefas específicas rapidamente.",
+      side: "bottom" as const,
+    },
+  },
+];
 import { useAuth } from "../../auth/AuthContext";
 import { AdvancedKanban } from "../../components/kanban/AdvancedKanban";
 import { FilterBar } from "../../components/ui/FilterBar";
@@ -50,6 +68,8 @@ export function ManagementKanbanPage() {
   const [search, setSearch] = useState("");
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
+
+  useTour("management-kanban:v1", isLoading ? [] : TOUR_STEPS);
 
   const owners = useMemo(
     () => Array.from(new Set(tasks.map((task) => task.assignedTo).filter(Boolean))) as string[],
@@ -103,6 +123,7 @@ export function ManagementKanbanPage() {
       description="Planejamento administrativo, operacional e institucional do Projeto Pegasus."
       emptyStatus="todo"
       filters={
+        <div data-tour="kanban-filtros">
         <FilterBar>
           <Input label="Buscar por título" onChange={(event) => setSearch(event.target.value)} value={search} />
           <Select
@@ -126,6 +147,7 @@ export function ManagementKanbanPage() {
             value={priority}
           />
         </FilterBar>
+        </div>
       }
       icon={ClipboardList}
       isLoading={isLoading}

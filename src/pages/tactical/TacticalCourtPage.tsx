@@ -15,6 +15,7 @@ import { CSS } from "@dnd-kit/utilities";
 import { Check, Loader2, RotateCcw, Save, Trash2, Volleyball } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useAuth } from "../../auth/AuthContext";
+import { useTour } from "../../tours/useTour";
 import { Button } from "../../components/ui/Button";
 import { EmptyState } from "../../components/ui/EmptyState";
 import { Input } from "../../components/ui/Input";
@@ -203,6 +204,31 @@ function BenchDropZone({ canEdit, isEmpty }: { canEdit: boolean; isEmpty: boolea
   );
 }
 
+const TOUR_STEPS = [
+  {
+    popover: {
+      title: "🏐 Quadra Tática",
+      description: "Monte formações de vôlei arrastando atletas para as posições da quadra. Salve e gerencie múltiplas formações.",
+    },
+  },
+  {
+    element: "[data-tour='quadra-config']",
+    popover: {
+      title: "Seleção de formação",
+      description: "Escolha uma formação salva ou crie uma nova. Dê um nome e clique em 'Salvar formação' para persistir.",
+      side: "bottom" as const,
+    },
+  },
+  {
+    element: "[data-tour='quadra-court']",
+    popover: {
+      title: "Quadra interativa",
+      description: "Arraste atletas da lista à esquerda para as posições na quadra. Posições fixas: Rede (frente) e Fundo (defesa).",
+      side: "top" as const,
+    },
+  },
+];
+
 export function TacticalCourtPage() {
   const { hasPermission, user } = useAuth();
   const { showToast } = useToast();
@@ -255,6 +281,8 @@ export function TacticalCourtPage() {
   useEffect(() => {
     loadData();
   }, [loadData]);
+
+  useTour("quadra-tatica:v1", isLoading ? [] : TOUR_STEPS);
 
   function applyBaseFormation() {
     setSelectedFormationId("base");
@@ -400,6 +428,7 @@ export function TacticalCourtPage() {
         />
 
         <section
+          data-tour="quadra-config"
           className={`panel grid gap-4 p-5 lg:items-end ${
             canManageFormation ? "lg:grid-cols-[1fr_1fr_1fr_auto]" : "lg:grid-cols-[1fr_auto]"
           }`}
@@ -477,7 +506,7 @@ export function TacticalCourtPage() {
             </aside>
             ) : null}
 
-            <section className="panel overflow-hidden p-4 sm:p-6">
+            <section data-tour="quadra-court" className="panel overflow-hidden p-4 sm:p-6">
               <div className="mb-5 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                 <div>
                   <h2 className="text-xl font-black text-pegasus-navy">Quadra de vôlei</h2>

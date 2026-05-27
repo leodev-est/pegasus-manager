@@ -1,5 +1,6 @@
 import { CalendarDays, Loader2, Search, UserCheck } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { useTour } from "../../tours/useTour";
 import { Button } from "../../components/ui/Button";
 import { EmptyState } from "../../components/ui/EmptyState";
 import { FilterBar } from "../../components/ui/FilterBar";
@@ -27,6 +28,31 @@ import {
 
 const initialMonth = getCurrentMonthYear();
 
+const TOUR_STEPS = [
+  {
+    popover: {
+      title: "📅 Frequência",
+      description: "Acompanhamento mensal de presença nos treinos. Visualize o percentual de cada atleta e corrija lançamentos individualmente.",
+    },
+  },
+  {
+    element: "[data-tour='freq-admin-filtros']",
+    popover: {
+      title: "Filtros",
+      description: "Selecione o mês de referência e busque atletas por nome, categoria ou posição.",
+      side: "bottom" as const,
+    },
+  },
+  {
+    element: "[data-tour='freq-admin-lista']",
+    popover: {
+      title: "Resumo por atleta",
+      description: "Cada card mostra presenças, faltas e justificadas. Clique em 'Ver detalhes' para corrigir o status de cada treino individualmente.",
+      side: "top" as const,
+    },
+  },
+];
+
 const editableStatuses: Array<Exclude<AttendanceStatus, "programado">> = [
   "presente",
   "falta",
@@ -41,6 +67,8 @@ export function AttendanceAdminPage() {
   const [selectedAthlete, setSelectedAthlete] = useState<AthleteFrequency | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
+
+  useTour("freq-admin:v1", isLoading ? [] : TOUR_STEPS);
 
   const loadFrequency = useCallback(async () => {
     const { month, year } = fromMonthInput(monthValue);
@@ -93,6 +121,7 @@ export function AttendanceAdminPage() {
     <div className="space-y-8">
       <PageHeader title="Frequência" description="Acompanhamento mensal de presença nos treinos." />
 
+      <div data-tour="freq-admin-filtros">
       <FilterBar>
         <Input label="Mês" onChange={(event) => setMonthValue(event.target.value)} type="month" value={monthValue} />
         <Input
@@ -102,8 +131,9 @@ export function AttendanceAdminPage() {
           value={search}
         />
       </FilterBar>
+      </div>
 
-      <section className="panel overflow-hidden">
+      <section data-tour="freq-admin-lista" className="panel overflow-hidden">
         <div className="flex items-center gap-3 border-b border-blue-100 p-5">
           <UserCheck className="text-pegasus-primary" size={22} />
           <div>

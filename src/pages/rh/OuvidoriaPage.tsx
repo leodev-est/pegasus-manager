@@ -1,10 +1,36 @@
 import { Inbox, MessageSquare, User, UserX } from "lucide-react";
 import { useEffect, useState } from "react";
+import { useTour } from "../../tours/useTour";
 import { Button } from "../../components/ui/Button";
 import { PageHeader } from "../../components/ui/PageHeader";
 import { useToast } from "../../components/ui/Toast";
 import { getApiErrorMessage } from "../../services/api";
 import { suggestionService, type Suggestion } from "../../services/suggestionService";
+
+const TOUR_STEPS = [
+  {
+    popover: {
+      title: "📬 Ouvidoria",
+      description: "Canal de sugestões, críticas e feedbacks enviados anonimamente ou identificados pelos atletas e membros do clube.",
+    },
+  },
+  {
+    element: "[data-tour='ouvidoria-filtros']",
+    popover: {
+      title: "Filtros por status",
+      description: "Filtre as mensagens por status: Todos, Pendente, Visto, Respondido ou Arquivado. O contador de pendentes aparece em destaque.",
+      side: "bottom" as const,
+    },
+  },
+  {
+    element: "[data-tour='ouvidoria-lista']",
+    popover: {
+      title: "Lista de mensagens",
+      description: "Clique em uma mensagem para abrir o painel de resposta à direita. Mensagens pendentes são marcadas como 'Visto' automaticamente ao abrir.",
+      side: "right" as const,
+    },
+  },
+];
 
 const statusColors: Record<string, string> = {
   pendente: "bg-amber-50 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400",
@@ -38,6 +64,8 @@ export function OuvidoriaPage() {
   const [selected, setSelected] = useState<Suggestion | null>(null);
   const [response, setResponse] = useState("");
   const [isSaving, setIsSaving] = useState(false);
+
+  useTour("ouvidoria:v1", isLoading ? [] : TOUR_STEPS);
 
   async function loadSuggestions() {
     setIsLoading(true);
@@ -112,7 +140,7 @@ export function OuvidoriaPage() {
         description="Sugestões, críticas e feedbacks enviados pelos atletas e membros."
       />
 
-      <div className="flex flex-wrap gap-2">
+      <div data-tour="ouvidoria-filtros" className="flex flex-wrap gap-2">
         {["todos", "pendente", "visto", "respondido", "arquivado"].map((s) => (
           <button
             className={`rounded-full px-4 py-1.5 text-sm font-bold transition ${
@@ -135,7 +163,7 @@ export function OuvidoriaPage() {
       </div>
 
       <div className="grid gap-6 xl:grid-cols-[1fr_420px]">
-        <div className="space-y-3">
+        <div data-tour="ouvidoria-lista" className="space-y-3">
           {isLoading ? (
             <p className="rounded-2xl bg-white p-6 text-sm font-semibold text-slate-500 dark:bg-slate-800">
               Carregando sugestões...

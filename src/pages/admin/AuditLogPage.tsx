@@ -1,5 +1,31 @@
 import { ClipboardList } from "lucide-react";
 import { useEffect, useState } from "react";
+import { useTour } from "../../tours/useTour";
+
+const TOUR_STEPS = [
+  {
+    popover: {
+      title: "📋 Log de Auditoria",
+      description: "Histórico de todas as ações críticas no sistema: criações, edições, pagamentos e exclusões. Rastreabilidade total para conformidade e segurança.",
+    },
+  },
+  {
+    element: "[data-tour='audit-filtros']",
+    popover: {
+      title: "Filtros",
+      description: "Filtre por tipo de entidade (Atleta, Financeiro) e por data para encontrar uma ação específica. Útil para auditorias e investigações.",
+      side: "bottom" as const,
+    },
+  },
+  {
+    element: "[data-tour='audit-lista']",
+    popover: {
+      title: "Registro de ações",
+      description: "Cada linha mostra: quem fez a ação, o que foi feito, em qual entidade e quando. Expanda para ver os campos alterados.",
+      side: "top" as const,
+    },
+  },
+];
 import { Input } from "../../components/ui/Input";
 import { PageHeader } from "../../components/ui/PageHeader";
 import { useToast } from "../../components/ui/Toast";
@@ -63,6 +89,8 @@ export function AuditLogPage() {
   const [entity, setEntity] = useState("");
   const [search, setSearch] = useState("");
 
+  useTour("audit-log:v1", isLoading ? [] : TOUR_STEPS);
+
   useEffect(() => {
     setIsLoading(true);
     auditService
@@ -88,7 +116,7 @@ export function AuditLogPage() {
         description="Histórico de ações realizadas no sistema."
       />
 
-      <div className="flex flex-wrap items-end gap-4">
+      <div data-tour="audit-filtros" className="flex flex-wrap items-end gap-4">
         <div>
           <label className="mb-1 block text-sm font-medium text-slate-700">Entidade</label>
           <select
@@ -111,7 +139,7 @@ export function AuditLogPage() {
         />
       </div>
 
-      <div className="panel overflow-x-auto p-0">
+      <div data-tour="audit-lista" className="panel overflow-x-auto p-0">
         {isLoading ? (
           <p className="p-6 text-sm text-slate-500">Carregando...</p>
         ) : filtered.length === 0 ? (

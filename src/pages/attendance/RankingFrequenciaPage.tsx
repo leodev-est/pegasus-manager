@@ -1,8 +1,34 @@
 import { Medal, TrendingUp } from "lucide-react";
 import { useEffect, useState } from "react";
+import { useTour } from "../../tours/useTour";
 import { PageHeader } from "../../components/ui/PageHeader";
 import { useToast } from "../../components/ui/Toast";
 import { getApiErrorMessage, api } from "../../services/api";
+
+const TOUR_STEPS = [
+  {
+    popover: {
+      title: "🏆 Ranking de Frequência",
+      description: "Atletas ativos ordenados por percentual de presença nos treinos. Um incentivo para manter a assiduidade alta.",
+    },
+  },
+  {
+    element: "[data-tour='ranking-podio']",
+    popover: {
+      title: "Pódio",
+      description: "Os três atletas com maior frequência ganham destaque no pódio. O primeiro lugar tem anel dourado.",
+      side: "bottom" as const,
+    },
+  },
+  {
+    element: "[data-tour='ranking-lista']",
+    popover: {
+      title: "Tabela completa",
+      description: "Todos os atletas ordenados por percentual. A barra colorida indica a situação: verde (≥80%), amarelo (60-79%) e vermelho (<60%).",
+      side: "top" as const,
+    },
+  },
+];
 
 type RankingEntry = {
   athlete: { id: string; name: string; category: string | null };
@@ -43,6 +69,8 @@ export function RankingFrequenciaPage() {
   const [ranking, setRanking] = useState<RankingEntry[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
+  useTour("ranking:v1", isLoading ? [] : TOUR_STEPS);
+
   useEffect(() => {
     async function load() {
       setIsLoading(true);
@@ -80,7 +108,7 @@ export function RankingFrequenciaPage() {
         <>
           {/* Top 3 podium cards */}
           {withData.length >= 1 && (
-            <section className="grid gap-4 sm:grid-cols-3">
+            <section data-tour="ranking-podio" className="grid gap-4 sm:grid-cols-3">
               {withData.slice(0, 3).map((entry, i) => (
                 <div
                   key={entry.athlete.id}
@@ -101,7 +129,7 @@ export function RankingFrequenciaPage() {
           )}
 
           {/* Full table */}
-          <div className="panel overflow-hidden">
+          <div data-tour="ranking-lista" className="panel overflow-hidden">
             <div className="flex items-center gap-3 border-b border-blue-100 p-5 dark:border-slate-700">
               <TrendingUp className="text-pegasus-primary" size={20} />
               <div>

@@ -1,6 +1,7 @@
 import { ExternalLink, Lightbulb, Megaphone, Palette, ShieldCheck } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useAuth } from "../../auth/AuthContext";
+import { useTour } from "../../tours/useTour";
 import { AdvancedKanban } from "../../components/kanban/AdvancedKanban";
 import { FilterBar } from "../../components/ui/FilterBar";
 import { Select } from "../../components/ui/Select";
@@ -40,6 +41,31 @@ const palette = [
   ["Azul gelo", "#E3F2FD"],
   ["Branco", "#FFFFFF"],
   ["Cinza claro", "#F5F7FA"],
+];
+
+const TOUR_STEPS = [
+  {
+    popover: {
+      title: "📣 Marketing",
+      description: "Kanban de produção de conteúdo e identidade visual do clube. Organize ideias, produções em andamento, revisões e publicações.",
+    },
+  },
+  {
+    element: "[data-tour='mkt-tabs']",
+    popover: {
+      title: "Abas",
+      description: "Alterne entre o Kanban de tarefas e a seção de Identidade Visual com a paleta de cores e diretrizes da marca.",
+      side: "bottom" as const,
+    },
+  },
+  {
+    element: "[data-tour='mkt-kanban']",
+    popover: {
+      title: "Kanban de marketing",
+      description: "Arraste cards entre colunas: Ideias → Produção → Revisão → Agendado → Publicado. Filtre por canal, responsável e prioridade.",
+      side: "top" as const,
+    },
+  },
 ];
 
 type MarketingForm = Required<Omit<MarketingTaskPayload, "area">>;
@@ -85,6 +111,8 @@ export function MarketingPage() {
   const [activeTab, setActiveTab] = useState<MarketingTab>("kanban");
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
+
+  useTour("marketing:v1", isLoading ? [] : TOUR_STEPS);
   const [marketingUsers, setMarketingUsers] = useState<Array<{ label: string; value: string }>>([]);
   const today = new Date().toISOString().slice(0, 10);
 
@@ -155,7 +183,7 @@ export function MarketingPage() {
 
   return (
     <div className="space-y-8">
-      <div className="flex flex-wrap gap-2 rounded-2xl border border-blue-100 bg-white p-2 shadow-sm">
+      <div data-tour="mkt-tabs" className="flex flex-wrap gap-2 rounded-2xl border border-blue-100 bg-white p-2 shadow-sm">
         {marketingTabs.map((tab) => (
           <button
             className={`rounded-xl px-4 py-2 text-sm font-bold transition ${
@@ -173,6 +201,7 @@ export function MarketingPage() {
       </div>
 
       {activeTab === "kanban" ? (
+      <div data-tour="mkt-kanban">
       <AdvancedKanban
         areaLabel="marketing"
         approvalColumn="review"
@@ -264,6 +293,7 @@ export function MarketingPage() {
           )
         }
       />
+      </div>
       ) : null}
 
       {activeTab === "identidade" ? (

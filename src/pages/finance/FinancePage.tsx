@@ -1,5 +1,6 @@
 ﻿import { Banknote, BarChart2, Clipboard, FileDown, FileText, Loader2, Plus, WalletCards } from "lucide-react";
 import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
+import { useTour } from "../../tours/useTour";
 import { Bar, BarChart, CartesianGrid, Legend, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { useAuth } from "../../auth/AuthContext";
 import { ActionButtons } from "../../components/ui/ActionButtons";
@@ -41,6 +42,31 @@ type DeleteTarget =
 
 const currentMonth = new Date().toISOString().slice(0, 7);
 type FinanceTab = "resumo" | "mensalidades" | "caixa" | "relatorios" | "graficos";
+
+const TOUR_STEPS = [
+  {
+    popover: {
+      title: "💰 Financeiro",
+      description: "Controle completo de receitas, despesas, mensalidades, caixa e relatórios financeiros do clube.",
+    },
+  },
+  {
+    element: "[data-tour='finance-tabs']",
+    popover: {
+      title: "Abas",
+      description: "Navegue entre Resumo (visão geral), Mensalidades (por atleta), Caixa (movimentações avulsas), Relatórios (PDF/texto) e Gráficos.",
+      side: "bottom" as const,
+    },
+  },
+  {
+    element: "[data-tour='finance-resumo']",
+    popover: {
+      title: "Resumo financeiro",
+      description: "Valores consolidados do mês: caixa atual, receitas, despesas e pendências de mensalidade.",
+      side: "bottom" as const,
+    },
+  },
+];
 
 const financeTabs: Array<{ label: string; value: FinanceTab }> = [
   { label: "Resumo", value: "resumo" },
@@ -225,6 +251,8 @@ export function FinancePage() {
   const [deleteTarget, setDeleteTarget] = useState<DeleteTarget | null>(null);
   const [paymentForm, setPaymentForm] = useState<PaymentForm>(emptyPayment);
   const [movementForm, setMovementForm] = useState<MovementForm>(emptyMovement);
+
+  useTour("financeiro:v1", isLoading ? [] : TOUR_STEPS);
 
   const loadFinance = useCallback(async () => {
     setIsLoading(true);
@@ -516,7 +544,7 @@ export function FinancePage() {
         }
       />
 
-      <div className="flex flex-wrap gap-2 rounded-2xl border border-blue-100 bg-white p-2 shadow-sm">
+      <div data-tour="finance-tabs" className="flex flex-wrap gap-2 rounded-2xl border border-blue-100 bg-white p-2 shadow-sm">
         {financeTabs.map((tab) => (
           <button
             className={`rounded-xl px-4 py-2 text-sm font-bold transition ${
@@ -537,7 +565,7 @@ export function FinancePage() {
       </div>
 
       {activeTab === "resumo" ? (
-      <section className="grid gap-5 md:grid-cols-2 xl:grid-cols-5">
+      <section data-tour="finance-resumo" className="grid gap-5 md:grid-cols-2 xl:grid-cols-5">
         {[
           ["Caixa atual", summary.currentCash],
           ["Receitas do mês", summary.monthlyRevenue],

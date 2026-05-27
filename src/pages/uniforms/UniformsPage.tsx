@@ -1,6 +1,7 @@
 import { AlertTriangle, Edit2, Package, Plus, Shirt, Trash2, UserCheck } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useAuth } from "../../auth/AuthContext";
+import { useTour } from "../../tours/useTour";
 import { Button } from "../../components/ui/Button";
 import { Input } from "../../components/ui/Input";
 import { Modal } from "../../components/ui/Modal";
@@ -178,6 +179,31 @@ function JerseyTab({
   );
 }
 
+const TOUR_STEPS = [
+  {
+    popover: {
+      title: "👕 Uniformes",
+      description: "Gerencie a numeração do elenco, controle o estoque de uniformes e registre entregas aos atletas.",
+    },
+  },
+  {
+    element: "[data-tour='unif-tabs']",
+    popover: {
+      title: "Abas do módulo",
+      description: "Elenco Masculino e Feminino: atribua números. Estoque: itens e quantidades. Entregas: histórico de entrega a atletas.",
+      side: "bottom" as const,
+    },
+  },
+  {
+    element: "[data-tour='unif-content']",
+    popover: {
+      title: "Conteúdo da aba",
+      description: "Na numeração, atribua cada número a um atleta via dropdown. No estoque, adicione e edite itens com quantidade mínima.",
+      side: "top" as const,
+    },
+  },
+];
+
 export function UniformsPage() {
   const { hasPermission } = useAuth();
   const { showToast } = useToast();
@@ -226,6 +252,8 @@ export function UniformsPage() {
       .catch(() => showToast("Erro ao carregar dados", "error"))
       .finally(() => setIsLoading(false));
   }, [loadJerseys, loadItems, loadDeliveries, showToast]);
+
+  useTour("uniformes:v1", isLoading ? [] : TOUR_STEPS);
 
   async function handleAssign(gender: AthleteGender, number: number, athleteId: string) {
     setIsSaving(true);
@@ -365,7 +393,7 @@ export function UniformsPage() {
       )}
 
       {/* Tabs */}
-      <div className="flex gap-1 border-b border-slate-200">
+      <div data-tour="unif-tabs" className="flex gap-1 border-b border-slate-200">
         {(["masculino", "feminino", "estoque", "entregas"] as Tab[]).map((t) => (
           <button
             key={t}
@@ -377,6 +405,7 @@ export function UniformsPage() {
         ))}
       </div>
 
+      <div data-tour="unif-content">
       {isLoading ? (
         <p className="text-sm text-slate-500">Carregando...</p>
       ) : tab === "masculino" || tab === "feminino" ? (
@@ -446,6 +475,7 @@ export function UniformsPage() {
           )}
         </div>
       )}
+      </div>
 
       {/* Item Modal */}
       <Modal isOpen={itemModal} onClose={() => setItemModal(false)} title={editingItem ? "Editar item" : "Novo item"}>

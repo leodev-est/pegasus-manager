@@ -10,6 +10,7 @@ import {
 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useAuth } from "../../auth/AuthContext";
+import { useTour } from "../../tours/useTour";
 import { Button } from "../../components/ui/Button";
 import { Modal } from "../../components/ui/Modal";
 import { PageHeader } from "../../components/ui/PageHeader";
@@ -120,6 +121,31 @@ function getMonthDays(month: Date) {
   return days;
 }
 
+const TOUR_STEPS = [
+  {
+    popover: {
+      title: "📅 Calendário de Treinos",
+      description: "Veja todos os treinos oficiais Pegasus no calendário. A gestão pode bloquear sábados e ajustar configurações.",
+    },
+  },
+  {
+    element: "[data-tour='cal-info']",
+    popover: {
+      title: "Informações fixas",
+      description: "Horário, local e modalidade dos treinos oficiais. Editável pelas configurações da gestão.",
+      side: "bottom" as const,
+    },
+  },
+  {
+    element: "[data-tour='cal-calendar']",
+    popover: {
+      title: "Calendário interativo",
+      description: "Sábados em azul são treinos ativos. Em vermelho, bloqueados. A gestão pode clicar para bloquear ou desbloquear.",
+      side: "top" as const,
+    },
+  },
+];
+
 export function TrainingCalendarPage() {
   const { hasPermission } = useAuth();
   const { showToast } = useToast();
@@ -187,6 +213,8 @@ export function TrainingCalendarPage() {
     settingsService.getTrainingConfig().then(setTrainingConfig).catch(() => {});
   }, [loadDynamicDates]);
 
+  useTour("calendario:v1", isLoadingDates ? [] : TOUR_STEPS);
+
   const days = useMemo(() => getMonthDays(month), [month]);
   const officialDays = days.filter((day): day is Date => Boolean(day && isOfficialTrainingDate(day)));
 
@@ -227,7 +255,7 @@ export function TrainingCalendarPage() {
         description="Agenda oficial dos treinos Pegasus aos sábados, com bloqueios e informações fixas do local."
       />
 
-      <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+      <section data-tour="cal-info" className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
         {infoCards.map(({ label, value, icon: Icon }) => (
           <article className="panel p-5" key={label}>
             <div className="flex items-center gap-3">
@@ -254,7 +282,7 @@ export function TrainingCalendarPage() {
         </section>
       )}
 
-      <section className="panel overflow-hidden">
+      <section data-tour="cal-calendar" className="panel overflow-hidden">
         <div className="flex flex-col gap-4 border-b border-blue-100 p-4 sm:flex-row sm:items-center sm:justify-between sm:p-6">
           <div>
             <h2 className="text-xl font-black capitalize text-pegasus-navy">{formatMonth(month)}</h2>

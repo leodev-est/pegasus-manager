@@ -1,6 +1,7 @@
 ﻿import { ClockArrowUp, Download, FileDown, Loader2, Plus, UserCheck } from "lucide-react";
 import { FormEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useAuth } from "../../auth/AuthContext";
+import { useTour } from "../../tours/useTour";
 import { ActionButtons } from "../../components/ui/ActionButtons";
 import { Button } from "../../components/ui/Button";
 import { ConfirmDialog } from "../../components/ui/ConfirmDialog";
@@ -71,6 +72,31 @@ const positionOptions = [
   { label: "Oposto", value: "Oposto" },
 ];
 
+const TOUR_STEPS = [
+  {
+    popover: {
+      title: "🏐 Atletas",
+      description: "Cadastro completo de atletas: criação, edição, filtros por status e sexo, importação do Google Forms e exportação CSV.",
+    },
+  },
+  {
+    element: "[data-tour='atletas-filtros']",
+    popover: {
+      title: "Filtros",
+      description: "Filtre por nome, status (Ativo / Inativo / Todos) e sexo. Use a importação do Google Forms para cadastrar múltiplos atletas de uma vez.",
+      side: "bottom" as const,
+    },
+  },
+  {
+    element: "[data-tour='atletas-lista']",
+    popover: {
+      title: "Lista de atletas",
+      description: "Clique no nome para editar. Use os botões de ação para editar, excluir ou ver histórico de pagamentos. A barra de frequência mostra a assiduidade recente.",
+      side: "top" as const,
+    },
+  },
+];
+
 function badgeTone(value: string): StatusTone {
   if (["ativo", "pago"].includes(value)) return "success";
   if (["teste", "pendente"].includes(value)) return "warning";
@@ -137,6 +163,8 @@ export function AthletesPage() {
   const [isLoadingHistory, setIsLoadingHistory] = useState(false);
   const [genderSuggestion, setGenderSuggestion] = useState<{ gender: AthleteGender; probability: number } | null>(null);
   const [genderFilter, setGenderFilter] = useState<"todos" | "masculino" | "feminino">("todos");
+
+  useTour("atletas-rh:v1", isLoading ? [] : TOUR_STEPS);
   const genderizeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const filters = useMemo(
@@ -364,6 +392,7 @@ export function AthletesPage() {
         </section>
       ) : null}
 
+      <div data-tour="atletas-filtros">
       <FilterBar>
         <Input
           label="Buscar por nome"
@@ -400,8 +429,9 @@ export function AthletesPage() {
           </div>
         </div>
       </FilterBar>
+      </div>
 
-      <section className="panel overflow-hidden">
+      <section data-tour="atletas-lista" className="panel overflow-hidden">
         <div className="flex items-center gap-3 border-b border-blue-100 p-6">
           <UserCheck className="text-pegasus-primary" size={22} />
           <div>

@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { useAuth } from "../../auth/AuthContext";
+import { useTour } from "../../tours/useTour";
 import { PageHeader } from "../../components/ui/PageHeader";
 import { useToast } from "../../components/ui/Toast";
 import { api } from "../../services/api";
@@ -410,6 +411,31 @@ function PastGameCard({ game }: { game: Game }) {
   );
 }
 
+const TOUR_STEPS = [
+  {
+    popover: {
+      title: "📣 Convocação de Jogos",
+      description: "Gerencie jogos futuros e convoque os atletas para cada partida. Os atletas convocados recebem uma notificação no app.",
+    },
+  },
+  {
+    element: "[data-tour='conv-proximos']",
+    popover: {
+      title: "Próximos jogos",
+      description: "Selecione os atletas convocados para cada jogo futuro. Filtre por gênero e salve a convocação.",
+      side: "bottom" as const,
+    },
+  },
+  {
+    element: "[data-tour='conv-passados']",
+    popover: {
+      title: "Jogos passados",
+      description: "Histórico de jogos realizados com os atletas que foram convocados. Expanda para ver a lista completa.",
+      side: "top" as const,
+    },
+  },
+];
+
 // ─── Página principal ─────────────────────────────────────────────────────────
 export function ConvocacaoPage() {
   const { user } = useAuth();
@@ -445,6 +471,8 @@ export function ConvocacaoPage() {
     setShowCreate(false);
   }
 
+  useTour("convocacao:v1", loading ? [] : TOUR_STEPS);
+
   const upcoming = games.filter((g) => !isPast(g.date));
   const past = games.filter((g) => isPast(g.date));
 
@@ -477,7 +505,7 @@ export function ConvocacaoPage() {
         <div className="space-y-6">
           {/* Jogos futuros */}
           {upcoming.length > 0 && (
-            <div className="space-y-4">
+            <div data-tour="conv-proximos" className="space-y-4">
               <h2 className="text-sm font-bold uppercase tracking-wide text-slate-500">
                 Próximos jogos
               </h2>
@@ -505,7 +533,7 @@ export function ConvocacaoPage() {
 
           {/* Jogos passados */}
           {past.length > 0 && (
-            <div className="space-y-2">
+            <div data-tour="conv-passados" className="space-y-2">
               <h2 className="text-sm font-bold uppercase tracking-wide text-slate-500">
                 Jogos anteriores
               </h2>

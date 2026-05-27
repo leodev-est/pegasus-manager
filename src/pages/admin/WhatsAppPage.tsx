@@ -1,5 +1,31 @@
 import { AlertCircle, Hash, Loader2, MessageCircle, Phone, PhoneOff, RefreshCw, Wifi, WifiOff } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useTour } from "../../tours/useTour";
+
+const TOUR_STEPS = [
+  {
+    popover: {
+      title: "📱 WhatsApp",
+      description: "Integração com WhatsApp para envio automático de notificações: lembretes de treino, alertas de mensalidade, aviso de treino cancelado e aprovação de atletas.",
+    },
+  },
+  {
+    element: "[data-tour='whats-status']",
+    popover: {
+      title: "Status da conexão",
+      description: "Mostra se o WhatsApp está conectado. Para conectar, clique em Conectar e use o código de pareamento no celular do clube.",
+      side: "bottom" as const,
+    },
+  },
+  {
+    element: "[data-tour='whats-features']",
+    popover: {
+      title: "Notificações automáticas",
+      description: "Lista completa das mensagens enviadas automaticamente quando o WhatsApp está conectado. Cada notificação tem uma regra de disparo específica.",
+      side: "top" as const,
+    },
+  },
+];
 import { Button } from "../../components/ui/Button";
 import { Input } from "../../components/ui/Input";
 import { PageHeader } from "../../components/ui/PageHeader";
@@ -33,6 +59,8 @@ export function WhatsAppPage() {
   const { showToast } = useToast();
   const [state, setState] = useState<WhatsAppState>(EMPTY);
   const [isLoading, setIsLoading] = useState(true);
+
+  useTour("whatsapp:v1", isLoading ? [] : TOUR_STEPS);
   const [isActing, setIsActing] = useState(false);
   // Pairing code flow
   const [phone, setPhone] = useState("");
@@ -110,7 +138,7 @@ export function WhatsAppPage() {
         description="Conecte o número de WhatsApp do Pegasus para enviar notificações automáticas aos atletas."
       />
 
-      <section className="panel p-6">
+      <section data-tour="whats-status" className="panel p-6">
         <div className="flex flex-wrap items-center justify-between gap-4">
           <div className="flex items-center gap-4">
             <div className="grid h-14 w-14 place-items-center rounded-2xl bg-pegasus-ice text-pegasus-primary">
@@ -248,7 +276,7 @@ export function WhatsAppPage() {
         )}
       </section>
 
-      <section className="panel p-6">
+      <section data-tour="whats-features" className="panel p-6">
         <h2 className="text-lg font-black text-pegasus-navy">Notificações automáticas</h2>
         <p className="mt-1 text-sm text-slate-500">
           Disparadas automaticamente quando conectado. Requerem telefone cadastrado no perfil do atleta.

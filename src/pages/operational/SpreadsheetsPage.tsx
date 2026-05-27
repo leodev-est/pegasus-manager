@@ -1,6 +1,7 @@
 import { ExternalLink, FileSpreadsheet, Loader2, Plus, Trash2 } from "lucide-react";
 import { FormEvent, useCallback, useEffect, useState } from "react";
 import { useAuth } from "../../auth/AuthContext";
+import { useTour } from "../../tours/useTour";
 import { Button } from "../../components/ui/Button";
 import { ConfirmDialog } from "../../components/ui/ConfirmDialog";
 import { EmptyState } from "../../components/ui/EmptyState";
@@ -32,6 +33,23 @@ function formatDate(value: string) {
   }).format(new Date(value));
 }
 
+const TOUR_STEPS = [
+  {
+    popover: {
+      title: "📊 Planilhas Operacionais",
+      description: "Biblioteca de links para planilhas externas (Google Sheets, etc.) usadas no dia a dia do clube.",
+    },
+  },
+  {
+    element: "[data-tour='planilhas-lista']",
+    popover: {
+      title: "Planilhas cadastradas",
+      description: "Acesse qualquer planilha diretamente clicando em 'Abrir'. A gestão pode adicionar ou remover links conforme necessário.",
+      side: "top" as const,
+    },
+  },
+];
+
 export function SpreadsheetsPage() {
   const { hasPermission } = useAuth();
   const { showToast } = useToast();
@@ -59,6 +77,8 @@ export function SpreadsheetsPage() {
   useEffect(() => {
     loadSpreadsheets();
   }, [loadSpreadsheets]);
+
+  useTour("planilhas:v1", isLoading ? [] : TOUR_STEPS);
 
   function openCreateModal() {
     setForm(emptySpreadsheet);
@@ -113,7 +133,7 @@ export function SpreadsheetsPage() {
         }
       />
 
-      <section className="panel overflow-hidden">
+      <section data-tour="planilhas-lista" className="panel overflow-hidden">
         <div className="flex items-center gap-3 border-b border-blue-100 p-6">
           <FileSpreadsheet className="text-pegasus-primary" size={22} />
           <div>

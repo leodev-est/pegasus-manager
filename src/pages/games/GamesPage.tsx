@@ -1,6 +1,7 @@
 import { Calendar, ChevronDown, ChevronUp, Edit2, MapPin, Plus, Trash2, Trophy, X } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { useAuth } from "../../auth/AuthContext";
+import { useTour } from "../../tours/useTour";
 import { Button } from "../../components/ui/Button";
 import { Input } from "../../components/ui/Input";
 import { Modal } from "../../components/ui/Modal";
@@ -19,6 +20,31 @@ const EMPTY_FORM: GamePayload = {
   scoreOpponent: 0,
   notes: "",
 };
+
+const TOUR_STEPS = [
+  {
+    popover: {
+      title: "🏆 Jogos e Resultados",
+      description: "Histórico completo de partidas do Pegasus: placar, sets, local e observações de cada jogo.",
+    },
+  },
+  {
+    element: "[data-tour='jogos-stats']",
+    popover: {
+      title: "Estatísticas",
+      description: "Totais de vitórias, derrotas, empates e pontos do período selecionado. Filtre pelo mês no campo abaixo.",
+      side: "bottom" as const,
+    },
+  },
+  {
+    element: "[data-tour='jogos-lista']",
+    popover: {
+      title: "Lista de jogos",
+      description: "Clique em um jogo para expandir os sets e ver detalhes. Use os botões de edição para registrar o resultado ou adicionar sets individualmente.",
+      side: "top" as const,
+    },
+  },
+];
 
 function StatCard({ label, value, color }: { label: string; value: number | string; color: string }) {
   return (
@@ -141,6 +167,8 @@ export function GamesPage() {
   const [isSaving, setIsSaving] = useState(false);
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
+  useTour("jogos:v1", isLoading ? [] : TOUR_STEPS);
+
   const load = useCallback(async () => {
     setIsLoading(true);
     try {
@@ -225,7 +253,7 @@ export function GamesPage() {
         }
       />
 
-      <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-6">
+      <div data-tour="jogos-stats" className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-6">
         <StatCard label="Total" value={stats.total} color="text-pegasus-navy" />
         <StatCard label="Vitórias" value={stats.vitorias} color="text-green-600" />
         <StatCard label="Derrotas" value={stats.derrotas} color="text-red-500" />
@@ -245,7 +273,7 @@ export function GamesPage() {
         <span className="text-sm text-slate-500">Filtrar por mês</span>
       </div>
 
-      <div className="space-y-3">
+      <div data-tour="jogos-lista" className="space-y-3">
         {isLoading ? (
           <p className="text-sm text-slate-500">Carregando...</p>
         ) : games.length === 0 ? (

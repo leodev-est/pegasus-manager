@@ -21,6 +21,7 @@ import {
 import { FormEvent, useCallback, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { useAuth } from "../../auth/AuthContext";
+import { useTour } from "../../tours/useTour";
 import { Button } from "../../components/ui/Button";
 import { ConfirmDialog } from "../../components/ui/ConfirmDialog";
 import { EmptyState } from "../../components/ui/EmptyState";
@@ -41,6 +42,31 @@ import { muralService, type MuralPost } from "../../services/muralService";
 import { whatsappService, type WhatsAppGroup } from "../../services/whatsappService";
 
 type ComunicadosTab = "enviar" | "templates" | "agendados" | "mural";
+
+const TOUR_STEPS = [
+  {
+    popover: {
+      title: "📢 Comunicados",
+      description: "Central de comunicação do clube: envie mensagens ao WhatsApp, gerencie templates, agende comunicados e publique avisos no mural.",
+    },
+  },
+  {
+    element: "[data-tour='com-tabs']",
+    popover: {
+      title: "Abas",
+      description: "Enviar (mensagem imediata), Templates (mensagens prontas), Agendados (envio futuro) e Mural (comunicados visíveis no app).",
+      side: "bottom" as const,
+    },
+  },
+  {
+    element: "[data-tour='com-enviar']",
+    popover: {
+      title: "Enviar comunicado",
+      description: "Selecione os grupos do WhatsApp que devem receber a mensagem e escreva o texto. Requer WhatsApp conectado.",
+      side: "bottom" as const,
+    },
+  },
+];
 
 const tabs: Array<{ label: string; value: ComunicadosTab }> = [
   { label: "Enviar", value: "enviar" },
@@ -107,6 +133,8 @@ export function ComunicadosPage() {
   const [muralModal, setMuralModal] = useState(false);
   const [isSavingMural, setIsSavingMural] = useState(false);
   const [muralForm, setMuralForm] = useState({ title: "", body: "", category: "info" });
+
+  useTour("comunicados:v1", isLoadingGroups ? [] : TOUR_STEPS);
   const [deleteMuralTarget, setDeleteMuralTarget] = useState<MuralPost | null>(null);
 
   // ── Agendados state ─────────────────────────────────────────────────────────
@@ -316,7 +344,7 @@ export function ComunicadosPage() {
       />
 
       {/* Tabs */}
-      <div className="flex flex-wrap gap-2 rounded-2xl border border-blue-100 bg-white p-2 shadow-sm">
+      <div data-tour="com-tabs" className="flex flex-wrap gap-2 rounded-2xl border border-blue-100 bg-white p-2 shadow-sm">
         {tabs.map((tab) => (
           <button
             className={`rounded-xl px-4 py-2 text-sm font-bold transition ${
@@ -351,7 +379,7 @@ export function ComunicadosPage() {
             </div>
           ) : null}
 
-          <div className="grid gap-6 lg:grid-cols-[1fr_2fr]">
+          <div data-tour="com-enviar" className="grid gap-6 lg:grid-cols-[1fr_2fr]">
             <section className="panel p-5">
               <div className="flex items-center justify-between gap-2">
                 <h2 className="font-black text-pegasus-navy">Grupos</h2>

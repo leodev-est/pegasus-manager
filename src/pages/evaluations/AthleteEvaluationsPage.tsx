@@ -1,5 +1,6 @@
 import { ChevronDown, ChevronUp, History, Loader2, Save, Shield, Star, TrendingUp, UserRound } from "lucide-react";
 import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
+import { useTour } from "../../tours/useTour";
 import { CartesianGrid, Legend, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { Button } from "../../components/ui/Button";
 import { EmptyState } from "../../components/ui/EmptyState";
@@ -57,6 +58,31 @@ function ratingTone(overall: number | null) {
   return "danger";
 }
 
+const TOUR_STEPS = [
+  {
+    popover: {
+      title: "⭐ Avaliações Técnicas",
+      description: "Avalie atletas ativos com notas estilo FIFA: técnico, físico, tático e mental. O histórico gera gráfico de evolução visível ao atleta.",
+    },
+  },
+  {
+    element: "[data-tour='aval-atleta']",
+    popover: {
+      title: "Selecionar atleta",
+      description: "Escolha o atleta que deseja avaliar. A avaliação mais recente já preenchida será carregada automaticamente.",
+      side: "bottom" as const,
+    },
+  },
+  {
+    element: "[data-tour='aval-form']",
+    popover: {
+      title: "Formulário de avaliação",
+      description: "Preencha notas de 0 a 10 para cada habilidade. A nota geral é calculada automaticamente. Adicione observações no campo de notas do técnico.",
+      side: "left" as const,
+    },
+  },
+];
+
 function RatingInput({
   label,
   onChange,
@@ -96,6 +122,8 @@ export function AthleteEvaluationsPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [isLoadingEvaluation, setIsLoadingEvaluation] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+
+  useTour("avaliacoes:v1", isLoading ? [] : TOUR_STEPS);
 
   const selectedAthlete = useMemo(
     () => athletes.find((athlete) => athlete.id === selectedAthleteId) ?? null,
@@ -187,6 +215,7 @@ export function AthleteEvaluationsPage() {
         description="Avaliação técnica estilo FIFA por atleta ativo."
       />
 
+      <div data-tour="aval-atleta">
       <Select
         label="Selecionar atleta"
         onChange={(event) => setSelectedAthleteId(event.target.value)}
@@ -196,6 +225,7 @@ export function AthleteEvaluationsPage() {
         ]}
         value={selectedAthleteId}
       />
+      </div>
 
       {isLoading ? (
         <section className="panel flex items-center gap-3 p-6 text-sm font-bold text-pegasus-primary">
@@ -209,7 +239,7 @@ export function AthleteEvaluationsPage() {
           title="Nenhum atleta selecionado"
         />
       ) : (
-        <section className="grid gap-6 xl:grid-cols-[0.85fr_1.15fr]">
+        <section data-tour="aval-form" className="grid gap-6 xl:grid-cols-[0.85fr_1.15fr]">
           <aside className="space-y-6">
             <article className="panel p-6">
               <div className="flex items-center gap-4">

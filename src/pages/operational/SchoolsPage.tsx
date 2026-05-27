@@ -1,5 +1,6 @@
 import { CheckCircle2, FileSpreadsheet, Loader2, RefreshCw, XCircle } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { useTour } from "../../tours/useTour";
 import { Button } from "../../components/ui/Button";
 import { EmptyState } from "../../components/ui/EmptyState";
 import { FilterBar } from "../../components/ui/FilterBar";
@@ -21,6 +22,31 @@ function matchesSearch(contact: SchoolContact, search: string) {
     .filter(Boolean)
     .some((value) => String(value).toLowerCase().includes(query));
 }
+
+const TOUR_STEPS = [
+  {
+    popover: {
+      title: "🏫 Contato com Escolas",
+      description: "Acompanhe o status dos contatos com escolas parceiras lidos direto da planilha de operações.",
+    },
+  },
+  {
+    element: "[data-tour='escolas-cards']",
+    popover: {
+      title: "Resumo de contatos",
+      description: "Total de escolas, quantas foram contatadas, pendentes e quantas já responderam.",
+      side: "bottom" as const,
+    },
+  },
+  {
+    element: "[data-tour='escolas-lista']",
+    popover: {
+      title: "Lista de contatos",
+      description: "Use os filtros acima para buscar por nome, status de envio ou responsável. Cada linha mostra o histórico do contato.",
+      side: "top" as const,
+    },
+  },
+];
 
 export function SchoolsPage() {
   const { showToast } = useToast();
@@ -74,6 +100,8 @@ export function SchoolsPage() {
     loadContacts();
   }, [loadContacts]);
 
+  useTour("escolas:v1", isLoading ? [] : TOUR_STEPS);
+
   return (
     <div className="space-y-8">
       <PageHeader
@@ -87,7 +115,7 @@ export function SchoolsPage() {
         }
       />
 
-      <section className="grid gap-5 md:grid-cols-2 xl:grid-cols-4">
+      <section data-tour="escolas-cards" className="grid gap-5 md:grid-cols-2 xl:grid-cols-4">
         {[
           ["Escolas na planilha", summary.total],
           ["Enviados", summary.sent],
@@ -128,7 +156,7 @@ export function SchoolsPage() {
         />
       </FilterBar>
 
-      <section className="panel overflow-hidden">
+      <section data-tour="escolas-lista" className="panel overflow-hidden">
         <div className="flex items-center gap-3 border-b border-blue-100 p-6">
           <FileSpreadsheet className="text-pegasus-primary" size={22} />
           <div>

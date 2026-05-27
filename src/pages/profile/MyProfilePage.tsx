@@ -12,6 +12,7 @@ import {
   UserRound,
 } from "lucide-react";
 import { FormEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useTour } from "../../tours/useTour";
 import { useLocation } from "react-router-dom";
 import { useAuth } from "../../auth/AuthContext";
 import { Button } from "../../components/ui/Button";
@@ -70,6 +71,31 @@ function statusLabel(value?: string | null) {
   return value ? labels[value] ?? value : "-";
 }
 
+const TOUR_STEPS = [
+  {
+    popover: {
+      title: "👤 Meu Perfil",
+      description: "Sua página pessoal no Pegasus: informações de contato, estatísticas de frequência, autoavaliação e próximos treinos.",
+    },
+  },
+  {
+    element: "[data-tour='perfil-header']",
+    popover: {
+      title: "Dados do atleta",
+      description: "Foto, categoria, posição e status de mensalidade. Clique na câmera para atualizar sua foto de perfil.",
+      side: "bottom" as const,
+    },
+  },
+  {
+    element: "[data-tour='perfil-contato']",
+    popover: {
+      title: "Informações pessoais",
+      description: "Atualize seu email, telefone e data de nascimento. Essas informações são usadas para notificações do WhatsApp.",
+      side: "right" as const,
+    },
+  },
+];
+
 function overallTone(overall: number | null) {
   if (overall === null) return "from-slate-500 to-slate-700";
   if (overall >= 8) return "from-emerald-500 to-pegasus-primary";
@@ -107,6 +133,8 @@ export function MyProfilePage() {
   const [profile, setProfile] = useState<MyProfile | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isSavingProfile, setIsSavingProfile] = useState(false);
+
+  useTour("meu-perfil:v1", isLoading ? [] : TOUR_STEPS);
   const [isSavingSelf, setIsSavingSelf] = useState(false);
   const [isSavingCoach, setIsSavingCoach] = useState(false);
   const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
@@ -302,7 +330,7 @@ export function MyProfilePage() {
     <div className="space-y-8">
       <PageHeader title="Meu Perfil" description="Dados pessoais, frequência, mensalidade e evolução esportiva." />
 
-      <section className="panel overflow-hidden">
+      <section data-tour="perfil-header" className="panel overflow-hidden">
         <div className="bg-pegasus-navy p-6 text-white sm:p-8">
           <div className="flex flex-col gap-5 sm:flex-row sm:items-center">
             <div className="relative h-20 w-20 shrink-0">
@@ -366,7 +394,7 @@ export function MyProfilePage() {
       </section>
 
       <section className="grid gap-6 xl:grid-cols-[0.9fr_1.1fr]">
-        <article className="panel p-6">
+        <article data-tour="perfil-contato" className="panel p-6">
           <div className="mb-5 flex items-center gap-3">
             <UserRound className="text-pegasus-primary" size={22} />
             <h2 className="text-xl font-black text-pegasus-navy">Informações pessoais</h2>

@@ -1,5 +1,23 @@
 import { Bell, Calendar, DollarSign, Link, Loader2, Settings, Shield, Users } from "lucide-react";
 import { FormEvent, useEffect, useState } from "react";
+import { useTour } from "../../tours/useTour";
+
+const TOUR_STEPS = [
+  {
+    popover: {
+      title: "⚙️ Configurações",
+      description: "Parâmetros globais do sistema Pegasus: horário de treino, mensalidade, frequência mínima, notificações e integrações.",
+    },
+  },
+  {
+    element: "[data-tour='config-tabs']",
+    popover: {
+      title: "Abas de configuração",
+      description: "Treinos: local, horário e dias. Mensalidades: valor padrão. Notificações: regras de alertas. Frequência: mínimo exigido. Canais: e-mail. Sistema: nome e fuso horário.",
+      side: "bottom" as const,
+    },
+  },
+];
 import { useLocation } from "react-router-dom";
 import { Button } from "../../components/ui/Button";
 import { Input } from "../../components/ui/Input";
@@ -80,6 +98,8 @@ export function ConfiguracoesPage() {
   const { showToast } = useToast();
   const location = useLocation();
   const [activeTab, setActiveTab] = useState<Tab>("treinos");
+
+  useTour("configuracoes:v1", TOUR_STEPS);
   const [form, setForm] = useState<TrainingConfig>(defaultConfig);
   const [emailPassword, setEmailPassword] = useState("");
   const [isLoading, setIsLoading] = useState(true);
@@ -164,7 +184,7 @@ export function ConfiguracoesPage() {
         description="Parâmetros gerais do sistema Pegasus."
       />
 
-      <div className="flex gap-1 border-b border-slate-200 overflow-x-auto">
+      <div data-tour="config-tabs" className="flex gap-1 border-b border-slate-200 overflow-x-auto">
         {tabs.map((t) => (
           <button
             key={t.id}

@@ -1,5 +1,23 @@
 import { CheckCircle, ClipboardList, Loader2, MessageSquare, XCircle } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
+import { useTour } from "../../tours/useTour";
+
+const TOUR_STEPS = [
+  {
+    popover: {
+      title: "🧪 Atletas em Teste",
+      description: "Candidatos aprovados na inscrição que estão em período de avaliação. Aqui você decide quem vira atleta ativo no sistema.",
+    },
+  },
+  {
+    element: "[data-tour='testes-lista']",
+    popover: {
+      title: "Lista de candidatos em teste",
+      description: "Clique em Aprovar para tornar o atleta ativo (ele recebe acesso ao app e às funcionalidades de atleta). Rejeitar encerra o período de teste.",
+      side: "bottom" as const,
+    },
+  },
+];
 import { Button } from "../../components/ui/Button";
 import { ConfirmDialog } from "../../components/ui/ConfirmDialog";
 import { EmptyState } from "../../components/ui/EmptyState";
@@ -19,6 +37,8 @@ export function TestesPage() {
   const { showToast } = useToast();
   const [athletes, setAthletes] = useState<Athlete[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+
+  useTour("testes:v1", isLoading ? [] : TOUR_STEPS);
   const [isSaving, setIsSaving] = useState(false);
 
   const [approveTarget, setApproveTarget] = useState<Athlete | null>(null);
@@ -104,7 +124,7 @@ export function TestesPage() {
         description="Avalie e aprove atletas em período de teste."
       />
 
-      <section className="panel overflow-hidden">
+      <section data-tour="testes-lista" className="panel overflow-hidden">
         <div className="flex items-center gap-3 border-b border-blue-100 p-6">
           <ClipboardList className="text-pegasus-primary" size={22} />
           <div>

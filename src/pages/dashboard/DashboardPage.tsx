@@ -19,6 +19,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { useAuth } from "../../auth/AuthContext";
+import { useTour } from "../../tours/useTour";
 import { PageHeader } from "../../components/ui/PageHeader";
 import { InstallPwaButton } from "../../components/pwa/InstallPwaButton";
 import { StatCard } from "../../components/ui/StatCard";
@@ -121,6 +122,31 @@ function formatMonth(value: string) {
   const [year, month] = value.split("-").map(Number);
   return new Date(year, month - 1).toLocaleDateString("pt-BR", { month: "short", year: "2-digit" });
 }
+
+const TOUR_STEPS = [
+  {
+    popover: {
+      title: "🏠 Dashboard Pegasus",
+      description: "Visão geral do clube em tempo real. Os indicadores visíveis dependem do seu perfil de acesso.",
+    },
+  },
+  {
+    element: "[data-tour='dash-stats']",
+    popover: {
+      title: "Indicadores principais",
+      description: "Atletas, treinos, caixa, tarefas e escolas — tudo consolidado numa leitura rápida.",
+      side: "bottom" as const,
+    },
+  },
+  {
+    element: "[data-tour='dash-mural']",
+    popover: {
+      title: "Avisos do clube",
+      description: "Últimos comunicados publicados pelo RH ou gestão. Clique em 'Ver todos' para a lista completa.",
+      side: "top" as const,
+    },
+  },
+];
 
 export function DashboardPage() {
   const { hasPermission, user } = useAuth();
@@ -236,6 +262,8 @@ export function DashboardPage() {
     loadDashboard();
   }, [loadDashboard]);
 
+  useTour("dashboard:v1", isLoading ? [] : TOUR_STEPS);
+
   const upcomingTrainings = useMemo(() => getUpcomingTrainings(data.trainings), [data.trainings]);
   const nextTraining = upcomingTrainings[0];
   const trainingsThisWeek = data.trainings.filter((training) => isThisWeek(training.date)).length;
@@ -324,7 +352,7 @@ export function DashboardPage() {
         </section>
       ) : (
         <>
-          <section className="grid gap-5 md:grid-cols-2 xl:grid-cols-4">
+          <section data-tour="dash-stats" className="grid gap-5 md:grid-cols-2 xl:grid-cols-4">
             {stats.map((stat) => (
               <StatCard key={stat.label} {...stat} />
             ))}
@@ -526,7 +554,7 @@ export function DashboardPage() {
 
           {/* Mural de Avisos */}
           {muralPosts.length > 0 && (
-            <article className="panel p-6">
+            <article data-tour="dash-mural" className="panel p-6">
               <div className="mb-4 flex items-center justify-between gap-3">
                 <div className="flex items-center gap-3">
                   <span className="rounded-2xl bg-pegasus-ice p-3 text-pegasus-primary">

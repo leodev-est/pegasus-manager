@@ -1,6 +1,7 @@
 ﻿import { CalendarDays, Dumbbell, Loader2, Plus } from "lucide-react";
 import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 import { useAuth } from "../../auth/AuthContext";
+import { useTour } from "../../tours/useTour";
 import { ActionButtons } from "../../components/ui/ActionButtons";
 import { Button } from "../../components/ui/Button";
 import { ConfirmDialog } from "../../components/ui/ConfirmDialog";
@@ -36,6 +37,31 @@ const emptyTraining: TrainingForm = {
   notes: "",
   createdBy: "",
 };
+
+const TOUR_STEPS = [
+  {
+    popover: {
+      title: "🏐 Treinos",
+      description: "Planejamento técnico dos treinos: crie, edite e visualize treinos organizados por data, categoria e blocos de atividade.",
+    },
+  },
+  {
+    element: "[data-tour='treinos-filtros']",
+    popover: {
+      title: "Filtros",
+      description: "Filtre treinos por nome, categoria e mês. Use 'Novo treino' para criar uma sessão com aquecimento, fundamentos, parte principal e jogo.",
+      side: "bottom" as const,
+    },
+  },
+  {
+    element: "[data-tour='treinos-lista']",
+    popover: {
+      title: "Lista de treinos",
+      description: "Treinos agrupados por data. Clique em 'Ver' para ler o plano completo. Clique em 'Editar' para modificar ou no ícone de lixeira para excluir.",
+      side: "top" as const,
+    },
+  },
+];
 
 function formatDate(value?: string | null) {
   if (!value) return "-";
@@ -95,6 +121,8 @@ export function TrainingsPage() {
   const [viewTraining, setViewTraining] = useState<Training | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<Training | null>(null);
   const [form, setForm] = useState<TrainingForm>(emptyTraining);
+
+  useTour("treinos:v1", isLoading ? [] : TOUR_STEPS);
 
   const categories = useMemo(
     () => Array.from(new Set(trainings.map((training) => training.category).filter(Boolean))) as string[],
@@ -201,6 +229,7 @@ export function TrainingsPage() {
         }
       />
 
+      <div data-tour="treinos-filtros">
       <FilterBar>
         <Input
           label="Buscar"
@@ -218,8 +247,9 @@ export function TrainingsPage() {
         />
         <Input label="Mês" onChange={(event) => setMonth(event.target.value)} type="month" value={month} />
       </FilterBar>
+      </div>
 
-      <section className="panel overflow-hidden">
+      <section data-tour="treinos-lista" className="panel overflow-hidden">
         <div className="flex items-center gap-3 border-b border-blue-100 p-6">
           <CalendarDays className="text-pegasus-primary" size={22} />
           <div>

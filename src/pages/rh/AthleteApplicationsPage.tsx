@@ -2,6 +2,7 @@ import { ArrowRightCircle, Check, Copy, Download, ExternalLink, Loader2, Plus, U
 import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { useAuth } from "../../auth/AuthContext";
+import { useTour } from "../../tours/useTour";
 import { ActionButtons } from "../../components/ui/ActionButtons";
 import { Button } from "../../components/ui/Button";
 import { ConfirmDialog } from "../../components/ui/ConfirmDialog";
@@ -279,6 +280,31 @@ function ApplicationDetailModal({
   );
 }
 
+const TOUR_STEPS = [
+  {
+    popover: {
+      title: "📝 Inscrições",
+      description: "Candidatos que se inscreveram pelo formulário público. Avalie, aprove ou recuse cada inscrição para avançar ao período de testes.",
+    },
+  },
+  {
+    element: "[data-tour='inscricoes-filtros']",
+    popover: {
+      title: "Filtros",
+      description: "Filtre por status (Pendente, Em análise, Aprovado, Recusado) e por posição. Use a busca para encontrar pelo nome.",
+      side: "bottom" as const,
+    },
+  },
+  {
+    element: "[data-tour='inscricoes-lista']",
+    popover: {
+      title: "Lista de inscrições",
+      description: "Clique em 'Detalhes' para ver a ficha completa e copiar o resumo para WhatsApp. Use os botões para aprovar ou recusar o candidato.",
+      side: "top" as const,
+    },
+  },
+];
+
 // ── Página Principal ───────────────────────────────────────────────────────────
 
 export function AthleteApplicationsPage() {
@@ -305,6 +331,8 @@ export function AthleteApplicationsPage() {
   const [approveTarget, setApproveTarget] = useState<AthleteApplication | null>(null);
   const [rejectTarget, setRejectTarget] = useState<AthleteApplication | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<AthleteApplication | null>(null);
+
+  useTour("inscricoes:v1", isLoading ? [] : TOUR_STEPS);
 
   const summary = useMemo(
     () => ({
@@ -548,13 +576,15 @@ export function AthleteApplicationsPage() {
         </section>
       ) : null}
 
+      <div data-tour="inscricoes-filtros">
       <FilterBar>
         <Input label="Buscar" onChange={(e) => setSearch(e.target.value)} value={search} />
         <Select label="Status" onChange={(e) => setStatus(e.target.value)} options={statusOptions} value={status} />
         <Select label="Posição" onChange={(e) => setPosition(e.target.value)} options={positionOptions} value={position} />
       </FilterBar>
+      </div>
 
-      <section className="panel overflow-hidden">
+      <section data-tour="inscricoes-lista" className="panel overflow-hidden">
         <div className="flex flex-wrap items-center justify-between gap-3 border-b border-blue-100 p-6">
           <div className="flex items-center gap-3">
             <UserPlus className="text-pegasus-primary" size={22} />

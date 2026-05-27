@@ -1,11 +1,37 @@
 import { CheckCircle, History, Star } from "lucide-react";
 import { useEffect, useState } from "react";
+import { useTour } from "../../tours/useTour";
 import { Button } from "../../components/ui/Button";
 import { PageHeader } from "../../components/ui/PageHeader";
 import { useToast } from "../../components/ui/Toast";
 import { getApiErrorMessage } from "../../services/api";
 import { trainingFeedbackService } from "../../services/trainingFeedbackService";
 import { trainingService, type Training } from "../../services/trainingService";
+
+const TOUR_STEPS = [
+  {
+    popover: {
+      title: "⭐ Avaliar Treino",
+      description: "Compartilhe sua opinião sobre os treinos que você participou. Seu feedback ajuda o técnico a melhorar as sessões.",
+    },
+  },
+  {
+    element: "[data-tour='treino-lista']",
+    popover: {
+      title: "Treinos recentes",
+      description: "Selecione um treino da lista para avaliá-lo. O ícone verde indica treinos já avaliados.",
+      side: "right" as const,
+    },
+  },
+  {
+    element: "[data-tour='treino-form']",
+    popover: {
+      title: "Avaliação",
+      description: "Dê uma nota de 1 a 5 estrelas e escreva um comentário opcional. Clique em Enviar avaliação para salvar.",
+      side: "left" as const,
+    },
+  },
+];
 
 type Feedback = { trainingId: string; rating: number; comment: string | null; createdAt: string };
 
@@ -57,6 +83,8 @@ export function AvaliarTreinoPage() {
   const [comment, setComment] = useState("");
   const [isSaving, setIsSaving] = useState(false);
   const [feedbackMap, setFeedbackMap] = useState<Map<string, Feedback>>(new Map());
+
+  useTour("avaliar-treino:v1", isLoading ? [] : TOUR_STEPS);
 
   useEffect(() => {
     async function load() {
@@ -132,7 +160,7 @@ export function AvaliarTreinoPage() {
       />
 
       <div className="grid gap-6 xl:grid-cols-[1fr_440px]">
-        <div className="panel divide-y divide-blue-50 overflow-hidden dark:divide-slate-700">
+        <div data-tour="treino-lista" className="panel divide-y divide-blue-50 overflow-hidden dark:divide-slate-700">
           <div className="p-5">
             <h2 className="font-bold text-pegasus-navy">Treinos recentes</h2>
             <p className="text-sm text-slate-500">Selecione um treino para avaliar.</p>
@@ -179,7 +207,7 @@ export function AvaliarTreinoPage() {
           )}
         </div>
 
-        <div className="flex flex-col gap-6">
+        <div data-tour="treino-form" className="flex flex-col gap-6">
           {selectedId ? (
             <form className="panel h-fit p-6" onSubmit={handleSubmit}>
               <h2 className="font-bold text-pegasus-navy">

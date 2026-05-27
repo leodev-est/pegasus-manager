@@ -1,5 +1,6 @@
 import { CalendarDays, CheckCircle2, Loader2, TrendingUp, XCircle } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
+import { useTour } from "../../tours/useTour";
 import { EmptyState } from "../../components/ui/EmptyState";
 import { Input } from "../../components/ui/Input";
 import { PageHeader } from "../../components/ui/PageHeader";
@@ -17,6 +18,31 @@ import {
 } from "./attendanceUi";
 
 const initialMonth = getCurrentMonthYear();
+
+const TOUR_STEPS = [
+  {
+    popover: {
+      title: "📅 Minha Frequência",
+      description: "Acompanhe sua presença nos treinos do Pegasus. Veja o percentual geral e o detalhe mês a mês.",
+    },
+  },
+  {
+    element: "[data-tour='freq-geral']",
+    popover: {
+      title: "Frequência geral",
+      description: "Percentual calculado sobre todos os treinos desde que você entrou. A meta é manter acima de 80%.",
+      side: "bottom" as const,
+    },
+  },
+  {
+    element: "[data-tour='freq-mes']",
+    popover: {
+      title: "Detalhe por mês",
+      description: "Selecione o mês para ver presenças, faltas e justificadas. A lista abaixo mostra cada treino individualmente.",
+      side: "top" as const,
+    },
+  },
+];
 
 function PercentBar({ value }: { value: number }) {
   const color = value >= 80 ? "bg-emerald-500" : value >= 60 ? "bg-amber-500" : "bg-rose-500";
@@ -58,6 +84,8 @@ export function MyFrequencyPage() {
       .finally(() => setIsTotalLoading(false));
   }, []);
 
+  useTour("minha-freq:v1", isLoading ? [] : TOUR_STEPS);
+
   const totalPct = total?.percentual ?? 0;
   const monthlyPct = data?.percentual ?? 0;
 
@@ -66,7 +94,7 @@ export function MyFrequencyPage() {
       <PageHeader title="Minha Frequência" description="Acompanhe sua presença nos treinos oficiais Pegasus." />
 
       {/* Total geral */}
-      <section className="panel p-6">
+      <section data-tour="freq-geral" className="panel p-6">
         <div className="mb-4 flex items-center gap-2">
           <TrendingUp className="text-pegasus-primary" size={20} />
           <h2 className="font-black text-pegasus-navy">Frequência Geral (todos os treinos)</h2>
@@ -110,7 +138,7 @@ export function MyFrequencyPage() {
       </section>
 
       {/* Cards do mês */}
-      <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+      <section data-tour="freq-mes" className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         {[
           { icon: CalendarDays, label: "Treinos no mês", value: data?.totalTreinos ?? 0 },
           { icon: CheckCircle2, label: "Presenças", value: data?.presencas ?? 0 },

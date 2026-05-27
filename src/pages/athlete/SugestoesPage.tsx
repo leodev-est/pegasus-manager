@@ -1,5 +1,23 @@
 import { MessageSquarePlus, Send } from "lucide-react";
 import { useState } from "react";
+import { useTour } from "../../tours/useTour";
+
+const TOUR_STEPS = [
+  {
+    popover: {
+      title: "💬 Caixinha de Sugestões",
+      description: "Envie suas ideias, críticas ou sugestões para a gestão do clube. Você pode enviar anonimamente — ninguém vai saber que foi você.",
+    },
+  },
+  {
+    element: "[data-tour='sugestoes-form']",
+    popover: {
+      title: "Formulário",
+      description: "Escreva sua mensagem e escolha se quer se identificar ou não. Todas as mensagens chegam no painel de Ouvidoria do RH.",
+      side: "bottom" as const,
+    },
+  },
+];
 import { Button } from "../../components/ui/Button";
 import { PageHeader } from "../../components/ui/PageHeader";
 import { useToast } from "../../components/ui/Toast";
@@ -9,6 +27,8 @@ import { suggestionService } from "../../services/suggestionService";
 export function SugestoesPage() {
   const { showToast } = useToast();
   const [message, setMessage] = useState("");
+
+  useTour("sugestoes:v1", TOUR_STEPS);
   const [anonymous, setAnonymous] = useState(false);
   const [isSending, setIsSending] = useState(false);
   const [sent, setSent] = useState(false);
@@ -54,7 +74,7 @@ export function SugestoesPage() {
           </Button>
         </div>
       ) : (
-        <form className="panel p-6" onSubmit={handleSubmit}>
+        <form data-tour="sugestoes-form" className="panel p-6" onSubmit={handleSubmit}>
           <div className="flex items-center gap-3">
             <span className="rounded-2xl bg-pegasus-ice p-3 text-pegasus-primary">
               <MessageSquarePlus size={22} />

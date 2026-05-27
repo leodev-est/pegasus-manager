@@ -1,5 +1,23 @@
 import { Calendar, MapPin, Trophy } from "lucide-react";
 import { useEffect, useState } from "react";
+import { useTour } from "../../tours/useTour";
+
+const TOUR_STEPS = [
+  {
+    popover: {
+      title: "🏆 Minhas Convocações",
+      description: "Veja os jogos para os quais você foi convocado(a). Aqui você acompanha datas, locais e a contagem regressiva para cada jogo.",
+    },
+  },
+  {
+    element: "[data-tour='convocacoes-lista']",
+    popover: {
+      title: "Jogos convocados",
+      description: "Cada card mostra o adversário, data, local e quanto tempo falta para o jogo. Fique de olho nos que estão mais próximos!",
+      side: "bottom" as const,
+    },
+  },
+];
 import { PageHeader } from "../../components/ui/PageHeader";
 import { useToast } from "../../components/ui/Toast";
 import { gameConvocationService, type MyConvocation } from "../../services/gameConvocationService";
@@ -48,6 +66,8 @@ export function MinhasConvocacoesPage() {
   const [convocacoes, setConvocacoes] = useState<MyConvocation[]>([]);
   const [loading, setLoading] = useState(true);
 
+  useTour("minhas-convocacoes:v1", loading ? [] : TOUR_STEPS);
+
   useEffect(() => {
     gameConvocationService
       .getMyConvocations()
@@ -74,7 +94,7 @@ export function MinhasConvocacoesPage() {
           </p>
         </div>
       ) : (
-        <div className="space-y-3">
+        <div data-tour="convocacoes-lista" className="space-y-3">
           {convocacoes.map((conv) => (
             <div key={conv.id} className="panel p-4">
               <div className="flex flex-wrap items-start justify-between gap-3">

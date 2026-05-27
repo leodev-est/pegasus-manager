@@ -1,5 +1,6 @@
 import { AlertCircle, ChevronLeft, ChevronRight, ClipboardList, Loader2, MapPin, Users } from "lucide-react";
 import { useEffect, useState } from "react";
+import { useTour } from "../../tours/useTour";
 import { useToast } from "../../components/ui/Toast";
 import {
   type ChamadaAthlete,
@@ -7,6 +8,31 @@ import {
   attendanceService,
 } from "../../services/attendanceService";
 import { formatDateLong } from "./attendanceUi";
+
+const TOUR_STEPS = [
+  {
+    popover: {
+      title: "📋 Chamada",
+      description: "Registre a presença dos atletas em cada treino. A chamada é feita por data e fica salva automaticamente ao clicar no status do atleta.",
+    },
+  },
+  {
+    element: "[data-tour='chamada-data']",
+    popover: {
+      title: "Seleção de data",
+      description: "Navegue entre os sábados de treino usando as setas. Datas bloqueadas no calendário aparecem como 'Treino cancelado'.",
+      side: "bottom" as const,
+    },
+  },
+  {
+    element: "[data-tour='chamada-lista']",
+    popover: {
+      title: "Lista de atletas",
+      description: "Clique em Presente, Falta ou Justificada para marcar o status de cada atleta. Salva automaticamente, sem necessidade de confirmar.",
+      side: "top" as const,
+    },
+  },
+];
 
 function getBrazilTodayKey(): string {
   return new Intl.DateTimeFormat("en-CA", {
@@ -67,6 +93,8 @@ export function ChamadaPage() {
   const [isError, setIsError] = useState(false);
   const [savingId, setSavingId] = useState<string | null>(null);
 
+  useTour("chamada:v1", isLoading ? [] : TOUR_STEPS);
+
   useEffect(() => {
     let cancelled = false;
     setIsLoading(true);
@@ -124,7 +152,7 @@ export function ChamadaPage() {
         <p className="text-sm text-pegasus-medium">Registre a presença dos atletas no treino</p>
       </div>
 
-      <div className="flex items-center gap-3 rounded-2xl border border-blue-100 bg-white px-5 py-4 shadow-soft">
+      <div data-tour="chamada-data" className="flex items-center gap-3 rounded-2xl border border-blue-100 bg-white px-5 py-4 shadow-soft">
         <button
           type="button"
           onClick={() => setDateKey((d) => addDays(d, -7))}
@@ -199,7 +227,7 @@ export function ChamadaPage() {
             </div>
           </div>
 
-          <div className="overflow-hidden rounded-2xl border border-blue-100 bg-white shadow-soft">
+          <div data-tour="chamada-lista" className="overflow-hidden rounded-2xl border border-blue-100 bg-white shadow-soft">
             <div className="flex items-center gap-2 border-b border-blue-50 px-5 py-3">
               <Users size={16} className="text-pegasus-medium" />
               <p className="text-sm font-semibold text-pegasus-navy">{athletes.length} atleta{athletes.length !== 1 ? "s" : ""}</p>
