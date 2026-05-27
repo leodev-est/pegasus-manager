@@ -307,7 +307,7 @@ export function Topbar({ onMenuClick }: TopbarProps) {
             </button>
 
             {isNotificationsOpen ? (
-              <section className="absolute right-0 top-12 z-50 w-[min(22rem,calc(100vw-2rem))] overflow-hidden rounded-2xl border border-blue-100 bg-white shadow-2xl dark:border-slate-700 dark:bg-slate-800">
+              <section className="fixed inset-x-2 top-[4.5rem] z-50 overflow-hidden rounded-2xl border border-blue-100 bg-white shadow-2xl dark:border-slate-700 dark:bg-slate-800 sm:absolute sm:inset-x-auto sm:right-0 sm:top-12 sm:w-[22rem]">
                 <header className="flex items-center justify-between gap-3 border-b border-blue-100 p-4">
                   <div>
                     <p className="font-black text-pegasus-navy">Notificações</p>
