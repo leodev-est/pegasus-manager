@@ -161,6 +161,7 @@ export function useAthleteWelcomeTour() {
   function close() {
     localStorage.setItem(STORAGE_KEY, "1");
     setOpen(false);
+    window.dispatchEvent(new CustomEvent("pegasus:welcome:done"));
   }
 
   function reopen() {
@@ -186,7 +187,7 @@ export function AthleteWelcomeTour({ onClose }: { onClose: () => void }) {
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm">
+    <div data-welcome-tour="open" className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm">
       <div className="panel relative flex w-full max-w-md flex-col overflow-hidden">
         <button
           type="button"

@@ -74,8 +74,19 @@ export function useTour(tourId: string, steps: DriveStep[]) {
     if (!user?.id || steps.length === 0) return;
     if (getSeenTours(user.id)[tourId]) return;
 
-    const timer = setTimeout(() => startTourRef.current(), 1200);
-    return () => clearTimeout(timer);
+    function scheduleStart() {
+      const timer = setTimeout(() => startTourRef.current(), 800);
+      return () => clearTimeout(timer);
+    }
+
+    // Se o tour de boas-vindas estiver aberto, aguardar ele fechar
+    if (document.querySelector("[data-welcome-tour]")) {
+      const onDone = () => scheduleStart();
+      window.addEventListener("pegasus:welcome:done", onDone, { once: true });
+      return () => window.removeEventListener("pegasus:welcome:done", onDone);
+    }
+
+    return scheduleStart();
   }, [user?.id, tourId, steps.length]);
 
   // Escuta "Tutorial do App" para reiniciar
