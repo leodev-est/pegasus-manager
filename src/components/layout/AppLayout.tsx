@@ -20,7 +20,13 @@ export function AppLayout() {
   const tour = useAthleteWelcomeTour();
 
   function handleOpenTour() {
-    window.dispatchEvent(new CustomEvent("pegasus:tour:current"));
+    const detail = { handled: false };
+    window.dispatchEvent(new CustomEvent("pegasus:tour:current", { detail }));
+    if (!detail.handled) {
+      window.dispatchEvent(new CustomEvent("pegasus:toast", {
+        detail: { message: "Esta tela não tem tutorial disponível.", type: "info" },
+      }));
+    }
   }
 
   return (

@@ -80,7 +80,14 @@ export function useTour(tourId: string, steps: DriveStep[]) {
 
   // Escuta "Tutorial do App" para reiniciar
   useEffect(() => {
-    function handleRestart() { startTourRef.current(); }
+    function handleRestart(e: Event) {
+      const detail = (e as CustomEvent<{ handled: boolean }>).detail;
+      const availableSteps = filterAvailableSteps(stepsRef.current);
+      if (availableSteps.length > 0) {
+        if (detail) detail.handled = true;
+        startTourRef.current();
+      }
+    }
     window.addEventListener("pegasus:tour:current", handleRestart);
     return () => window.removeEventListener("pegasus:tour:current", handleRestart);
   }, []);
