@@ -3,11 +3,39 @@ import { useEffect, useState } from "react";
 import { EmptyState } from "../../components/ui/EmptyState";
 import { PageHeader } from "../../components/ui/PageHeader";
 import { trainingPlanService, type TrainingPlan } from "../../services/trainingPlanService";
+import { useTour } from "../../tours/useTour";
 
 function formatDate(value: string | null) {
   if (!value) return null;
   return new Intl.DateTimeFormat("pt-BR", { timeZone: "UTC" }).format(new Date(value));
 }
+
+const TOUR_STEPS = [
+  {
+    element: "[data-tour='plano-header']",
+    popover: {
+      title: "📋 Seu plano ativo",
+      description: "Este é o plano de treino que o treinador criou especificamente para você. Aqui aparecem o título, quem criou e o período de validade do plano.",
+      side: "bottom" as const,
+    },
+  },
+  {
+    element: "[data-tour='plano-objetivos']",
+    popover: {
+      title: "Objetivos do plano",
+      description: "O treinador define metas específicas que você deve alcançar com este plano. Leia com atenção para entender o foco do seu treinamento.",
+      side: "bottom" as const,
+    },
+  },
+  {
+    element: "[data-tour='plano-exercicios']",
+    popover: {
+      title: "Lista de exercícios",
+      description: "Cada exercício mostra o nome, quantas séries fazer, quantas repetições por série e observações importantes do treinador. Siga à risca!",
+      side: "top" as const,
+    },
+  },
+];
 
 export function MeuPlanoPage() {
   const [plan, setPlan] = useState<TrainingPlan | null>(null);
@@ -19,6 +47,8 @@ export function MeuPlanoPage() {
       .catch(() => {})
       .finally(() => setIsLoading(false));
   }, []);
+
+  useTour("meu-plano:v1", isLoading || !plan ? [] : TOUR_STEPS);
 
   return (
     <div className="space-y-8">
@@ -39,8 +69,7 @@ export function MeuPlanoPage() {
         />
       ) : (
         <div className="space-y-6">
-          {/* Plan header */}
-          <div className="rounded-3xl bg-pegasus-navy p-6 text-white">
+          <div data-tour="plano-header" className="rounded-3xl bg-pegasus-navy p-6 text-white">
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div>
                 <p className="text-xs font-semibold uppercase tracking-widest text-blue-200">Plano ativo</p>
@@ -69,14 +98,14 @@ export function MeuPlanoPage() {
           )}
 
           {plan.goals && (
-            <div className="panel p-5">
+            <div data-tour="plano-objetivos" className="panel p-5">
               <h3 className="mb-2 font-black text-pegasus-navy">Objetivos</h3>
               <p className="text-sm leading-relaxed text-slate-600 whitespace-pre-wrap">{plan.goals}</p>
             </div>
           )}
 
           {plan.exercises && plan.exercises.length > 0 && (
-            <section className="panel overflow-hidden">
+            <section data-tour="plano-exercicios" className="panel overflow-hidden">
               <div className="border-b border-blue-100 p-5">
                 <h3 className="font-black text-pegasus-navy">Exercícios ({plan.exercises.length})</h3>
               </div>

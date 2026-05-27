@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { EmptyState } from "../../components/ui/EmptyState";
 import { PageHeader } from "../../components/ui/PageHeader";
 import { profileService } from "../../services/profileService";
+import { useTour } from "../../tours/useTour";
 
 type MyPayment = {
   id: string;
@@ -45,6 +46,31 @@ function formatMonth(value: string | null) {
   return new Date(year, month - 1).toLocaleDateString("pt-BR", { month: "long", year: "numeric" });
 }
 
+const TOUR_STEPS = [
+  {
+    popover: {
+      title: "💳 Suas Mensalidades",
+      description: "Aqui você acompanha o histórico completo das suas mensalidades no clube. Veja o que está pago, pendente ou atrasado.",
+    },
+  },
+  {
+    element: "[data-tour='mensalidades-cards']",
+    popover: {
+      title: "Resumo rápido",
+      description: "Estes três cards mostram: o total que você já pagou no ano, quantas mensalidades estão pagas, e quando vence a próxima.",
+      side: "bottom" as const,
+    },
+  },
+  {
+    element: "[data-tour='mensalidades-historico']",
+    popover: {
+      title: "Histórico completo",
+      description: "Cada linha mostra uma mensalidade: o mês de referência, valor, data de vencimento e status. Verde = pago, vermelho = atrasado, cinza = pendente.",
+      side: "top" as const,
+    },
+  },
+];
+
 export function MinhasMensalidadesPage() {
   const [payments, setPayments] = useState<MyPayment[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -55,6 +81,8 @@ export function MinhasMensalidadesPage() {
       .catch(() => {})
       .finally(() => setIsLoading(false));
   }, []);
+
+  useTour("mensalidades:v1", isLoading ? [] : TOUR_STEPS);
 
   const paid = payments.filter((p) => p.status === "pago");
   const totalPaidYear = paid
@@ -75,8 +103,7 @@ export function MinhasMensalidadesPage() {
         </div>
       ) : (
         <>
-          {/* Summary cards */}
-          <div className="grid gap-4 sm:grid-cols-3">
+          <div data-tour="mensalidades-cards" className="grid gap-4 sm:grid-cols-3">
             <div className="panel p-5 text-center">
               <p className="text-sm font-semibold text-slate-500">Total pago no ano</p>
               <p className="mt-2 text-3xl font-black text-emerald-600">{formatCurrency(totalPaidYear)}</p>
@@ -100,11 +127,10 @@ export function MinhasMensalidadesPage() {
             </div>
           </div>
 
-          {/* History table */}
           {payments.length === 0 ? (
             <EmptyState icon={CreditCard} title="Nenhuma mensalidade" description="Sem registros de mensalidade ainda." />
           ) : (
-            <section className="panel overflow-hidden">
+            <section data-tour="mensalidades-historico" className="panel overflow-hidden">
               <div className="border-b border-blue-100 p-5">
                 <h2 className="font-black text-pegasus-navy">Histórico</h2>
               </div>

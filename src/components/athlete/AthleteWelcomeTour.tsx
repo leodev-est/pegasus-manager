@@ -1,9 +1,12 @@
 import {
+  Activity,
   CalendarDays,
   ChevronLeft,
   ChevronRight,
   ClipboardList,
+  CreditCard,
   LayoutDashboard,
+  MessageSquare,
   MessageSquarePlus,
   Star,
   Trophy,
@@ -36,7 +39,7 @@ const SLIDES: Slide[] = [
     color: "text-blue-600 bg-blue-50 dark:bg-blue-900/20",
     title: "Dashboard",
     description:
-      "A tela inicial mostra um resumo do seu desempenho: sua frequência geral nos treinos, os próximos jogos e novidades do clube.",
+      "A tela inicial mostra um resumo do seu desempenho: frequência nos treinos, próximos jogos, avisos do clube e novidades.",
     path: "/app",
     cta: "Ver Dashboard",
   },
@@ -45,7 +48,7 @@ const SLIDES: Slide[] = [
     color: "text-emerald-600 bg-emerald-50 dark:bg-emerald-900/20",
     title: "Minha Frequência",
     description:
-      "Veja sua presença em cada treino, mês a mês. Acompanhe sua frequência geral e compare com os períodos anteriores.",
+      "Veja sua presença em cada treino, mês a mês. Acompanhe sua frequência geral e compare com períodos anteriores.",
     path: "/app/atleta/frequencia",
     cta: "Ver Frequência",
   },
@@ -66,6 +69,51 @@ const SLIDES: Slide[] = [
       "Consulte o histórico de jogos do Pegasus: resultados, placares, sets e informações de cada partida disputada.",
     path: "/app/jogos",
     cta: "Ver Jogos",
+  },
+  {
+    icon: CreditCard,
+    color: "text-teal-600 bg-teal-50 dark:bg-teal-900/20",
+    title: "Mensalidades",
+    description:
+      "Acompanhe o histórico das suas mensalidades: quais estão pagas, pendentes ou atrasadas, e o total investido no clube este ano.",
+    path: "/app/atleta/mensalidades",
+    cta: "Ver Mensalidades",
+  },
+  {
+    icon: Star,
+    color: "text-violet-600 bg-violet-50 dark:bg-violet-900/20",
+    title: "Minhas Avaliações",
+    description:
+      "Veja as notas do treinador em Técnico, Físico, Tático e Mental. O gráfico de evolução mostra seu progresso ao longo do tempo.",
+    path: "/app/atleta/avaliacoes",
+    cta: "Ver Avaliações",
+  },
+  {
+    icon: Activity,
+    color: "text-rose-600 bg-rose-50 dark:bg-rose-900/20",
+    title: "Saúde",
+    description:
+      "Acompanhe seu histórico de lesões e afastamentos. Quando afastado por lesão, o treinador vê isso automaticamente na chamada.",
+    path: "/app/atleta/saude",
+    cta: "Ver Saúde",
+  },
+  {
+    icon: ClipboardList,
+    color: "text-orange-600 bg-orange-50 dark:bg-orange-900/20",
+    title: "Meu Plano de Treino",
+    description:
+      "O treinador pode criar um plano personalizado para você com exercícios, séries, repetições e objetivos específicos.",
+    path: "/app/atleta/plano",
+    cta: "Ver Meu Plano",
+  },
+  {
+    icon: MessageSquare,
+    color: "text-blue-600 bg-blue-50 dark:bg-blue-900/20",
+    title: "Mural de Avisos",
+    description:
+      "Fique por dentro dos comunicados do clube: informativos, eventos e avisos urgentes da gestão. Novos avisos aparecem no dashboard.",
+    path: "/app/comunicados",
+    cta: "Ver Mural",
   },
   {
     icon: Star,
@@ -99,11 +147,12 @@ const SLIDES: Slide[] = [
     color: "text-pegasus-primary bg-pegasus-primary/10",
     title: "Tudo pronto!",
     description:
-      "Você pode acessar todas essas telas pelo menu lateral a qualquer momento. Se tiver dúvidas, fale com a sua equipe de gestão. Bons treinos!",
+      "Você pode acessar todas essas telas pelo menu lateral a qualquer momento. Ao entrar em cada tela pela primeira vez, um guia rápido vai aparecer para te explicar como usar. Bons treinos!",
   },
 ];
 
-const STORAGE_KEY = "pegasus-manager:athlete-tour-seen";
+// v2 — atualizado com novas telas (mensalidades, avaliações, saúde, plano, mural)
+const STORAGE_KEY = "pegasus-manager:athlete-tour-v2";
 
 export function useAthleteWelcomeTour() {
   const seen = localStorage.getItem(STORAGE_KEY) === "1";
@@ -139,7 +188,6 @@ export function AthleteWelcomeTour({ onClose }: { onClose: () => void }) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm">
       <div className="panel relative flex w-full max-w-md flex-col overflow-hidden">
-        {/* Fechar */}
         <button
           type="button"
           onClick={onClose}
@@ -149,7 +197,6 @@ export function AthleteWelcomeTour({ onClose }: { onClose: () => void }) {
           <X size={18} />
         </button>
 
-        {/* Indicadores de progresso */}
         <div className="flex gap-1.5 px-6 pt-5">
           {SLIDES.map((_, i) => (
             <button
@@ -168,7 +215,6 @@ export function AthleteWelcomeTour({ onClose }: { onClose: () => void }) {
           ))}
         </div>
 
-        {/* Conteúdo */}
         <div className="flex flex-col items-center px-8 py-8 text-center">
           <div className={`mb-5 flex h-16 w-16 items-center justify-center rounded-2xl ${slide.color}`}>
             <Icon size={32} />
@@ -188,7 +234,6 @@ export function AthleteWelcomeTour({ onClose }: { onClose: () => void }) {
           )}
         </div>
 
-        {/* Navegação */}
         <div className="flex items-center justify-between border-t border-blue-50 px-6 py-4 dark:border-slate-700">
           <button
             type="button"

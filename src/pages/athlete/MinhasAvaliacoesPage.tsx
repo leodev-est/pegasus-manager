@@ -14,12 +14,46 @@ import { EmptyState } from "../../components/ui/EmptyState";
 import { PageHeader } from "../../components/ui/PageHeader";
 import { profileService } from "../../services/profileService";
 import type { AthleteEvaluation } from "../../services/evaluationService";
+import { useTour } from "../../tours/useTour";
 
 type EvalWithDate = AthleteEvaluation & { createdAt: string };
 
 function formatDate(value: string) {
   return new Intl.DateTimeFormat("pt-BR", { day: "2-digit", month: "short", year: "2-digit" }).format(new Date(value));
 }
+
+const TOUR_STEPS = [
+  {
+    popover: {
+      title: "⭐ Suas Avaliações",
+      description: "O treinador avalia você periodicamente em quatro dimensões. Aqui você acompanha suas notas e como elas evoluem ao longo do tempo.",
+    },
+  },
+  {
+    element: "[data-tour='avaliacoes-notas']",
+    popover: {
+      title: "Notas atuais",
+      description: "Estas são suas notas da última avaliação: Técnico (habilidades técnicas), Físico (condicionamento), Tático (leitura de jogo) e Mental (foco e consistência). Escala de 0 a 10.",
+      side: "bottom" as const,
+    },
+  },
+  {
+    element: "[data-tour='avaliacoes-grafico']",
+    popover: {
+      title: "Gráfico de evolução",
+      description: "O gráfico mostra como suas notas mudaram entre as avaliações. Cada linha colorida representa uma dimensão. Quanto mais avaliações, mais rico o histórico.",
+      side: "top" as const,
+    },
+  },
+  {
+    element: "[data-tour='avaliacoes-historico']",
+    popover: {
+      title: "Histórico completo",
+      description: "Aqui ficam todas as avaliações em ordem cronológica, com as notas individuais e os comentários do treinador sobre cada uma.",
+      side: "top" as const,
+    },
+  },
+];
 
 export function MinhasAvaliacoesPage() {
   const [history, setHistory] = useState<EvalWithDate[]>([]);
@@ -31,6 +65,8 @@ export function MinhasAvaliacoesPage() {
       .catch(() => {})
       .finally(() => setIsLoading(false));
   }, []);
+
+  useTour("avaliacoes:v1", isLoading ? [] : TOUR_STEPS);
 
   const latest = history[history.length - 1] ?? null;
 
@@ -57,8 +93,7 @@ export function MinhasAvaliacoesPage() {
         <EmptyState icon={Star} title="Sem avaliações" description="O treinador ainda não registrou avaliações para você." />
       ) : (
         <>
-          {/* Latest scores */}
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <div data-tour="avaliacoes-notas" className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
             {(
               [
                 { label: "Técnico", value: latest?.technical, color: "text-blue-600", bg: "bg-blue-50" },
@@ -87,9 +122,8 @@ export function MinhasAvaliacoesPage() {
             </div>
           )}
 
-          {/* Evolution chart */}
           {history.length > 1 && (
-            <section className="panel p-6">
+            <section data-tour="avaliacoes-grafico" className="panel p-6">
               <div className="mb-6 flex items-center gap-3">
                 <Star className="text-pegasus-primary" size={20} />
                 <div>
@@ -113,8 +147,7 @@ export function MinhasAvaliacoesPage() {
             </section>
           )}
 
-          {/* History list */}
-          <section className="panel overflow-hidden">
+          <section data-tour="avaliacoes-historico" className="panel overflow-hidden">
             <div className="border-b border-blue-100 p-5">
               <h2 className="font-black text-pegasus-navy">Histórico ({history.length} avaliação{history.length !== 1 ? "ões" : ""})</h2>
             </div>

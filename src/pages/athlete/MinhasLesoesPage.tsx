@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { EmptyState } from "../../components/ui/EmptyState";
 import { PageHeader } from "../../components/ui/PageHeader";
 import { injuryService, type Injury } from "../../services/injuryService";
+import { useTour } from "../../tours/useTour";
 
 const TYPE_LABELS: Record<string, string> = {
   muscular: "Muscular",
@@ -23,6 +24,31 @@ function formatDate(value: string | null) {
   return new Intl.DateTimeFormat("pt-BR", { timeZone: "UTC" }).format(new Date(value));
 }
 
+const TOUR_STEPS = [
+  {
+    popover: {
+      title: "🏥 Sua Saúde",
+      description: "Aqui fica o histórico das suas lesões e afastamentos registrados pelo RH do clube. Você acompanha o que está ativo e o que já foi recuperado.",
+    },
+  },
+  {
+    element: "[data-tour='saude-ativas']",
+    popover: {
+      title: "Lesões ativas",
+      description: "Lesões com borda vermelha indicam que você ainda está afastado. Enquanto ativa, o treinador vê um badge 'Afastado' ao lado do seu nome na chamada.",
+      side: "bottom" as const,
+    },
+  },
+  {
+    element: "[data-tour='saude-historico']",
+    popover: {
+      title: "Histórico de recuperação",
+      description: "Lesões já recuperadas ficam aqui para controle histórico. Servem como referência para o treinador e para o clube acompanhar seu histórico de saúde.",
+      side: "top" as const,
+    },
+  },
+];
+
 export function MinhasLesoesPage() {
   const [injuries, setInjuries] = useState<Injury[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -33,6 +59,8 @@ export function MinhasLesoesPage() {
       .catch(() => {})
       .finally(() => setIsLoading(false));
   }, []);
+
+  useTour("saude:v1", isLoading ? [] : TOUR_STEPS);
 
   const active = injuries.filter((i) => !i.returnedAt);
   const recovered = injuries.filter((i) => Boolean(i.returnedAt));
@@ -53,7 +81,7 @@ export function MinhasLesoesPage() {
       ) : (
         <>
           {active.length > 0 && (
-            <section className="space-y-3">
+            <section data-tour="saude-ativas" className="space-y-3">
               <h2 className="font-black text-pegasus-navy">Lesões ativas</h2>
               {active.map((injury) => (
                 <div key={injury.id} className="panel border-l-4 border-rose-400 p-5">
@@ -84,7 +112,7 @@ export function MinhasLesoesPage() {
           )}
 
           {recovered.length > 0 && (
-            <section className="space-y-3">
+            <section data-tour="saude-historico" className="space-y-3">
               <h2 className="font-black text-pegasus-navy">Histórico (recuperado)</h2>
               {recovered.map((injury) => (
                 <div key={injury.id} className="panel p-5 opacity-80">

@@ -12,6 +12,32 @@ import { Textarea } from "../../components/ui/Textarea";
 import { useToast } from "../../components/ui/Toast";
 import { getApiErrorMessage } from "../../services/api";
 import { muralService, type MuralPost } from "../../services/muralService";
+import { useTour } from "../../tours/useTour";
+
+const TOUR_STEPS = [
+  {
+    popover: {
+      title: "📋 Mural de Avisos",
+      description: "Aqui a gestão do clube publica comunicados importantes. Fique de olho nesta tela para não perder nenhum aviso!",
+    },
+  },
+  {
+    element: "[data-tour='mural-filtros']",
+    popover: {
+      title: "Filtrar por categoria",
+      description: "Use estes botões para filtrar os avisos: 'Todos' mostra tudo, 'Urgente' destaca avisos críticos, 'Evento' mostra datas especiais e 'Informativo' traz comunicados gerais.",
+      side: "bottom" as const,
+    },
+  },
+  {
+    element: "[data-tour='mural-posts']",
+    popover: {
+      title: "Comunicados do clube",
+      description: "Cada card mostra um aviso com a categoria, data de publicação, título e conteúdo completo. Os mais recentes aparecem primeiro.",
+      side: "top" as const,
+    },
+  },
+];
 
 type Category = "all" | "info" | "urgente" | "evento";
 
@@ -65,6 +91,8 @@ export function MuralPage() {
 
   const filtered = filter === "all" ? posts : posts.filter((p) => p.category === filter);
 
+  useTour("mural:v1", isLoading ? [] : TOUR_STEPS);
+
   async function handleCreate(e: React.FormEvent) {
     e.preventDefault();
     if (!form.title.trim() || !form.body.trim()) {
@@ -115,7 +143,7 @@ export function MuralPage() {
       />
 
       {/* Filter */}
-      <div className="flex flex-wrap gap-2">
+      <div data-tour="mural-filtros" className="flex flex-wrap gap-2">
         {(["all", "info", "urgente", "evento"] as Category[]).map((cat) => (
           <button
             key={cat}
@@ -143,7 +171,7 @@ export function MuralPage() {
           description={filter === "all" ? "Nenhum aviso publicado ainda." : "Nenhum aviso nesta categoria."}
         />
       ) : (
-        <div className="space-y-4">
+        <div data-tour="mural-posts" className="space-y-4">
           {filtered.map((post) => (
             <article key={post.id} className="panel p-6">
               <div className="flex items-start justify-between gap-4">

@@ -12,6 +12,32 @@ import { useToast } from "../../components/ui/Toast";
 import { getApiErrorMessage } from "../../services/api";
 import { athleteService, type Athlete } from "../../services/athleteService";
 import { trainingPlanService, type Exercise, type TrainingPlan } from "../../services/trainingPlanService";
+import { useTour } from "../../tours/useTour";
+
+const TOUR_STEPS = [
+  {
+    popover: {
+      title: "📋 Planos Individuais",
+      description: "Aqui você cria e gerencia planos de treino personalizados para cada atleta. Cada atleta pode ter vários planos, mas apenas um ativo é exibido para ele.",
+    },
+  },
+  {
+    element: "[data-tour='planos-atleta']",
+    popover: {
+      title: "Selecionar atleta",
+      description: "Comece escolhendo o atleta. Os planos criados aqui ficam visíveis para ele na tela 'Meu Plano'.",
+      side: "bottom" as const,
+    },
+  },
+  {
+    element: "[data-tour='planos-lista']",
+    popover: {
+      title: "Planos do atleta",
+      description: "Cada card mostra um plano com status (ativo/expirado), objetivos e número de exercícios. Use Editar para atualizar exercícios, datas e metas.",
+      side: "top" as const,
+    },
+  },
+];
 
 function formatDate(value: string | null) {
   if (!value) return null;
@@ -52,6 +78,8 @@ export function PlanosIndividuaisPage() {
   const [plans, setPlans] = useState<TrainingPlan[]>([]);
   const [isLoadingAthletes, setIsLoadingAthletes] = useState(true);
   const [isLoadingPlans, setIsLoadingPlans] = useState(false);
+
+  useTour("planos-individuais:v1", isLoadingAthletes ? [] : TOUR_STEPS);
 
   const [createModal, setCreateModal] = useState(false);
   const [editTarget, setEditTarget] = useState<TrainingPlan | null>(null);
@@ -196,15 +224,17 @@ export function PlanosIndividuaisPage() {
           <Loader2 className="animate-spin" size={16} />Carregando atletas...
         </div>
       ) : (
-        <Select
-          label="Atleta"
-          value={selectedAthleteId}
-          onChange={(e) => setSelectedAthleteId(e.target.value)}
-          options={[
-            { label: "Selecione um atleta", value: "" },
-            ...athletes.map((a) => ({ label: a.name, value: a.id })),
-          ]}
-        />
+        <div data-tour="planos-atleta">
+          <Select
+            label="Atleta"
+            value={selectedAthleteId}
+            onChange={(e) => setSelectedAthleteId(e.target.value)}
+            options={[
+              { label: "Selecione um atleta", value: "" },
+              ...athletes.map((a) => ({ label: a.name, value: a.id })),
+            ]}
+          />
+        </div>
       )}
 
       {/* Plans list */}
@@ -220,7 +250,7 @@ export function PlanosIndividuaisPage() {
             description={`Nenhum plano cadastrado para ${selectedAthlete?.name ?? "este atleta"}.`}
           />
         ) : (
-          <div className="space-y-4">
+          <div data-tour="planos-lista" className="space-y-4">
             {plans.map((plan) => (
               <div key={plan.id} className={`panel p-5 border-l-4 ${plan.active && !isExpired(plan) ? "border-pegasus-primary" : "border-slate-200"}`}>
                 <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">

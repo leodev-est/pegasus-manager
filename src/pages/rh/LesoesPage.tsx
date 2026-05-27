@@ -12,6 +12,32 @@ import { useToast } from "../../components/ui/Toast";
 import { getApiErrorMessage } from "../../services/api";
 import { athleteService, type Athlete } from "../../services/athleteService";
 import { injuryService, type Injury } from "../../services/injuryService";
+import { useTour } from "../../tours/useTour";
+
+const TOUR_STEPS = [
+  {
+    popover: {
+      title: "🏥 Controle de Lesões",
+      description: "Aqui você registra e acompanha as lesões dos atletas. Atletas afastados aparecem com badge 'Afastado' na chamada de treino.",
+    },
+  },
+  {
+    element: "[data-tour='lesoes-filtro']",
+    popover: {
+      title: "Filtrar por atleta",
+      description: "Use este seletor para ver somente as lesões de um atleta específico. Útil quando precisa consultar o histórico de saúde de alguém.",
+      side: "bottom" as const,
+    },
+  },
+  {
+    element: "[data-tour='lesoes-lista']",
+    popover: {
+      title: "Lista de lesões",
+      description: "Cada card mostra o atleta, tipo e gravidade da lesão, data de início e previsão de retorno. Borda vermelha = afastado, borda verde = recuperado. Use os botões Editar para atualizar o retorno real.",
+      side: "top" as const,
+    },
+  },
+];
 
 const TYPE_OPTIONS = [
   { label: "Muscular", value: "muscular" },
@@ -71,6 +97,8 @@ export function LesoesPage() {
   const [athletes, setAthletes] = useState<Athlete[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [filterAthleteId, setFilterAthleteId] = useState("");
+
+  useTour("lesoes-rh:v1", isLoading ? [] : TOUR_STEPS);
 
   const [createModal, setCreateModal] = useState(false);
   const [createForm, setCreateForm] = useState<CreateForm>(emptyCreate);
@@ -180,7 +208,7 @@ export function LesoesPage() {
       />
 
       {/* Filter by athlete */}
-      <div className="flex flex-wrap items-center gap-3">
+      <div data-tour="lesoes-filtro" className="flex flex-wrap items-center gap-3">
         <Select
           label=""
           value={filterAthleteId}
@@ -204,7 +232,7 @@ export function LesoesPage() {
       ) : displayed.length === 0 ? (
         <EmptyState icon={Activity} title="Nenhuma lesão" description="Nenhum registro de lesão encontrado." />
       ) : (
-        <div className="space-y-3">
+        <div data-tour="lesoes-lista" className="space-y-3">
           {displayed.map((injury) => (
             <div key={injury.id} className={`panel p-5 border-l-4 ${injury.returnedAt ? "border-emerald-300" : "border-rose-400"}`}>
               <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">

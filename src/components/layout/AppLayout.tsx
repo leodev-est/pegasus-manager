@@ -19,12 +19,16 @@ export function AppLayout() {
 
   const tour = useAthleteWelcomeTour();
 
+  function handleOpenTour() {
+    window.dispatchEvent(new CustomEvent("pegasus:tour:current"));
+  }
+
   return (
     <div className="min-h-screen bg-pegasus-surface dark:bg-slate-900">
       <Sidebar
         isMobileOpen={isSidebarOpen}
         onNavigate={() => setIsSidebarOpen(false)}
-        onOpenTour={isAthlete ? tour.reopen : undefined}
+        onOpenTour={handleOpenTour}
       />
       {isSidebarOpen ? (
         <button
