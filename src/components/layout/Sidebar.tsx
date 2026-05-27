@@ -146,7 +146,7 @@ export const menuGroups: MenuGroup[] = [
         label: "Planos Individuais",
         path: "/app/treinos/planos",
         icon: ClipboardList,
-        permissions: ["treinos"],
+        permissions: ["chamada"],
       },
     ],
   },

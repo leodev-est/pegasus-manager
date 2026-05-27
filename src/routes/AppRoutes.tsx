@@ -349,7 +349,7 @@ export function AppRoutes() {
           <Route
             path="treinos/planos"
             element={
-              <ProtectedRoute permissions={["treinos"]}>
+              <ProtectedRoute permissions={["chamada"]}>
                 <PlanosIndividuaisPage />
               </ProtectedRoute>
             }
