@@ -21,7 +21,6 @@ import { CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YA
 import { useAuth } from "../../auth/AuthContext";
 import { useTour } from "../../tours/useTour";
 import { PageHeader } from "../../components/ui/PageHeader";
-import { InstallPwaButton } from "../../components/pwa/InstallPwaButton";
 import { StatCard } from "../../components/ui/StatCard";
 import { useToast } from "../../components/ui/Toast";
 import { athleteApplicationService, type AthleteApplication } from "../../services/athleteApplicationService";
@@ -329,7 +328,6 @@ export function DashboardPage() {
       <PageHeader
         title="Dashboard"
         description="Visao geral operacional, financeira e esportiva do Projeto Pegasus."
-        action={<InstallPwaButton label="Instalar Pegasus no celular" />}
       />
 
       <section className="rounded-3xl bg-pegasus-navy p-6 text-white shadow-soft">
