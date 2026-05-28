@@ -65,6 +65,68 @@ function Reveal({
   );
 }
 
+// ── Star Field ────────────────────────────────────────────────────────────────
+function StarField() {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+
+    const W = canvas.offsetWidth;
+    const H = canvas.offsetHeight;
+    canvas.width = W;
+    canvas.height = H;
+
+    const cx = W / 2, cy = H * 0.38; // centro aproximado da logo
+    const stars = Array.from({ length: 90 }, () => {
+      // distribui estrelas evitando o centro (onde fica a logo)
+      let x, y, dist;
+      do {
+        x = Math.random() * W;
+        y = Math.random() * H;
+        dist = Math.hypot(x - cx, y - cy);
+      } while (dist < 120); // raio livre ao redor da logo
+
+      return {
+        x, y,
+        r: Math.random() * 1.2 + 0.3,
+        baseOpacity: Math.random() * 0.45 + 0.08,
+        speed: Math.random() * 0.6 + 0.2,
+        phase: Math.random() * Math.PI * 2,
+      };
+    });
+
+    let raf: number;
+    let t = 0;
+
+    function draw() {
+      ctx.clearRect(0, 0, W, H);
+      t += 0.016;
+      for (const s of stars) {
+        const opacity = s.baseOpacity * (0.55 + 0.45 * Math.sin(t * s.speed + s.phase));
+        ctx.beginPath();
+        ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2);
+        ctx.fillStyle = `rgba(180, 210, 255, ${opacity.toFixed(3)})`;
+        ctx.fill();
+      }
+      raf = requestAnimationFrame(draw);
+    }
+
+    draw();
+    return () => cancelAnimationFrame(raf);
+  }, []);
+
+  return (
+    <canvas
+      ref={canvasRef}
+      className="pointer-events-none absolute inset-0 h-full w-full"
+    />
+  );
+}
+
 // ── Data ──────────────────────────────────────────────────────────────────────
 type Pillar = { icon: LucideIcon; title: string; text: string };
 
@@ -182,6 +244,9 @@ export function LandingPage() {
       <section className="relative flex min-h-screen flex-col items-center justify-center overflow-hidden px-5 pt-20 text-center sm:px-8"
         style={{ background: "radial-gradient(ellipse 80% 60% at 50% 40%, #1a3a6b 0%, #0a1e3d 45%, #071428 100%)" }}
       >
+        {/* Estrelas */}
+        <StarField />
+
         {/* Brilhos decorativos */}
         <div className="pointer-events-none absolute inset-0 overflow-hidden">
           <div className="absolute left-1/2 top-0 h-[500px] w-[900px] -translate-x-1/2 rounded-full bg-[#1565C0]/20 blur-3xl" />
