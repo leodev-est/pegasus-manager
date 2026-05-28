@@ -259,7 +259,7 @@ export function LandingPage() {
             <img
               src={logoHero}
               alt="Projeto Pegasus"
-              className="mx-auto mb-2 h-56 w-auto sm:h-72"
+              className="mx-auto mb-2 h-72 w-auto sm:h-96"
               style={{
                 filter: "drop-shadow(0 0 40px rgba(66,165,245,0.5))",
               }}
