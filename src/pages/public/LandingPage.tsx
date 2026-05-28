@@ -196,7 +196,6 @@ export function LandingPage() {
               alt="Projeto Pegasus"
               className="mx-auto mb-2 h-56 w-auto sm:h-72"
               style={{
-                mixBlendMode: "lighten",
                 filter: "drop-shadow(0 0 40px rgba(66,165,245,0.5))",
               }}
             />
