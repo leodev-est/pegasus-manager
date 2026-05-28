@@ -194,10 +194,11 @@ export function LandingPage() {
             <img
               src={logoFull}
               alt="Projeto Pegasus"
-              className="mx-auto mb-8 h-40 w-auto sm:h-52"
+              className="mx-auto mb-8 h-44 w-auto sm:h-60"
               style={{
-                mixBlendMode: "screen",
-                filter: "drop-shadow(0 0 40px rgba(66,165,245,0.35))",
+                maskImage: "radial-gradient(ellipse 78% 78% at 50% 48%, black 35%, transparent 72%)",
+                WebkitMaskImage: "radial-gradient(ellipse 78% 78% at 50% 48%, black 35%, transparent 72%)",
+                filter: "drop-shadow(0 0 48px rgba(66,165,245,0.45))",
               }}
             />
           </Reveal>
