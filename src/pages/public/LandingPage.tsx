@@ -16,7 +16,7 @@ import {
 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
-import logoFull from "../../assets/logo/logo-full.png";
+import logoHero from "../../assets/logo/logo-hero.png";
 import logoIcon from "../../assets/logo/logo-icon.png";
 
 // ── Scroll Reveal ─────────────────────────────────────────────────────────────
@@ -192,13 +192,12 @@ export function LandingPage() {
         <div className="relative z-10 flex max-w-4xl flex-col items-center">
           <Reveal>
             <img
-              src={logoFull}
+              src={logoHero}
               alt="Projeto Pegasus"
-              className="mx-auto mb-8 h-44 w-auto sm:h-60"
+              className="mx-auto mb-2 h-56 w-auto sm:h-72"
               style={{
-                maskImage: "radial-gradient(ellipse 78% 78% at 50% 48%, black 35%, transparent 72%)",
-                WebkitMaskImage: "radial-gradient(ellipse 78% 78% at 50% 48%, black 35%, transparent 72%)",
-                filter: "drop-shadow(0 0 48px rgba(66,165,245,0.45))",
+                mixBlendMode: "screen",
+                filter: "drop-shadow(0 0 40px rgba(66,165,245,0.5))",
               }}
             />
           </Reveal>
