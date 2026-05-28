@@ -5,6 +5,7 @@ import {
   Heart,
   Instagram,
   Mail,
+  Star,
   Target,
   Users,
   Zap,
