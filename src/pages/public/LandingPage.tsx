@@ -194,7 +194,11 @@ export function LandingPage() {
             <img
               src={logoFull}
               alt="Projeto Pegasus"
-              className="mx-auto mb-8 h-40 w-auto drop-shadow-2xl sm:h-52"
+              className="mx-auto mb-8 h-40 w-auto sm:h-52"
+              style={{
+                mixBlendMode: "screen",
+                filter: "drop-shadow(0 0 40px rgba(66,165,245,0.35))",
+              }}
             />
           </Reveal>
 
