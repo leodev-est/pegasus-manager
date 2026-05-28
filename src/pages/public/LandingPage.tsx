@@ -5,7 +5,6 @@ import {
   Heart,
   Instagram,
   Mail,
-  Star,
   Target,
   Users,
   Zap,
@@ -124,30 +123,6 @@ const FOR_WHOM = [
   },
 ];
 
-const TESTIMONIALS = [
-  {
-    name: "Mateus, 17 anos",
-    role: "Atleta desde 2024",
-    avatar: "M",
-    color: "bg-pegasus-primary",
-    text: "Tentei entrar em três clubes e sempre ouvi que era tarde demais. No Pegasus ninguém falou isso. Hoje treino três vezes por semana e pela primeira vez me sinto um atleta de verdade.",
-  },
-  {
-    name: "Lara, 15 anos",
-    role: "Atleta desde 2023",
-    avatar: "L",
-    color: "bg-emerald-600",
-    text: "Era tímida demais e sempre ficava pra trás nas escolinhas. Aqui aprendi que evolução é pessoal. Já melhoro muito e o mais importante: quero ir pra cada treino.",
-  },
-  {
-    name: "Dona Cláudia",
-    role: "Mãe do atleta Caio, 16 anos",
-    avatar: "C",
-    color: "bg-violet-600",
-    text: "Fiquei com receio no começo, mas a organização e o cuidado com meu filho me conquistaram. Ele mudou muito — em responsabilidade, disciplina e autoestima. Recomendo demais.",
-  },
-];
-
 // ── Component ─────────────────────────────────────────────────────────────────
 export function LandingPage() {
   function scrollTo(id: string) {
@@ -263,22 +238,23 @@ export function LandingPage() {
                 Sobre nós
               </span>
               <h2 className="text-4xl font-black leading-tight text-pegasus-navy sm:text-5xl">
-                Feitos para quem
+                Para quem o esporte
                 <br />
-                ficou pra trás.
+                ainda não abriu a porta.
               </h2>
               <p className="mt-2 text-lg leading-relaxed text-slate-600">
-                O Projeto Pegasus nasceu de uma realidade que muitos jovens conhecem bem: chegar em
-                um clube, dar tudo de si — e ouvir que não é suficiente. Federações fechadas,
-                peneiras elitistas, falta de oportunidade.
+                Muitos jovens sonham com o esporte, mas encontram portas fechadas — peneiras
+                difíceis, federações inacessíveis, times que não têm espaço pra quem está
+                começando. O talento existe. A vontade existe. A oportunidade, não.
               </p>
               <p className="text-lg leading-relaxed text-slate-600">
-                Nossa missão é simples: <strong className="text-pegasus-navy">oferecer a experiência real de atleta</strong> a
-                quem sempre quis mas nunca teve chance. Com treinos sérios, acompanhamento próximo e
-                um ambiente que acolhe, desenvolvemos pessoas através do voleibol.
+                O Projeto Pegasus nasceu pra mudar isso. Nossa missão é{" "}
+                <strong className="text-pegasus-navy">abrir espaço pra quem nunca teve</strong> —
+                oferecendo estrutura real, treinos sérios e um ambiente onde cada atleta é visto,
+                acompanhado e respeitado.
               </p>
               <p className="text-lg leading-relaxed text-slate-600">
-                Aqui não existe "você não serve". Existe evolução, existe propósito, existe time.
+                Não importa de onde você vem. Importa pra onde você quer ir.
               </p>
             </div>
           </Reveal>
@@ -384,48 +360,6 @@ export function LandingPage() {
         </div>
       </section>
 
-      {/* ── DEPOIMENTOS ── */}
-      <section className="bg-gradient-to-br from-slate-50 to-blue-50 px-5 py-24 sm:px-8 sm:py-32">
-        <div className="mx-auto max-w-6xl">
-          <Reveal>
-            <div className="mb-14 text-center">
-              <span className="text-sm font-bold uppercase tracking-[0.2em] text-pegasus-primary">
-                Depoimentos
-              </span>
-              <h2 className="mt-3 text-4xl font-black text-pegasus-navy sm:text-5xl">
-                Quem já faz parte
-              </h2>
-            </div>
-          </Reveal>
-
-          <div className="grid gap-6 md:grid-cols-3">
-            {TESTIMONIALS.map((t, i) => (
-              <Reveal key={t.name} delay={i * 120}>
-                <article className="flex h-full flex-col rounded-2xl border border-slate-100 bg-white p-7 shadow-sm">
-                  <div className="flex items-center gap-3">
-                    <div className={`grid h-11 w-11 shrink-0 place-items-center rounded-full ${t.color} text-lg font-black text-white`}>
-                      {t.avatar}
-                    </div>
-                    <div>
-                      <p className="font-bold text-pegasus-navy">{t.name}</p>
-                      <p className="text-xs text-slate-500">{t.role}</p>
-                    </div>
-                  </div>
-                  <div className="mt-4 flex gap-0.5">
-                    {Array.from({ length: 5 }).map((_, k) => (
-                      <Star key={k} size={14} className="fill-amber-400 text-amber-400" />
-                    ))}
-                  </div>
-                  <p className="mt-4 flex-1 text-sm leading-6 text-slate-600">
-                    "{t.text}"
-                  </p>
-                </article>
-              </Reveal>
-            ))}
-          </div>
-        </div>
-      </section>
-
       {/* ── CTA FINAL ── */}
       <section className="bg-pegasus-navy px-5 py-24 sm:px-8 sm:py-32">
         <div className="relative mx-auto max-w-4xl overflow-hidden rounded-3xl bg-gradient-to-br from-pegasus-primary via-blue-600 to-blue-700 p-10 text-center text-white shadow-2xl sm:p-16">
@@ -442,10 +376,10 @@ export function LandingPage() {
                 Sua vez de entrar<br />em quadra.
               </h2>
               <p className="mx-auto mt-5 max-w-lg text-lg text-blue-100">
-                Não espere a oportunidade perfeita. Essa é ela.
-                Faça parte do Projeto Pegasus hoje.
+                Você não precisa de peneira, de histórico, de experiência prévia.
+                Precisa só de vontade. <span className="font-bold text-white">Vem fazer parte do Pegasus.</span>
               </p>
-              <div className="mt-10">
+              <div className="mt-10 flex flex-col items-center gap-3 sm:flex-row sm:justify-center">
                 <Link
                   to="/inscricao"
                   className="inline-flex min-h-13 items-center gap-2 rounded-full bg-white px-10 py-4 text-lg font-black text-pegasus-primary shadow-xl transition hover:brightness-105"
@@ -453,6 +387,13 @@ export function LandingPage() {
                   Quero fazer parte do Pegasus
                   <ArrowRight size={20} />
                 </Link>
+                <a
+                  href="mailto:pegasus.sportteam@gmail.com"
+                  className="inline-flex min-h-13 items-center gap-2 rounded-full border border-white/30 px-8 py-4 text-base font-semibold text-white hover:bg-white/10"
+                >
+                  <Mail size={16} />
+                  Fale com a gente
+                </a>
               </div>
             </Reveal>
           </div>
@@ -482,11 +423,11 @@ export function LandingPage() {
                 @volei_pegasus
               </a>
               <a
-                href="mailto:contato@projetopegasus.com.br"
+                href="mailto:pegasus.sportteam@gmail.com"
                 className="flex items-center gap-2 rounded-full border border-white/20 px-4 py-2 text-sm font-semibold text-white transition hover:border-blue-300 hover:text-blue-300"
               >
                 <Mail size={15} />
-                contato@projetopegasus.com.br
+                pegasus.sportteam@gmail.com
               </a>
             </div>
           </div>
