@@ -555,7 +555,7 @@ class WhatsAppService {
     });
     if (!athlete) return;
 
-    const tempPassword = process.env.ATHLETE_TEMP_PASSWORD ?? "Pegasus@Temp!2025";
+    const tempPassword = process.env.ATHLETE_TEMP_PASSWORD ?? "pegasus2026";
     const credentialsBlock = isNewUser && username
       ? `\n\n🔐 *Seus dados de acesso:*\n👤 Usuário: *${username}*\n🔑 Senha provisória: *${tempPassword}*\n\nAcesse o sistema e troque sua senha no primeiro login.`
       : username ? `\n\n👤 Seu usuário de acesso: *${username}*` : "";

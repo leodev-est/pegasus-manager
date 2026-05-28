@@ -1,7 +1,7 @@
 import bcrypt from "bcrypt";
 import { prisma } from "../../config/prisma";
 const athleteRoleName = "Atleta";
-const temporaryAthletePassword = process.env.ATHLETE_TEMP_PASSWORD ?? "Pegasus@Temp!2025";
+const temporaryAthletePassword = process.env.ATHLETE_TEMP_PASSWORD ?? "pegasus2026";
 
 function normalizeUsernameBase(value: string) {
   return (
