@@ -84,16 +84,19 @@ export function TestesPage() {
   const [rejectTarget, setRejectTarget] = useState<Athlete | null>(null);
   const [notesTarget, setNotesTarget] = useState<Athlete | null>(null);
   const [notes, setNotes] = useState("");
+  const [infoTarget, setInfoTarget] = useState<Athlete | null>(null);
   const [infoApplication, setInfoApplication] = useState<AthleteApplication | null>(null);
   const [isLoadingInfo, setIsLoadingInfo] = useState(false);
 
   async function openInfo(athlete: Athlete) {
+    setInfoTarget(athlete);
+    setInfoApplication(null);
     setIsLoadingInfo(true);
     try {
       const app = await athleteApplicationService.getByAthleteId(athlete.id);
       setInfoApplication(app);
     } catch {
-      showToast("Inscrição não encontrada para este atleta.", "error");
+      // silently ignore — modal will show "sem inscrição"
     } finally {
       setIsLoadingInfo(false);
     }
@@ -328,9 +331,9 @@ export function TestesPage() {
       {/* Inscrição */}
       <Modal
         description="Dados preenchidos no formulário de inscrição."
-        isOpen={Boolean(infoApplication) || isLoadingInfo}
-        onClose={() => setInfoApplication(null)}
-        title={infoApplication?.name ?? "Carregando..."}
+        isOpen={Boolean(infoTarget)}
+        onClose={() => { setInfoTarget(null); setInfoApplication(null); }}
+        title={infoTarget?.name ?? ""}
       >
         {isLoadingInfo ? (
           <div className="flex items-center gap-2 py-4 text-sm text-pegasus-primary">
@@ -338,7 +341,9 @@ export function TestesPage() {
           </div>
         ) : infoApplication ? (
           <ApplicationInfoGrid application={infoApplication} />
-        ) : null}
+        ) : (
+          <p className="py-4 text-sm text-slate-500">Este atleta não possui formulário de inscrição vinculado.</p>
+        )}
       </Modal>
 
       {/* Observações */}

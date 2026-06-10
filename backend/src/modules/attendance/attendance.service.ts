@@ -591,11 +591,14 @@ export const attendanceService = {
   },
 
   async getAthletesSummary() {
-    const athletes = await prisma.athlete.findMany({
-      where: { status: "ativo" },
-      select: { id: true, name: true },
-      orderBy: { name: "asc" },
-    });
+    const [athletes, blockedDates] = await Promise.all([
+      prisma.athlete.findMany({
+        where: { status: "ativo" },
+        select: { id: true, name: true },
+        orderBy: { name: "asc" },
+      }),
+      loadBlockedDates(),
+    ]);
 
     const todayKey = getBrazilDateKey();
     const summaries = await Promise.all(
@@ -604,9 +607,14 @@ export const attendanceService = {
           where: { athleteId: athlete.id },
           include: { training: { select: { date: true } } },
         });
-        const counted = attendances.filter(
-          (a) => toTrainingDateKey(a.training.date) <= todayKey && a.status !== "programado",
-        );
+        const counted = attendances.filter((a) => {
+          const dateKey = toTrainingDateKey(a.training.date);
+          return (
+            dateKey <= todayKey &&
+            a.status !== "programado" &&
+            !isBlockedTrainingDate(dateKey, blockedDates)
+          );
+        });
         const presencas = counted.filter((a) => a.status === "presente").length;
         const justificadas = counted.filter((a) => a.status === "justificada").length;
         const total = counted.length;
