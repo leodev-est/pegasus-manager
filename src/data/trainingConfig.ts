@@ -5,10 +5,4 @@ export const OFFICIAL_TRAINING = {
   modality: "Voleibol",
 } as const;
 
-// Datas fixas bloqueadas manualmente — não configuráveis via UI.
-// Alterar aqui e em backend/src/utils/trainingDates.ts quando necessário.
-export const MANUAL_BLOCKED_DATES: readonly string[] = [
-  "2026-05-30",
-  "2026-06-20",
-  "2026-09-26",
-];
+export const MANUAL_BLOCKED_DATES: readonly string[] = [];
