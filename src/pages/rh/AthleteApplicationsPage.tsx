@@ -250,6 +250,8 @@ function ApplicationDetailModal({
         <DetailField label="Telefone" value={application.phone} />
         <DetailField label="E-mail" value={application.email} />
         <DetailField label="Posição" value={application.position} />
+        <DetailField label="Segunda Posição" value={application.secondPosition} />
+        <DetailField label="Disposto a Treinar em" value={application.willingPositions?.replace(/,/g, ", ")} />
         <DetailField label="Nível" value={application.level} />
         <DetailField label="Tempo de Experiência" value={application.experienceTime} />
         <DetailField label={`Disponível aos Sábados (${OFFICIAL_TRAINING.time})`} value={boolLabel(application.availableSaturdays)} />

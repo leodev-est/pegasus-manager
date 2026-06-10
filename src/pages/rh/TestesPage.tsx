@@ -1,4 +1,4 @@
-import { CheckCircle, ClipboardList, Loader2, MessageSquare, XCircle } from "lucide-react";
+import { CheckCircle, ClipboardList, Info, Loader2, MessageSquare, XCircle } from "lucide-react";
 import { useState } from "react";
 import { useTour } from "../../tours/useTour";
 import { useAthletes, useInvalidateAthletes } from "../../hooks/useAthletes";
@@ -29,9 +29,47 @@ import { Textarea } from "../../components/ui/Textarea";
 import { useToast } from "../../components/ui/Toast";
 import { getApiErrorMessage } from "../../services/api";
 import { athleteService, type Athlete } from "../../services/athleteService";
+import { athleteApplicationService, type AthleteApplication } from "../../services/athleteApplicationService";
 
 function formatDate(date: string) {
   return new Date(date).toLocaleDateString("pt-BR");
+}
+
+function InfoField({ label, value }: { label: string; value: React.ReactNode }) {
+  if (!value) return null;
+  return (
+    <div>
+      <p className="text-xs font-bold uppercase tracking-wide text-slate-400">{label}</p>
+      <p className="mt-0.5 text-sm text-pegasus-navy">{value}</p>
+    </div>
+  );
+}
+
+function ApplicationInfoGrid({ application: a }: { application: AthleteApplication }) {
+  const fmtDate = (v: string | null) => v ? new Date(v).toLocaleDateString("pt-BR") : "-";
+  const bool = (v: boolean | null) => v === null ? "-" : v ? "Sim" : "Não";
+  return (
+    <div className="grid gap-4 sm:grid-cols-2">
+      <InfoField label="Nome" value={a.name} />
+      <InfoField label="Nascimento" value={fmtDate(a.birthDate)} />
+      <InfoField label="Telefone" value={a.phone} />
+      <InfoField label="E-mail" value={a.email} />
+      <InfoField label="Posição" value={a.position} />
+      <InfoField label="Segunda Posição" value={a.secondPosition} />
+      <InfoField label="Disposto a Treinar em" value={a.willingPositions?.replace(/,/g, ", ")} />
+      <InfoField label="Nível" value={a.level} />
+      <InfoField label="Tempo de Experiência" value={a.experienceTime} />
+      <InfoField label="Joga em Time" value={bool(a.currentTeam)} />
+      <InfoField label="Time Atual" value={a.currentTeamName} />
+      <InfoField label="Disponível Sábados" value={bool(a.availableSaturdays)} />
+      <InfoField label="Disposto a Campeonatos" value={bool(a.willingToCompete)} />
+      <InfoField label="Indicação" value={a.referral} />
+      <div className="sm:col-span-2"><InfoField label="Motivação" value={a.motivation} /></div>
+      <div className="sm:col-span-2"><InfoField label="Como Descobriu" value={a.howFound} /></div>
+      <div className="sm:col-span-2"><InfoField label="Contribuição" value={a.contribution} /></div>
+      {a.notes && <div className="sm:col-span-2"><InfoField label="Observações Internas" value={a.notes} /></div>}
+    </div>
+  );
 }
 
 export function TestesPage() {
@@ -46,6 +84,20 @@ export function TestesPage() {
   const [rejectTarget, setRejectTarget] = useState<Athlete | null>(null);
   const [notesTarget, setNotesTarget] = useState<Athlete | null>(null);
   const [notes, setNotes] = useState("");
+  const [infoApplication, setInfoApplication] = useState<AthleteApplication | null>(null);
+  const [isLoadingInfo, setIsLoadingInfo] = useState(false);
+
+  async function openInfo(athlete: Athlete) {
+    setIsLoadingInfo(true);
+    try {
+      const app = await athleteApplicationService.getByAthleteId(athlete.id);
+      setInfoApplication(app);
+    } catch {
+      showToast("Inscrição não encontrada para este atleta.", "error");
+    } finally {
+      setIsLoadingInfo(false);
+    }
+  }
 
   function openNotes(athlete: Athlete) {
     setNotesTarget(athlete);
@@ -166,6 +218,14 @@ export function TestesPage() {
                       <MessageSquare size={15} />
                       Observações
                     </button>
+                    <button
+                      className="flex items-center gap-1.5 rounded-xl bg-blue-50 px-3 py-1.5 text-sm font-semibold text-blue-700 hover:bg-blue-100"
+                      onClick={() => openInfo(athlete)}
+                      type="button"
+                    >
+                      <Info size={15} />
+                      Inscrição
+                    </button>
                   </div>
                 </article>
               ))}
@@ -219,6 +279,14 @@ export function TestesPage() {
                           <MessageSquare size={15} />
                           Obs.
                         </button>
+                        <button
+                          className="flex items-center gap-1.5 rounded-xl bg-blue-50 px-3 py-1.5 text-sm font-semibold text-blue-700 hover:bg-blue-100"
+                          onClick={() => openInfo(athlete)}
+                          type="button"
+                        >
+                          <Info size={15} />
+                          Inscrição
+                        </button>
                       </div>
                     </td>
                   </tr>
@@ -256,6 +324,22 @@ export function TestesPage() {
         onConfirm={confirmReject}
         title="Recusar teste"
       />
+
+      {/* Inscrição */}
+      <Modal
+        description="Dados preenchidos no formulário de inscrição."
+        isOpen={Boolean(infoApplication) || isLoadingInfo}
+        onClose={() => setInfoApplication(null)}
+        title={infoApplication?.name ?? "Carregando..."}
+      >
+        {isLoadingInfo ? (
+          <div className="flex items-center gap-2 py-4 text-sm text-pegasus-primary">
+            <Loader2 className="animate-spin" size={16} /> Carregando inscrição...
+          </div>
+        ) : infoApplication ? (
+          <ApplicationInfoGrid application={infoApplication} />
+        ) : null}
+      </Modal>
 
       {/* Observações */}
       <Modal

@@ -134,7 +134,7 @@ export const menuGroups: MenuGroup[] = [
         label: "Ranking",
         path: "/app/frequencia/ranking",
         icon: Trophy,
-        permissions: ["trainings:update", "rh"],
+        permissions: ["trainings:update", "rh", "atleta"],
       },
       {
         label: "Avaliações",

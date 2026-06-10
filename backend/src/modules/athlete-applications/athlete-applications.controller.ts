@@ -24,6 +24,17 @@ export const athleteApplicationsController = {
     }
   }) satisfies RequestHandler,
 
+  findByAthleteId: (async (request, response, next) => {
+    try {
+      const application = await athleteApplicationsService.findByAthleteId(
+        getParamId(request.params.athleteId),
+      );
+      response.json(application ?? null);
+    } catch (error) {
+      next(error);
+    }
+  }) satisfies RequestHandler,
+
   findById: (async (request, response, next) => {
     try {
       const application = await athleteApplicationsService.findById(

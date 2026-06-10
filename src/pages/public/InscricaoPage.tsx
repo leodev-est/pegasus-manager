@@ -16,6 +16,8 @@ type FormData = {
   birthDate: string;
   availableSaturdays: "" | "sim" | "nao";
   position: "" | "Levantador" | "Central" | "Líbero" | "Ponteiro" | "Oposto";
+  secondPosition: "" | "Levantador" | "Central" | "Líbero" | "Ponteiro" | "Oposto";
+  willingPositions: string[];
   currentTeam: "" | "sim" | "nao";
   currentTeamName: string;
   experienceTime: string;
@@ -33,6 +35,8 @@ const EMPTY: FormData = {
   birthDate: "",
   availableSaturdays: "",
   position: "",
+  secondPosition: "",
+  willingPositions: [],
   currentTeam: "",
   currentTeamName: "",
   experienceTime: "",
@@ -172,6 +176,46 @@ function RadioGroup<T extends string>({
   );
 }
 
+function ToggleGroup({
+  label,
+  value,
+  onChange,
+  options,
+  disabled,
+}: {
+  label: string;
+  value: string[];
+  onChange: (v: string[]) => void;
+  options: string[];
+  disabled?: boolean;
+}) {
+  function toggle(opt: string) {
+    onChange(value.includes(opt) ? value.filter((v) => v !== opt) : [...value, opt]);
+  }
+  return (
+    <fieldset className="space-y-2">
+      <FieldLabel>{label}</FieldLabel>
+      <div className="flex flex-wrap gap-3">
+        {options.map((opt) => (
+          <button
+            key={opt}
+            type="button"
+            disabled={disabled}
+            onClick={() => toggle(opt)}
+            className={`rounded-2xl border px-4 py-2.5 text-sm font-semibold transition-colors ${
+              value.includes(opt)
+                ? "border-pegasus-primary bg-pegasus-ice text-pegasus-primary"
+                : "border-blue-100 bg-white text-slate-600 hover:border-pegasus-sky hover:bg-pegasus-ice/50"
+            } ${disabled ? "cursor-not-allowed opacity-60" : "cursor-pointer"}`}
+          >
+            {opt}
+          </button>
+        ))}
+      </div>
+    </fieldset>
+  );
+}
+
 function SectionTitle({ step, title, description }: { step: number; title: string; description: string }) {
   return (
     <div className="flex items-start gap-4">
@@ -300,6 +344,8 @@ export function InscricaoPage() {
         howFound: form.howFound.trim(),
         referral: form.referral.trim() || undefined,
         contribution: form.contribution.trim() || undefined,
+        secondPosition: form.secondPosition || undefined,
+        willingPositions: form.willingPositions.length > 0 ? form.willingPositions.join(",") : undefined,
       };
 
       await athleteApplicationService.submitPublic(payload);
@@ -469,6 +515,26 @@ export function InscricaoPage() {
                 ]}
                 required
                 value={form.position}
+              />
+              <RadioGroup
+                disabled={isSubmitting}
+                label="Você tem uma segunda posição?"
+                onChange={(v) => set("secondPosition", v)}
+                options={[
+                  { label: "Levantador", value: "Levantador" },
+                  { label: "Central", value: "Central" },
+                  { label: "Líbero", value: "Líbero" },
+                  { label: "Ponteiro", value: "Ponteiro" },
+                  { label: "Oposto", value: "Oposto" },
+                ]}
+                value={form.secondPosition}
+              />
+              <ToggleGroup
+                disabled={isSubmitting}
+                label="Você está disposto a treinar em alguma outra posição das selecionadas, caso nosso time esteja precisando?"
+                onChange={(v) => set("willingPositions", v)}
+                options={["Levantador", "Central", "Líbero", "Ponteiro", "Oposto"]}
+                value={form.willingPositions}
               />
               <RadioGroup
                 disabled={isSubmitting}

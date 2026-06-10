@@ -237,7 +237,7 @@ export function AppRoutes() {
           <Route
             path="frequencia/ranking"
             element={
-              <ProtectedRoute permissions={["trainings:update", "rh"]}>
+              <ProtectedRoute permissions={["trainings:update", "rh", "atleta"]}>
                 <RankingFrequenciaPage />
               </ProtectedRoute>
             }

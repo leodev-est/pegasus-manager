@@ -21,6 +21,8 @@ export type AthleteApplication = {
   howFound: string | null;
   referral: string | null;
   contribution: string | null;
+  secondPosition: string | null;
+  willingPositions: string | null;
   source: string;
   status: AthleteApplicationStatus;
   notes: string | null;
@@ -52,6 +54,8 @@ export type AthleteApplicationPayload = {
   howFound?: string;
   referral?: string;
   contribution?: string;
+  secondPosition?: string;
+  willingPositions?: string;
   source?: string;
   status?: AthleteApplicationStatus;
   notes?: string;
@@ -73,6 +77,8 @@ export type PublicApplicationPayload = {
   howFound: string;
   referral?: string;
   contribution?: string;
+  secondPosition?: string;
+  willingPositions?: string;
 };
 
 export type AthleteApplicationImportSummary = {
@@ -101,6 +107,11 @@ export const athleteApplicationService = {
 
   async getById(id: string) {
     const { data } = await api.get<AthleteApplication>(`/athlete-applications/${id}`);
+    return data;
+  },
+
+  async getByAthleteId(athleteId: string) {
+    const { data } = await api.get<AthleteApplication | null>(`/athlete-applications/by-athlete/${athleteId}`);
     return data;
   },
 

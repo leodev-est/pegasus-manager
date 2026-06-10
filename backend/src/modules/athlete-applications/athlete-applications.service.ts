@@ -31,6 +31,8 @@ export type AthleteApplicationPayload = {
   howFound?: string | null;
   referral?: string | null;
   contribution?: string | null;
+  secondPosition?: string | null;
+  willingPositions?: string | null;
   source?: string | null;
   status?: ApplicationStatus;
   notes?: string | null;
@@ -111,6 +113,8 @@ function buildData(payload: AthleteApplicationPayload, requireName: boolean) {
   if (payload.howFound !== undefined) data.howFound = normalizeOptional(payload.howFound);
   if (payload.referral !== undefined) data.referral = normalizeOptional(payload.referral);
   if (payload.contribution !== undefined) data.contribution = normalizeOptional(payload.contribution);
+  if (payload.secondPosition !== undefined) data.secondPosition = normalizeOptional(payload.secondPosition);
+  if (payload.willingPositions !== undefined) data.willingPositions = normalizeOptional(payload.willingPositions);
   if (payload.source !== undefined) data.source = normalizeOptional(payload.source) ?? "site";
   if (payload.status !== undefined) data.status = payload.status;
   if (payload.notes !== undefined) data.notes = normalizeOptional(payload.notes);
@@ -124,6 +128,10 @@ export const athleteApplicationsService = {
       where: buildWhere(filters),
       orderBy: { createdAt: "desc" },
     });
+  },
+
+  async findByAthleteId(athleteId: string) {
+    return prisma.athleteApplication.findFirst({ where: { athleteId } });
   },
 
   async findById(id: string) {

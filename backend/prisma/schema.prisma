@@ -5,7 +5,6 @@ generator client {
 datasource db {
   provider  = "postgresql"
   url       = env("DATABASE_URL")
-  directUrl = env("DIRECT_DATABASE_URL")
 }
 
 model User {
@@ -117,6 +116,8 @@ model AthleteApplication {
   howFound           String?
   referral           String?
   contribution       String?
+  secondPosition     String?
+  willingPositions   String?
   source             String    @default("site")
   status             String    @default("pendente")
   notes              String?

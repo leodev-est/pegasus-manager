@@ -12,6 +12,7 @@ athleteApplicationsRoutes.post("/public", athleteApplicationsController.publicCr
 athleteApplicationsRoutes.use(authMiddleware);
 
 athleteApplicationsRoutes.get("/", permissionMiddleware("athletes:read"), athleteApplicationsController.findAll);
+athleteApplicationsRoutes.get("/by-athlete/:athleteId", permissionMiddleware("athletes:read"), athleteApplicationsController.findByAthleteId);
 athleteApplicationsRoutes.get("/:id", permissionMiddleware("athletes:read"), athleteApplicationsController.findById);
 athleteApplicationsRoutes.post("/", permissionMiddleware("athletes:create"), athleteApplicationsController.create);
 athleteApplicationsRoutes.post("/import/google-sheets", permissionMiddleware("athletes:create"), athleteApplicationsController.importFromGoogleSheets);
