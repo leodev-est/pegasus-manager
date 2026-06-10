@@ -342,7 +342,7 @@ export function TestesPage() {
         ) : infoApplication ? (
           <ApplicationInfoGrid application={infoApplication} />
         ) : (
-          <p className="py-4 text-sm text-slate-500">Este atleta não possui formulário de inscrição vinculado.</p>
+          <p className="py-4 text-sm text-slate-500">Este atleta não se inscreveu pelo site. Não há dados de inscrição disponíveis.</p>
         )}
       </Modal>
 
