@@ -1,4 +1,5 @@
 import {
+  ArrowRight,
   CalendarDays,
   Cake,
   ClipboardList,
@@ -50,6 +51,7 @@ type DashboardData = {
 
 type DashboardStat = {
   helper: string;
+  href: string;
   icon: LucideIcon;
   label: string;
   value: string;
@@ -275,7 +277,8 @@ export function DashboardPage() {
   const stats = [
     canSeeRh
       ? {
-          helper: `${pendingApplications} inscricao(oes) pendente(s)`,
+          helper: `${pendingApplications} inscrição(ões) pendente(s)`,
+          href: "/app/rh/atletas",
           icon: UserCheck,
           label: "Atletas ativos",
           value: String(activeAthletes),
@@ -283,7 +286,8 @@ export function DashboardPage() {
       : null,
     canSeeRh
       ? {
-          helper: "Aguardando aprovacao para ativo",
+          helper: "Aguardando aprovação para ativo",
+          href: "/app/rh/atletas?status=teste",
           icon: Users,
           label: "Atletas em teste",
           value: String(testeAthletes),
@@ -292,6 +296,7 @@ export function DashboardPage() {
     canSeeTrainings
       ? {
           helper: nextTraining ? formatDateTime(nextTraining.date) : "Nenhum treino futuro",
+          href: "/app/treinos",
           icon: CalendarDays,
           label: "Treinos esta semana",
           value: String(trainingsThisWeek),
@@ -300,6 +305,7 @@ export function DashboardPage() {
     canSeeFinance
       ? {
           helper: "Saldo consolidado do financeiro",
+          href: "/app/financeiro",
           icon: WalletCards,
           label: "Caixa atual",
           value: formatCurrency(data.financeSummary?.currentCash ?? 0),
@@ -307,7 +313,8 @@ export function DashboardPage() {
       : null,
     canSeeManagement || canSeeMarketing
       ? {
-          helper: "Gestao e marketing",
+          helper: "Gestão e marketing",
+          href: "/app/gestao/kanban",
           icon: ClipboardList,
           label: "Tarefas em andamento",
           value: String(activeTasks.length),
@@ -316,6 +323,7 @@ export function DashboardPage() {
     canSeeOperational
       ? {
           helper: `${openSchools} escola(s) sem envio`,
+          href: "/app/operacional",
           icon: School,
           label: "Escolas cadastradas",
           value: String(data.schools.length),
@@ -330,7 +338,7 @@ export function DashboardPage() {
         description="Visao geral operacional, financeira e esportiva do Projeto Pegasus."
       />
 
-      <section className="rounded-3xl bg-pegasus-navy p-6 text-white shadow-soft">
+      <section className="rounded-lg bg-pegasus-navy p-6 text-white shadow-soft">
         <p className="text-sm font-semibold uppercase tracking-[0.18em] text-blue-100">
           Area administrativa
         </p>
@@ -390,7 +398,7 @@ export function DashboardPage() {
                     </div>
                   </div>
                   {myConvocations.length === 0 ? (
-                    <p className="rounded-2xl bg-pegasus-surface p-4 text-sm text-slate-500">
+                    <p className="rounded-lg bg-pegasus-surface p-4 text-sm text-slate-500">
                       Nenhuma convocação para jogos futuros.
                     </p>
                   ) : (
@@ -402,7 +410,7 @@ export function DashboardPage() {
                         return (
                           <div
                             key={conv.id}
-                            className="flex items-center justify-between rounded-2xl bg-pegasus-surface p-3"
+                            className="flex items-center justify-between rounded-lg bg-pegasus-surface p-3"
                           >
                             <div>
                               <p className="text-sm font-bold text-pegasus-navy">
@@ -445,7 +453,7 @@ export function DashboardPage() {
                     </div>
                   </div>
                   {!myEvaluation || myEvaluation.overall === null ? (
-                    <p className="rounded-2xl bg-pegasus-surface p-4 text-sm text-slate-500">
+                    <p className="rounded-lg bg-pegasus-surface p-4 text-sm text-slate-500">
                       Nenhuma avaliação do treinador ainda.
                     </p>
                   ) : (
@@ -475,7 +483,7 @@ export function DashboardPage() {
                             </span>
                           </div>
                         ))}
-                      <div className="mt-3 rounded-2xl bg-pegasus-ice p-3 text-center dark:bg-slate-700/50">
+                      <div className="mt-3 rounded-lg bg-pegasus-ice p-3 text-center dark:bg-slate-700/50">
                         <p className="text-xs text-slate-500">Nota geral</p>
                         <p className="text-3xl font-black text-pegasus-primary">{myEvaluation.overall}</p>
                       </div>
@@ -503,7 +511,7 @@ export function DashboardPage() {
                     ].map((item) => (
                       <div
                         key={item.label}
-                        className="rounded-2xl bg-slate-50 p-4 text-center dark:bg-slate-700/50"
+                        className="rounded-lg bg-slate-50 p-4 text-center dark:bg-slate-700/50"
                       >
                         <p className={`text-3xl font-black ${item.color}`}>{item.value}</p>
                         <p className="mt-1 text-sm text-slate-500">{item.label}</p>
@@ -552,7 +560,7 @@ export function DashboardPage() {
             <article data-tour="dash-mural" className="panel p-6">
               <div className="mb-4 flex items-center justify-between gap-3">
                 <div className="flex items-center gap-3">
-                  <span className="rounded-2xl bg-pegasus-ice p-3 text-pegasus-primary">
+                  <span className="rounded-lg bg-pegasus-ice p-3 text-pegasus-primary">
                     <MessageSquare size={20} />
                   </span>
                   <div>
@@ -569,7 +577,7 @@ export function DashboardPage() {
               </div>
               <div className="space-y-3">
                 {muralPosts.map((post) => (
-                  <div key={post.id} className="rounded-2xl bg-pegasus-surface p-4">
+                  <div key={post.id} className="rounded-lg bg-pegasus-surface p-4">
                     <div className="flex flex-wrap items-center gap-2">
                       <span className={`rounded-full px-2.5 py-0.5 text-xs font-bold ${
                         post.category === "urgente" ? "bg-rose-100 text-rose-700" :
@@ -623,7 +631,7 @@ export function DashboardPage() {
             {canSeeTrainings ? (
               <article className="panel p-6">
                 <div className="flex items-center gap-3">
-                  <span className="rounded-2xl bg-pegasus-ice p-3 text-pegasus-primary">
+                  <span className="rounded-lg bg-pegasus-ice p-3 text-pegasus-primary">
                     <CalendarDays size={22} />
                   </span>
                   <div>
@@ -637,7 +645,7 @@ export function DashboardPage() {
                   {upcomingTrainings.slice(0, 4).map((training) => (
                     <div
                       key={training.id}
-                      className="flex flex-col gap-2 rounded-2xl bg-pegasus-surface p-4 sm:flex-row sm:items-center sm:justify-between"
+                      className="flex flex-col gap-2 rounded-lg bg-pegasus-surface p-4 sm:flex-row sm:items-center sm:justify-between"
                     >
                       <div>
                         <p className="font-bold text-pegasus-navy">{training.title}</p>
@@ -651,7 +659,7 @@ export function DashboardPage() {
                     </div>
                   ))}
                   {upcomingTrainings.length === 0 ? (
-                    <p className="rounded-2xl bg-pegasus-surface p-4 text-sm text-slate-600">
+                    <p className="rounded-lg bg-pegasus-surface p-4 text-sm text-slate-600">
                       Nenhum treino futuro cadastrado.
                     </p>
                   ) : null}
@@ -662,39 +670,57 @@ export function DashboardPage() {
             {(canSeeRh || canSeeFinance || canSeeOperational) && (
             <article className="panel p-6">
               <div className="flex items-center gap-3">
-                <span className="rounded-2xl bg-pegasus-ice p-3 text-pegasus-primary">
+                <span className="rounded-lg bg-pegasus-ice p-3 text-pegasus-primary">
                   <Megaphone size={22} />
                 </span>
                 <h2 className="text-xl font-bold text-pegasus-navy">Alertas Operacionais</h2>
               </div>
               <div className="mt-6 grid gap-3">
                 {canSeeRh ? (
-                  <div className={`rounded-2xl p-4 ${pendingApplications > 0 ? "bg-amber-50" : "bg-pegasus-surface"}`}>
-                    <p className="text-sm font-semibold text-slate-600">Inscrições pendentes</p>
-                    <strong className={`mt-1 block text-2xl ${pendingApplications > 0 ? "text-amber-700" : "text-pegasus-navy"}`}>
-                      {pendingApplications}
-                    </strong>
-                  </div>
+                  <Link
+                    to="/app/rh/inscricoes"
+                    className={`group flex items-center justify-between rounded-lg p-4 transition hover:brightness-95 ${pendingApplications > 0 ? "bg-amber-50" : "bg-pegasus-surface"}`}
+                  >
+                    <div>
+                      <p className="text-sm font-semibold text-slate-600">Inscrições pendentes</p>
+                      <strong className={`mt-1 block text-2xl ${pendingApplications > 0 ? "text-amber-700" : "text-pegasus-navy"}`}>
+                        {pendingApplications}
+                      </strong>
+                    </div>
+                    <ArrowRight size={16} className="text-slate-400 group-hover:text-pegasus-primary transition-transform group-hover:translate-x-0.5" />
+                  </Link>
                 ) : null}
                 {canSeeFinance ? (
-                  <div className={`rounded-2xl p-4 ${(data.financeSummary?.overdueMonthlyPayments ?? 0) > 0 ? "bg-rose-50" : "bg-pegasus-surface"}`}>
-                    <p className="text-sm font-semibold text-slate-600">Mensalidades em aberto</p>
-                    <strong className={`mt-1 block text-2xl ${(data.financeSummary?.overdueMonthlyPayments ?? 0) > 0 ? "text-rose-700" : "text-pegasus-navy"}`}>
-                      {(data.financeSummary?.pendingMonthlyPayments ?? 0) +
-                        (data.financeSummary?.overdueMonthlyPayments ?? 0)}
-                    </strong>
-                    {(data.financeSummary?.overdueMonthlyPayments ?? 0) > 0 && (
-                      <p className="mt-0.5 text-xs font-semibold text-rose-600">
-                        {data.financeSummary?.overdueMonthlyPayments} em atraso
-                      </p>
-                    )}
-                  </div>
+                  <Link
+                    to="/app/financeiro"
+                    className={`group flex items-center justify-between rounded-lg p-4 transition hover:brightness-95 ${(data.financeSummary?.overdueMonthlyPayments ?? 0) > 0 ? "bg-rose-50" : "bg-pegasus-surface"}`}
+                  >
+                    <div>
+                      <p className="text-sm font-semibold text-slate-600">Mensalidades em aberto</p>
+                      <strong className={`mt-1 block text-2xl ${(data.financeSummary?.overdueMonthlyPayments ?? 0) > 0 ? "text-rose-700" : "text-pegasus-navy"}`}>
+                        {(data.financeSummary?.pendingMonthlyPayments ?? 0) +
+                          (data.financeSummary?.overdueMonthlyPayments ?? 0)}
+                      </strong>
+                      {(data.financeSummary?.overdueMonthlyPayments ?? 0) > 0 && (
+                        <p className="mt-0.5 text-xs font-semibold text-rose-600">
+                          {data.financeSummary?.overdueMonthlyPayments} em atraso
+                        </p>
+                      )}
+                    </div>
+                    <ArrowRight size={16} className="text-slate-400 group-hover:text-pegasus-primary transition-transform group-hover:translate-x-0.5" />
+                  </Link>
                 ) : null}
                 {canSeeOperational ? (
-                  <div className="rounded-2xl bg-pegasus-surface p-4">
-                    <p className="text-sm font-semibold text-slate-600">Escolas sem envio</p>
-                    <strong className="mt-1 block text-2xl text-pegasus-navy">{openSchools}</strong>
-                  </div>
+                  <Link
+                    to="/app/operacional"
+                    className="group flex items-center justify-between rounded-lg bg-pegasus-surface p-4 transition hover:brightness-95"
+                  >
+                    <div>
+                      <p className="text-sm font-semibold text-slate-600">Escolas sem envio</p>
+                      <strong className="mt-1 block text-2xl text-pegasus-navy">{openSchools}</strong>
+                    </div>
+                    <ArrowRight size={16} className="text-slate-400 group-hover:text-pegasus-primary transition-transform group-hover:translate-x-0.5" />
+                  </Link>
                 ) : null}
               </div>
             </article>
@@ -704,7 +730,7 @@ export function DashboardPage() {
           {data.upcomingGames.length > 0 ? (
             <article className="panel p-6">
               <div className="flex items-center gap-3">
-                <span className="rounded-2xl bg-pegasus-ice p-3 text-pegasus-primary">
+                <span className="rounded-lg bg-pegasus-ice p-3 text-pegasus-primary">
                   <Trophy size={22} />
                 </span>
                 <div>
@@ -714,7 +740,7 @@ export function DashboardPage() {
               </div>
               <div className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
                 {data.upcomingGames.map((game) => (
-                  <div key={game.id} className="rounded-2xl bg-pegasus-surface p-4">
+                  <div key={game.id} className="rounded-lg bg-pegasus-surface p-4">
                     <p className="font-bold text-pegasus-navy">vs {game.opponent}</p>
                     <p className="mt-1 text-sm text-slate-500">
                       {new Date(game.date).toLocaleDateString("pt-BR", { day: "2-digit", month: "short", timeZone: "UTC" })}
@@ -730,7 +756,7 @@ export function DashboardPage() {
           {canSeeRh && (birthdays.today.length > 0 || birthdays.week.length > 0) ? (
             <article className="panel p-6">
               <div className="flex items-center gap-3">
-                <span className="rounded-2xl bg-pink-50 p-3 text-pink-600">
+                <span className="rounded-lg bg-pink-50 p-3 text-pink-600">
                   <Cake size={22} />
                 </span>
                 <div>
@@ -744,7 +770,7 @@ export function DashboardPage() {
               </div>
               <div className="mt-6 grid gap-3 sm:grid-cols-2">
                 {birthdays.today.map((a) => (
-                  <div key={a.id} className="flex items-center gap-3 rounded-2xl bg-pink-50 p-4">
+                  <div key={a.id} className="flex items-center gap-3 rounded-lg bg-pink-50 p-4">
                     <span className="text-2xl">🎂</span>
                     <div>
                       <p className="font-bold text-pegasus-navy">{a.name}</p>
@@ -756,7 +782,7 @@ export function DashboardPage() {
                   const d = new Date(a.birthDate);
                   const day = d.toLocaleDateString("pt-BR", { weekday: "short", day: "2-digit", month: "short" });
                   return (
-                    <div key={a.id} className="flex items-center gap-3 rounded-2xl bg-pegasus-surface p-4">
+                    <div key={a.id} className="flex items-center gap-3 rounded-lg bg-pegasus-surface p-4">
                       <span className="text-2xl">🎁</span>
                       <div>
                         <p className="font-bold text-pegasus-navy">{a.name}</p>
@@ -777,19 +803,19 @@ export function DashboardPage() {
                   <h2 className="text-xl font-bold text-pegasus-navy">Financeiro</h2>
                 </div>
                 <div className="mt-6 grid gap-4">
-                  <div className="rounded-2xl bg-emerald-50 p-4 text-emerald-700">
+                  <div className="rounded-lg bg-emerald-50 p-4 text-emerald-700">
                     <p className="text-sm font-semibold">Receitas do mes</p>
                     <strong className="mt-1 block text-2xl">
                       {formatCurrency(data.financeSummary?.monthlyRevenue ?? 0)}
                     </strong>
                   </div>
-                  <div className="rounded-2xl bg-rose-50 p-4 text-rose-700">
+                  <div className="rounded-lg bg-rose-50 p-4 text-rose-700">
                     <p className="text-sm font-semibold">Despesas do mes</p>
                     <strong className="mt-1 block text-2xl">
                       {formatCurrency(data.financeSummary?.monthlyExpenses ?? 0)}
                     </strong>
                   </div>
-                  <div className="rounded-2xl bg-blue-50 p-4 text-blue-700">
+                  <div className="rounded-lg bg-blue-50 p-4 text-blue-700">
                     <p className="text-sm font-semibold">Balanco do mes</p>
                     <strong className="mt-1 block text-2xl">
                       {formatCurrency(data.financeSummary?.monthlyBalance ?? 0)}
@@ -814,7 +840,7 @@ export function DashboardPage() {
                   ].map(([label, value]) => (
                     <div
                       key={label}
-                      className="flex items-center justify-between rounded-2xl bg-pegasus-surface p-4"
+                      className="flex items-center justify-between rounded-lg bg-pegasus-surface p-4"
                     >
                       <span className="font-semibold text-slate-600">{label}</span>
                       <strong className="text-2xl text-pegasus-primary">{value}</strong>
@@ -833,13 +859,13 @@ export function DashboardPage() {
                 <div className="mt-6 grid gap-4">
                   {canSeeManagement ? (
                     <>
-                      <div className="flex items-center justify-between rounded-2xl bg-pegasus-surface p-4">
+                      <div className="flex items-center justify-between rounded-lg bg-pegasus-surface p-4">
                         <span className="font-semibold text-slate-600">Gestao a fazer</span>
                         <strong className="text-2xl text-pegasus-primary">
                           {countByStatus(data.managementTasks, "todo")}
                         </strong>
                       </div>
-                      <div className="flex items-center justify-between rounded-2xl bg-pegasus-surface p-4">
+                      <div className="flex items-center justify-between rounded-lg bg-pegasus-surface p-4">
                         <span className="font-semibold text-slate-600">Gestao em andamento</span>
                         <strong className="text-2xl text-pegasus-primary">
                           {countByStatus(data.managementTasks, "doing")}
@@ -849,13 +875,13 @@ export function DashboardPage() {
                   ) : null}
                   {canSeeMarketing ? (
                     <>
-                      <div className="flex items-center justify-between rounded-2xl bg-pegasus-surface p-4">
+                      <div className="flex items-center justify-between rounded-lg bg-pegasus-surface p-4">
                         <span className="font-semibold text-slate-600">Marketing em producao</span>
                         <strong className="text-2xl text-pegasus-primary">
                           {countByStatus(data.marketingTasks, "production")}
                         </strong>
                       </div>
-                      <div className="flex items-center justify-between rounded-2xl bg-pegasus-surface p-4">
+                      <div className="flex items-center justify-between rounded-lg bg-pegasus-surface p-4">
                         <span className="font-semibold text-slate-600">Marketing em revisao</span>
                         <strong className="text-2xl text-pegasus-primary">
                           {countByStatus(data.marketingTasks, "review")}
