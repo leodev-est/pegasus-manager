@@ -1,19 +1,16 @@
-import { ChevronLeft, ChevronRight, Plus, Trash2, X } from "lucide-react";
+import { ChevronLeft, ChevronRight, Plus, Trash2 } from "lucide-react";
 import { useMemo, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "../../auth/AuthContext";
 import { Button } from "../../components/ui/Button";
-import { Input } from "../../components/ui/Input";
 import { Modal } from "../../components/ui/Modal";
 import { PageHeader } from "../../components/ui/PageHeader";
-import { Select } from "../../components/ui/Select";
 import { Textarea } from "../../components/ui/Textarea";
 import { useToast } from "../../components/ui/Toast";
 import { getApiErrorMessage } from "../../services/api";
 import {
   marketingCalendarService,
   getEventColor,
-  EVENT_TYPES,
   type CalendarEvent,
 } from "../../services/marketingCalendarService";
 
@@ -44,14 +41,9 @@ function buildCalendarDays(year: number, month: number): Array<Date | null> {
   return days;
 }
 
-type CreateForm = {
-  title: string;
-  description: string;
-  time: string;
-  type: string;
-};
-
-const EMPTY_FORM: CreateForm = { title: "", description: "", time: "", type: "atividade" };
+function eventLabel(ev: CalendarEvent) {
+  return ev.description || ev.title;
+}
 
 export function MarketingCalendarPage() {
   const { hasPermission } = useAuth();
@@ -66,9 +58,9 @@ export function MarketingCalendarPage() {
 
   const [selectedEvent, setSelectedEvent] = useState<CalendarEvent | null>(null);
   const [createDate, setCreateDate] = useState<string | null>(null);
-  const [createForm, setCreateForm] = useState<CreateForm>(EMPTY_FORM);
+  const [createText, setCreateText] = useState("");
   const [editMode, setEditMode] = useState(false);
-  const [editForm, setEditForm] = useState<CreateForm>(EMPTY_FORM);
+  const [editText, setEditText] = useState("");
 
   const queryKey = ["marketing-calendar", year, month];
 
@@ -78,30 +70,26 @@ export function MarketingCalendarPage() {
   });
 
   const createMutation = useMutation({
-    mutationFn: (form: CreateForm) =>
+    mutationFn: (text: string) =>
       marketingCalendarService.createEvent({
-        title: form.title,
-        description: form.description || null,
+        title: text.slice(0, 80),
+        description: text,
         date: createDate!,
-        time: form.time || null,
-        type: form.type,
       }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey });
       setCreateDate(null);
-      setCreateForm(EMPTY_FORM);
-      showToast("Evento criado.", "success");
+      setCreateText("");
+      showToast("Evento adicionado.", "success");
     },
     onError: (err) => showToast(getApiErrorMessage(err), "error"),
   });
 
   const updateMutation = useMutation({
-    mutationFn: ({ id, form }: { id: string; form: CreateForm }) =>
+    mutationFn: ({ id, text }: { id: string; text: string }) =>
       marketingCalendarService.updateEvent(id, {
-        title: form.title,
-        description: form.description || null,
-        time: form.time || null,
-        type: form.type,
+        title: text.slice(0, 80),
+        description: text,
       }),
     onSuccess: (updated) => {
       queryClient.invalidateQueries({ queryKey });
@@ -149,7 +137,7 @@ export function MarketingCalendarPage() {
   function openCreate(dateKey: string) {
     if (!canEdit) return;
     setCreateDate(dateKey);
-    setCreateForm(EMPTY_FORM);
+    setCreateText("");
   }
 
   function openEvent(ev: CalendarEvent) {
@@ -159,12 +147,7 @@ export function MarketingCalendarPage() {
 
   function startEdit() {
     if (!selectedEvent) return;
-    setEditForm({
-      title: selectedEvent.title,
-      description: selectedEvent.description ?? "",
-      time: selectedEvent.time ?? "",
-      type: selectedEvent.type,
-    });
+    setEditText(selectedEvent.description ?? selectedEvent.title);
     setEditMode(true);
   }
 
@@ -176,13 +159,11 @@ export function MarketingCalendarPage() {
     }).format(new Date(Date.UTC(y, m - 1, d)));
   }
 
-  const typeOptions = EVENT_TYPES.map((t) => ({ value: t.value, label: t.label }));
-
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Marketing / Calendário"
-        description="Gerencie atividades de marketing e acompanhe aniversários dos atletas."
+        title="Calendário de Marketing"
+        description="Acompanhe atividades e aniversários dos atletas."
         action={
           canEdit ? (
             <Button onClick={() => openCreate(today)}>
@@ -193,7 +174,6 @@ export function MarketingCalendarPage() {
         }
       />
 
-      {/* Calendar header */}
       <div className="panel overflow-hidden">
         <div className="flex items-center justify-between border-b border-blue-100 px-5 py-4">
           <div className="flex items-center gap-2">
@@ -222,31 +202,17 @@ export function MarketingCalendarPage() {
           <h2 className="text-base font-bold text-pegasus-navy">
             {MONTHS_PT[month - 1]} {year}
           </h2>
-          <div className="flex items-center gap-2 text-xs text-slate-500">
+          <div className="text-xs text-slate-500">
             {isLoading && <span className="animate-pulse">Carregando...</span>}
-            <div className="hidden items-center gap-3 sm:flex">
-              {EVENT_TYPES.filter((t) => t.value !== "aniversario").map((t) => (
-                <span key={t.value} className="flex items-center gap-1">
-                  <span className={`inline-block h-2 w-2 rounded-full ${t.color}`} />
-                  {t.label}
-                </span>
-              ))}
-              <span className="flex items-center gap-1">
-                <span className="inline-block h-2 w-2 rounded-full bg-rose-400" />
-                Aniversário
-              </span>
-            </div>
           </div>
         </div>
 
-        {/* Week day headers */}
         <div className="grid grid-cols-7 border-b border-blue-100 bg-pegasus-surface text-center text-xs font-semibold uppercase tracking-widest text-slate-500">
           {WEEK_DAYS.map((d) => (
             <div key={d} className="py-2.5">{d}</div>
           ))}
         </div>
 
-        {/* Calendar grid */}
         <div className="grid grid-cols-7 bg-white">
           {days.map((day, index) => {
             if (!day) {
@@ -272,13 +238,10 @@ export function MarketingCalendarPage() {
                 } ${isToday ? "bg-blue-50/60" : "bg-white"}`}
                 onClick={() => openCreate(dateKey)}
               >
-                {/* Date number */}
                 <div className="mb-1 flex items-center justify-between px-0.5">
                   <span
                     className={`flex h-6 w-6 items-center justify-center rounded-full text-xs font-bold ${
-                      isToday
-                        ? "bg-pegasus-primary text-white"
-                        : "text-slate-700"
+                      isToday ? "bg-pegasus-primary text-white" : "text-slate-700"
                     }`}
                   >
                     {day.getUTCDate()}
@@ -291,7 +254,6 @@ export function MarketingCalendarPage() {
                   )}
                 </div>
 
-                {/* Event cards */}
                 <div className="space-y-0.5">
                   {visible.map((ev) => (
                     <button
@@ -300,17 +262,13 @@ export function MarketingCalendarPage() {
                       onClick={(e) => { e.stopPropagation(); openEvent(ev); }}
                       className={`w-full truncate rounded px-1.5 py-0.5 text-left text-[11px] font-semibold text-white transition hover:brightness-90 ${getEventColor(ev.type)}`}
                     >
-                      {ev.time && <span className="mr-1 opacity-80">{ev.time}</span>}
-                      {ev.title}
+                      {eventLabel(ev)}
                     </button>
                   ))}
                   {overflow > 0 && (
                     <button
                       type="button"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        openEvent(dayEvents[3]);
-                      }}
+                      onClick={(e) => { e.stopPropagation(); openEvent(dayEvents[3]); }}
                       className="w-full rounded px-1.5 py-0.5 text-left text-[11px] font-semibold text-slate-500 hover:bg-slate-100"
                     >
                       +{overflow} mais
@@ -323,7 +281,7 @@ export function MarketingCalendarPage() {
         </div>
       </div>
 
-      {/* Create event modal */}
+      {/* Modal: criar evento */}
       <Modal
         isOpen={Boolean(createDate)}
         onClose={() => setCreateDate(null)}
@@ -334,37 +292,20 @@ export function MarketingCalendarPage() {
           className="grid gap-4"
           onSubmit={(e) => {
             e.preventDefault();
-            createMutation.mutate(createForm);
+            createMutation.mutate(createText);
           }}
         >
-          <Input
-            label="Título"
-            required
-            value={createForm.title}
-            onChange={(e) => setCreateForm((f) => ({ ...f, title: e.target.value }))}
-          />
-          <div className="grid grid-cols-2 gap-4">
-            <Input
-              label="Horário (opcional)"
-              placeholder="09:30"
-              value={createForm.time}
-              onChange={(e) => setCreateForm((f) => ({ ...f, time: e.target.value }))}
-            />
-            <Select
-              label="Tipo"
-              options={typeOptions}
-              value={createForm.type}
-              onChange={(e) => setCreateForm((f) => ({ ...f, type: e.target.value }))}
-            />
-          </div>
           <Textarea
-            label="Descrição (opcional)"
-            value={createForm.description}
-            onChange={(e) => setCreateForm((f) => ({ ...f, description: e.target.value }))}
+            label="Descrição"
+            required
+            placeholder="Descreva o evento..."
+            value={createText}
+            onChange={(e) => setCreateText(e.target.value)}
+            rows={4}
           />
           <div className="flex gap-3">
-            <Button type="submit" disabled={createMutation.isPending}>
-              {createMutation.isPending ? "Salvando..." : "Criar evento"}
+            <Button type="submit" disabled={createMutation.isPending || !createText.trim()}>
+              {createMutation.isPending ? "Salvando..." : "Adicionar"}
             </Button>
             <Button type="button" variant="secondary" onClick={() => setCreateDate(null)}>
               Cancelar
@@ -373,37 +314,23 @@ export function MarketingCalendarPage() {
         </form>
       </Modal>
 
-      {/* Event detail/edit modal */}
+      {/* Modal: ver / editar evento */}
       <Modal
         isOpen={Boolean(selectedEvent)}
         onClose={() => { setSelectedEvent(null); setEditMode(false); }}
-        title={editMode ? "Editar evento" : (selectedEvent?.title ?? "")}
+        title={editMode ? "Editar evento" : "Evento"}
         description={selectedEvent ? formatDateLabel(selectedEvent.date) : ""}
       >
         {selectedEvent && !editMode && (
           <div className="space-y-4">
-            {/* Type badge */}
-            <div className="flex items-center gap-2">
-              <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold text-white ${getEventColor(selectedEvent.type)}`}>
-                {EVENT_TYPES.find((t) => t.value === selectedEvent.type)?.label ?? selectedEvent.type}
-              </span>
-              {selectedEvent.time && (
-                <span className="text-sm text-slate-500">às {selectedEvent.time}</span>
-              )}
-            </div>
-
-            {selectedEvent.description && (
-              <p className="text-sm text-slate-600">{selectedEvent.description}</p>
-            )}
+            <p className="text-sm text-slate-700 whitespace-pre-wrap">
+              {selectedEvent.description || selectedEvent.title}
+            </p>
 
             {selectedEvent.athleteName && (
               <p className="text-sm text-slate-500">
                 Atleta: <span className="font-semibold text-pegasus-navy">{selectedEvent.athleteName}</span>
               </p>
-            )}
-
-            {selectedEvent.createdBy && (
-              <p className="text-xs text-slate-400">Criado por {selectedEvent.createdBy}</p>
             )}
 
             {canEdit && !selectedEvent.isReadOnly && (
@@ -430,36 +357,18 @@ export function MarketingCalendarPage() {
             className="grid gap-4"
             onSubmit={(e) => {
               e.preventDefault();
-              updateMutation.mutate({ id: selectedEvent.id, form: editForm });
+              updateMutation.mutate({ id: selectedEvent.id, text: editText });
             }}
           >
-            <Input
-              label="Título"
-              required
-              value={editForm.title}
-              onChange={(e) => setEditForm((f) => ({ ...f, title: e.target.value }))}
-            />
-            <div className="grid grid-cols-2 gap-4">
-              <Input
-                label="Horário (opcional)"
-                placeholder="09:30"
-                value={editForm.time}
-                onChange={(e) => setEditForm((f) => ({ ...f, time: e.target.value }))}
-              />
-              <Select
-                label="Tipo"
-                options={typeOptions}
-                value={editForm.type}
-                onChange={(e) => setEditForm((f) => ({ ...f, type: e.target.value }))}
-              />
-            </div>
             <Textarea
               label="Descrição"
-              value={editForm.description}
-              onChange={(e) => setEditForm((f) => ({ ...f, description: e.target.value }))}
+              required
+              value={editText}
+              onChange={(e) => setEditText(e.target.value)}
+              rows={4}
             />
             <div className="flex gap-3">
-              <Button type="submit" disabled={updateMutation.isPending}>
+              <Button type="submit" disabled={updateMutation.isPending || !editText.trim()}>
                 {updateMutation.isPending ? "Salvando..." : "Salvar"}
               </Button>
               <Button type="button" variant="secondary" onClick={() => setEditMode(false)}>

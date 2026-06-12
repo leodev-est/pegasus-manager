@@ -23,18 +23,11 @@ export type CalendarEventPayload = {
   type?: string;
 };
 
-export const EVENT_TYPES = [
-  { value: "atividade", label: "Atividade", color: "bg-blue-500" },
-  { value: "post", label: "Post / Conteúdo", color: "bg-emerald-500" },
-  { value: "reuniao", label: "Reunião", color: "bg-violet-500" },
-  { value: "lembrete", label: "Lembrete", color: "bg-amber-500" },
-  { value: "aniversario", label: "Aniversário", color: "bg-rose-400" },
-  { value: "agendado", label: "Agendado (Kanban)", color: "bg-sky-500" },
-  { value: "publicado", label: "Publicado (Kanban)", color: "bg-teal-500" },
-] as const;
-
 export function getEventColor(type: string): string {
-  return EVENT_TYPES.find((t) => t.value === type)?.color ?? "bg-slate-400";
+  if (type === "aniversario") return "bg-rose-500";
+  if (type === "agendado") return "bg-sky-600";
+  if (type === "publicado") return "bg-teal-600";
+  return "bg-blue-600";
 }
 
 export const marketingCalendarService = {
