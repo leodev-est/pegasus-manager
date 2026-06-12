@@ -86,17 +86,30 @@ textarea {
   color: #93c5fd !important;
 }
 
-/* Texto secundário */
+/* Texto principal escuro → branco/quase branco */
+.dark .text-slate-900 {
+  color: #f1f5f9 !important;
+}
+
+.dark .text-slate-800 {
+  color: #f1f5f9 !important;
+}
+
+.dark .text-slate-700 {
+  color: #e2e8f0 !important;
+}
+
+/* Texto secundário — hierarquia do mais visível ao mais sutil */
 .dark .text-slate-600 {
   color: #94a3b8 !important;
 }
 
 .dark .text-slate-500 {
-  color: #64748b !important;
+  color: #94a3b8 !important;
 }
 
 .dark .text-slate-400 {
-  color: #475569 !important;
+  color: #64748b !important;
 }
 
 /* Fundos brancos → dark */
@@ -108,9 +121,37 @@ textarea {
   background-color: #0f172a !important;
 }
 
+/* bg-slate-50 e variantes (fundos sutis, células vazias do calendário) */
+.dark .bg-slate-50 {
+  background-color: #0f172a !important;
+}
+
+.dark .bg-slate-50\/40 {
+  background-color: rgba(15, 23, 42, 0.6) !important;
+}
+
 /* Ice (fundo suave azulado) → dark azul escuro */
 .dark .bg-pegasus-ice {
   background-color: #1e3354 !important;
+}
+
+/* Célula "hoje" no calendário */
+.dark .bg-blue-50\/60 {
+  background-color: rgba(30, 64, 175, 0.18) !important;
+}
+
+/* Hover de células do calendário */
+.dark .hover\:bg-blue-50\/40:hover {
+  background-color: rgba(30, 64, 175, 0.12) !important;
+}
+
+/* Hover de botões/linhas com bg-slate */
+.dark .hover\:bg-slate-50:hover {
+  background-color: #263347 !important;
+}
+
+.dark .hover\:bg-slate-100:hover {
+  background-color: #263347 !important;
 }
 
 /* Bordas azul-claro → dark */
@@ -119,17 +160,21 @@ textarea {
 }
 
 .dark .border-blue-50 {
-  border-color: #152f4d !important;
+  border-color: #1e3356 !important;
+}
+
+/* Bordas slate (botões de navegação, separadores) */
+.dark .border-slate-200 {
+  border-color: #334155 !important;
+}
+
+.dark .border-slate-100 {
+  border-color: #1e293b !important;
 }
 
 /* Notificação não lida */
 .dark .bg-blue-50\/70 {
   background-color: rgba(30, 51, 84, 0.7) !important;
-}
-
-/* Ícone da área administrativa na Topbar (ShieldCheck) */
-.dark .text-pegasus-medium {
-  color: #93c5fd !important;
 }
 
 /* Badges de status info (usam bg-blue-X / text-blue-X) — deixa o Tailwind lidar */
