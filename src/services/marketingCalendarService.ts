@@ -29,6 +29,8 @@ export const EVENT_TYPES = [
   { value: "reuniao", label: "Reunião", color: "bg-violet-500" },
   { value: "lembrete", label: "Lembrete", color: "bg-amber-500" },
   { value: "aniversario", label: "Aniversário", color: "bg-rose-400" },
+  { value: "agendado", label: "Agendado (Kanban)", color: "bg-sky-500" },
+  { value: "publicado", label: "Publicado (Kanban)", color: "bg-teal-500" },
 ] as const;
 
 export function getEventColor(type: string): string {

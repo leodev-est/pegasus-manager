@@ -25,7 +25,7 @@ export const marketingCalendarService = {
   async getEventsForMonth(year: number, month: number) {
     const { start, end } = toDateRange(year, month);
 
-    const [events, athletes] = await Promise.all([
+    const [events, athletes, kanbanTasks] = await Promise.all([
       prisma.marketingEvent.findMany({
         where: { date: { gte: start, lt: end } },
         orderBy: [{ date: "asc" }, { time: "asc" }],
@@ -36,6 +36,14 @@ export const marketingCalendarService = {
           birthDate: { not: null },
         },
         select: { id: true, name: true, birthDate: true },
+      }),
+      prisma.task.findMany({
+        where: {
+          area: "marketing",
+          status: { in: ["scheduled", "published"] },
+          scheduledAt: { gte: start, lt: end },
+        },
+        select: { id: true, title: true, description: true, status: true, scheduledAt: true, channel: true, createdAt: true, updatedAt: true },
       }),
     ]);
 
@@ -71,7 +79,22 @@ export const marketingCalendarService = {
       isReadOnly: false,
     }));
 
-    return [...mappedEvents, ...birthdays].sort((a, b) => {
+    const mappedTasks = kanbanTasks.map((t) => ({
+      id: `task-${t.id}`,
+      title: t.title,
+      description: t.description ?? (t.channel ? `Canal: ${t.channel}` : null),
+      date: toDateKey(t.scheduledAt!),
+      time: null as string | null,
+      type: t.status === "published" ? "publicado" : "agendado",
+      athleteId: null as string | null,
+      athleteName: null as string | null,
+      isReadOnly: true,
+      createdBy: null as string | null,
+      createdAt: t.createdAt,
+      updatedAt: t.updatedAt,
+    }));
+
+    return [...mappedEvents, ...birthdays, ...mappedTasks].sort((a, b) => {
       if (a.date !== b.date) return a.date < b.date ? -1 : 1;
       if (!a.time && !b.time) return 0;
       if (!a.time) return 1;
