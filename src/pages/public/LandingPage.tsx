@@ -1,6 +1,7 @@
 import {
   ArrowDown,
   ArrowRight,
+  ArrowUp,
   CalendarClock,
   DollarSign,
   HandshakeIcon,
@@ -80,15 +81,14 @@ function StarField() {
     canvas.width = W;
     canvas.height = H;
 
-    const cx = W / 2, cy = H * 0.38; // centro aproximado da logo
+    const cx = W / 2, cy = H * 0.38;
     const stars = Array.from({ length: 90 }, () => {
-      // distribui estrelas evitando o centro (onde fica a logo)
       let x, y, dist;
       do {
         x = Math.random() * W;
         y = Math.random() * H;
         dist = Math.hypot(x - cx, y - cy);
-      } while (dist < 120); // raio livre ao redor da logo
+      } while (dist < 120);
 
       return {
         x, y,
@@ -174,6 +174,7 @@ const FOR_WHOM = [
     border: "border-[#1565C0]/40",
     bg: "bg-[#0D1F3C]",
     iconBg: "bg-[#1565C0]",
+    ctaColor: "text-[#42A5F5] border-[#42A5F5]/30 hover:bg-[#42A5F5]/20 hover:border-[#42A5F5]/60",
   },
   {
     icon: Users,
@@ -185,6 +186,7 @@ const FOR_WHOM = [
     border: "border-[#42A5F5]/30",
     bg: "bg-[#0A1A30]",
     iconBg: "bg-[#42A5F5]",
+    ctaColor: "text-[#42A5F5] border-[#42A5F5]/30 hover:bg-[#42A5F5]/20 hover:border-[#42A5F5]/60",
   },
   {
     icon: DollarSign,
@@ -196,58 +198,161 @@ const FOR_WHOM = [
     border: "border-white/10",
     bg: "bg-[#061224]",
     iconBg: "bg-white/10",
+    ctaColor: "text-white/80 border-white/20 hover:bg-white/10 hover:border-white/40",
   },
+];
+
+const NAV_ITEMS = [
+  { id: "sobre", label: "Sobre" },
+  { id: "pilares", label: "Pilares" },
+  { id: "para-quem", label: "Para quem" },
 ];
 
 // ── Component ─────────────────────────────────────────────────────────────────
 export function LandingPage() {
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [scrolled, setScrolled] = useState(false);
+  const [showScrollTop, setShowScrollTop] = useState(false);
+  const [activeSection, setActiveSection] = useState<string>("");
+
   function scrollTo(id: string) {
     document.getElementById(id)?.scrollIntoView({ behavior: "smooth" });
+    setMenuOpen(false);
   }
 
+  function scrollToTop() {
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }
+
+  // Header shadow + scroll-to-top visibility
+  useEffect(() => {
+    function onScroll() {
+      setScrolled(window.scrollY > 50);
+      setShowScrollTop(window.scrollY > 500);
+    }
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
+
+  // Active section tracking
+  useEffect(() => {
+    const observers = NAV_ITEMS.map(({ id }) => {
+      const el = document.getElementById(id);
+      if (!el) return null;
+      const obs = new IntersectionObserver(
+        ([entry]) => { if (entry.isIntersecting) setActiveSection(id); },
+        { threshold: 0.4 },
+      );
+      obs.observe(el);
+      return obs;
+    });
+    return () => observers.forEach((obs) => obs?.disconnect());
+  }, []);
+
+  // Close mobile menu on Escape
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) { if (e.key === "Escape") setMenuOpen(false); }
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
+
   return (
-    // fundo base = azul-marinho escuro como no PDF
     <main className="min-h-screen bg-[#071428] text-white antialiased">
 
       {/* ── HEADER ── */}
-      <header className="fixed top-0 z-50 w-full border-b border-white/10 bg-[#071428]/95 backdrop-blur">
+      <header
+        className={`fixed top-0 z-50 w-full border-b border-white/10 bg-[#071428]/95 backdrop-blur transition-all duration-300 ${
+          scrolled ? "shadow-xl shadow-black/50" : ""
+        }`}
+      >
         <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-5 py-3 sm:px-8">
-          <div className="flex items-center gap-2.5">
+          {/* Logo / brand — clicking goes to top */}
+          <button onClick={scrollToTop} className="flex items-center gap-2.5 transition hover:opacity-80">
             <img src={logoIcon} alt="Pegasus" className="h-8 w-8 rounded-lg object-contain" />
             <span className="font-black text-white">Projeto Pegasus</span>
-          </div>
-          <div className="flex items-center gap-5">
-            <button
-              onClick={() => scrollTo("sobre")}
-              className="hidden text-sm font-semibold text-blue-300 hover:text-white sm:block"
-            >
-              Sobre
-            </button>
-            <button
-              onClick={() => scrollTo("pilares")}
-              className="hidden text-sm font-semibold text-blue-300 hover:text-white sm:block"
-            >
-              Pilares
-            </button>
+          </button>
+
+          <div className="flex items-center gap-3">
+            {/* Desktop nav */}
+            <nav className="hidden items-center gap-1 sm:flex">
+              {NAV_ITEMS.map((item) => (
+                <button
+                  key={item.id}
+                  onClick={() => scrollTo(item.id)}
+                  className={`rounded-lg px-3 py-1.5 text-sm font-semibold transition-colors duration-150 ${
+                    activeSection === item.id
+                      ? "text-white"
+                      : "text-blue-300/80 hover:text-white"
+                  }`}
+                >
+                  {item.label}
+                </button>
+              ))}
+            </nav>
+
             <Link
               to="/login"
-              className="rounded-full bg-[#1565C0] px-4 py-1.5 text-sm font-bold text-white hover:bg-[#42A5F5] hover:text-[#071428] transition"
+              className="rounded-full bg-[#1565C0] px-4 py-1.5 text-sm font-bold text-white transition hover:bg-[#42A5F5] hover:text-[#071428]"
             >
               Área do atleta
             </Link>
+
+            {/* Mobile hamburger */}
+            <button
+              onClick={() => setMenuOpen((v) => !v)}
+              className="grid h-9 w-9 place-items-center rounded-lg text-white/70 transition hover:bg-white/10 sm:hidden"
+              aria-label={menuOpen ? "Fechar menu" : "Abrir menu"}
+            >
+              <span className="relative flex h-[18px] w-5 flex-col justify-between">
+                <span
+                  className={`block h-0.5 w-full origin-center bg-current transition-all duration-300 ${
+                    menuOpen ? "translate-y-[8px] rotate-45" : ""
+                  }`}
+                />
+                <span
+                  className={`block h-0.5 w-full bg-current transition-all duration-300 ${
+                    menuOpen ? "scale-x-0 opacity-0" : ""
+                  }`}
+                />
+                <span
+                  className={`block h-0.5 w-full origin-center bg-current transition-all duration-300 ${
+                    menuOpen ? "-translate-y-[8px] -rotate-45" : ""
+                  }`}
+                />
+              </span>
+            </button>
           </div>
+        </div>
+
+        {/* Mobile dropdown */}
+        <div
+          className={`overflow-hidden transition-all duration-300 ease-in-out sm:hidden ${
+            menuOpen ? "max-h-48 opacity-100" : "max-h-0 opacity-0"
+          }`}
+        >
+          <nav className="flex flex-col border-t border-white/10 bg-[#071428] px-5 pb-4 pt-2">
+            {NAV_ITEMS.map((item) => (
+              <button
+                key={item.id}
+                onClick={() => scrollTo(item.id)}
+                className={`py-3 text-left text-sm font-semibold transition-colors duration-150 ${
+                  activeSection === item.id ? "text-white" : "text-blue-300/80"
+                }`}
+              >
+                {item.label}
+              </button>
+            ))}
+          </nav>
         </div>
       </header>
 
       {/* ── HERO ── */}
-      {/* Mesmo esquema do PDF: fundo navy escuro, brilho radial azul ao centro, logo em destaque */}
-      <section className="relative flex min-h-screen flex-col items-center justify-center overflow-hidden px-5 pt-20 text-center sm:px-8"
+      <section
+        className="relative flex min-h-screen flex-col items-center justify-center overflow-hidden px-5 pt-20 text-center sm:px-8"
         style={{ background: "radial-gradient(ellipse 80% 60% at 50% 40%, #1a3a6b 0%, #0a1e3d 45%, #071428 100%)" }}
       >
-        {/* Estrelas */}
         <StarField />
 
-        {/* Brilhos decorativos */}
         <div className="pointer-events-none absolute inset-0 overflow-hidden">
           <div className="absolute left-1/2 top-0 h-[500px] w-[900px] -translate-x-1/2 rounded-full bg-[#1565C0]/20 blur-3xl" />
           <div className="absolute -left-32 bottom-10 h-[300px] w-[300px] rounded-full bg-[#42A5F5]/10 blur-3xl" />
@@ -260,9 +365,7 @@ export function LandingPage() {
               src={logoHero}
               alt="Projeto Pegasus"
               className="mx-auto mb-2 h-72 w-auto sm:h-96"
-              style={{
-                filter: "drop-shadow(0 0 40px rgba(66,165,245,0.5))",
-              }}
+              style={{ filter: "drop-shadow(0 0 40px rgba(66,165,245,0.5))" }}
             />
           </Reveal>
 
@@ -290,14 +393,14 @@ export function LandingPage() {
             <div className="mt-10 flex flex-col gap-3 sm:flex-row">
               <Link
                 to="/inscricao"
-                className="inline-flex min-h-12 items-center justify-center gap-2 rounded-full bg-[#42A5F5] px-8 py-3.5 text-base font-bold text-[#071428] shadow-lg shadow-[#42A5F5]/20 transition hover:brightness-110"
+                className="inline-flex min-h-12 items-center justify-center gap-2 rounded-full bg-[#42A5F5] px-8 py-3.5 text-base font-bold text-[#071428] shadow-lg shadow-[#42A5F5]/20 transition hover:brightness-110 active:scale-[0.97]"
               >
                 Quero fazer parte
                 <ArrowRight size={18} />
               </Link>
               <button
                 onClick={() => scrollTo("sobre")}
-                className="inline-flex min-h-12 items-center justify-center gap-2 rounded-full border-2 border-white/20 px-8 py-3.5 text-base font-semibold text-white transition hover:bg-white/10"
+                className="inline-flex min-h-12 items-center justify-center gap-2 rounded-full border-2 border-white/20 px-8 py-3.5 text-base font-semibold text-white transition hover:bg-white/10 active:scale-[0.97]"
               >
                 Saiba mais
                 <ArrowDown size={18} />
@@ -308,7 +411,7 @@ export function LandingPage() {
 
         <button
           onClick={() => scrollTo("sobre")}
-          className="absolute bottom-8 left-1/2 -translate-x-1/2 animate-bounce text-white/30"
+          className="absolute bottom-8 left-1/2 -translate-x-1/2 animate-bounce text-white/30 transition hover:text-white/60"
           aria-label="Rolar para baixo"
         >
           <ArrowDown size={24} />
@@ -316,7 +419,9 @@ export function LandingPage() {
       </section>
 
       {/* ── SOBRE NÓS ── */}
-      <section id="sobre" className="px-5 py-24 sm:px-8 sm:py-32"
+      <section
+        id="sobre"
+        className="px-5 py-24 sm:px-8 sm:py-32"
         style={{ background: "linear-gradient(180deg, #0a1e3d 0%, #071428 100%)" }}
       >
         <div className="mx-auto grid max-w-6xl gap-12 lg:grid-cols-2 lg:items-center">
@@ -372,7 +477,9 @@ export function LandingPage() {
       </section>
 
       {/* ── PILARES ── */}
-      <section id="pilares" className="px-5 py-24 sm:px-8 sm:py-32"
+      <section
+        id="pilares"
+        className="px-5 py-24 sm:px-8 sm:py-32"
         style={{ background: "linear-gradient(180deg, #071428 0%, #0a1e3d 100%)" }}
       >
         <div className="mx-auto max-w-6xl">
@@ -396,7 +503,7 @@ export function LandingPage() {
               return (
                 <Reveal key={p.title} delay={i * 80}>
                   <article
-                    className="flex gap-4 rounded-2xl border border-[#1565C0]/30 p-6 transition hover:-translate-y-1 hover:border-[#42A5F5]/50 hover:shadow-lg hover:shadow-[#1565C0]/20"
+                    className="flex gap-4 rounded-2xl border border-[#1565C0]/30 p-6 transition duration-200 hover:-translate-y-1 hover:border-[#42A5F5]/50 hover:shadow-lg hover:shadow-[#1565C0]/20"
                     style={{ background: "linear-gradient(135deg, #0d1f3c 0%, #0a1830 100%)" }}
                   >
                     <div className="mt-0.5 grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-[#1565C0]/30 text-[#42A5F5]">
@@ -415,7 +522,9 @@ export function LandingPage() {
       </section>
 
       {/* ── PARA QUEM É ── */}
-      <section className="px-5 py-24 sm:px-8 sm:py-32"
+      <section
+        id="para-quem"
+        className="px-5 py-24 sm:px-8 sm:py-32"
         style={{ background: "linear-gradient(180deg, #0a1e3d 0%, #071428 100%)" }}
       >
         <div className="mx-auto max-w-6xl">
@@ -438,7 +547,9 @@ export function LandingPage() {
               const Icon = card.icon;
               return (
                 <Reveal key={card.label} delay={i * 120}>
-                  <article className={`flex h-full flex-col rounded-2xl border p-7 ${card.bg} ${card.border} transition hover:-translate-y-1 hover:shadow-xl hover:shadow-black/40`}>
+                  <article
+                    className={`flex h-full flex-col rounded-2xl border p-7 ${card.bg} ${card.border} transition duration-200 hover:-translate-y-1 hover:shadow-xl hover:shadow-black/40`}
+                  >
                     <span className={`inline-grid h-11 w-11 place-items-center rounded-xl ${card.iconBg} text-white`}>
                       <Icon size={20} />
                     </span>
@@ -449,7 +560,7 @@ export function LandingPage() {
                     <p className="mt-3 flex-1 text-sm leading-6 text-blue-200">{card.text}</p>
                     <a
                       href={card.href}
-                      className="mt-6 inline-flex items-center gap-1.5 text-sm font-bold text-[#42A5F5] hover:underline"
+                      className={`mt-6 inline-flex items-center gap-2 self-start rounded-full border px-5 py-2.5 text-sm font-bold transition duration-200 active:scale-[0.97] ${card.ctaColor}`}
                     >
                       {card.cta}
                       <ArrowRight size={14} />
@@ -463,7 +574,8 @@ export function LandingPage() {
       </section>
 
       {/* ── CTA FINAL ── */}
-      <section className="px-5 py-24 sm:px-8 sm:py-32"
+      <section
+        className="px-5 py-24 sm:px-8 sm:py-32"
         style={{ background: "radial-gradient(ellipse 90% 70% at 50% 50%, #1a3a6b 0%, #071428 100%)" }}
       >
         <div
@@ -489,14 +601,14 @@ export function LandingPage() {
               <div className="mt-10 flex flex-col items-center gap-3 sm:flex-row sm:justify-center">
                 <Link
                   to="/inscricao"
-                  className="inline-flex min-h-12 items-center gap-2 rounded-full bg-[#42A5F5] px-10 py-4 text-lg font-black text-[#071428] shadow-xl shadow-[#42A5F5]/20 transition hover:brightness-105"
+                  className="inline-flex min-h-12 items-center gap-2 rounded-full bg-[#42A5F5] px-10 py-4 text-lg font-black text-[#071428] shadow-xl shadow-[#42A5F5]/20 transition hover:brightness-105 active:scale-[0.97]"
                 >
                   Quero fazer parte do Pegasus
                   <ArrowRight size={20} />
                 </Link>
                 <a
                   href="mailto:pegasus.sportteam@gmail.com"
-                  className="inline-flex min-h-12 items-center gap-2 rounded-full border border-white/25 px-8 py-4 text-base font-semibold text-white hover:bg-white/10"
+                  className="inline-flex min-h-12 items-center gap-2 rounded-full border border-white/25 px-8 py-4 text-base font-semibold text-white transition hover:bg-white/10 active:scale-[0.97]"
                 >
                   <Mail size={16} />
                   Fale com a gente
@@ -511,15 +623,15 @@ export function LandingPage() {
       <footer className="border-t border-white/10 bg-[#040e1e] px-5 pb-10 pt-10 sm:px-8">
         <div className="mx-auto max-w-6xl">
           <div className="flex flex-col items-center gap-6 sm:flex-row sm:justify-between">
-            <div className="flex items-center gap-3">
+            <button onClick={scrollToTop} className="flex items-center gap-3 transition hover:opacity-80">
               <img src={logoIcon} alt="Pegasus" className="h-9 w-9 rounded-xl object-contain" />
-              <div>
+              <div className="text-left">
                 <p className="font-black text-white">Projeto Pegasus</p>
                 <p className="text-xs text-[#42A5F5]">Voleibol · Inclusão · Propósito</p>
               </div>
-            </div>
+            </button>
 
-            <div className="flex flex-wrap items-center gap-3">
+            <div className="flex flex-wrap items-center justify-center gap-3">
               <a
                 href="https://instagram.com/volei_pegasus"
                 target="_blank"
@@ -544,6 +656,17 @@ export function LandingPage() {
           </p>
         </div>
       </footer>
+
+      {/* ── SCROLL TO TOP ── */}
+      <button
+        onClick={scrollToTop}
+        className={`fixed bottom-6 right-6 z-40 grid h-11 w-11 place-items-center rounded-full border border-white/20 bg-[#071428]/90 text-white/60 shadow-lg shadow-black/40 backdrop-blur transition-all duration-300 hover:border-[#42A5F5]/60 hover:text-[#42A5F5] active:scale-95 ${
+          showScrollTop ? "translate-y-0 opacity-100" : "pointer-events-none translate-y-4 opacity-0"
+        }`}
+        aria-label="Voltar ao topo"
+      >
+        <ArrowUp size={18} />
+      </button>
     </main>
   );
 }
