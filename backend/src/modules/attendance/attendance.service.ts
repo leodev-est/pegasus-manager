@@ -107,14 +107,14 @@ async function findTrainingByDate(dateKey: string) {
 }
 
 async function ensureOfficialTrainingForDate(dateKey: string, blockedDates: string[]) {
+  if (!isOfficialPegasusTrainingDate(dateKey, blockedDates)) {
+    return null;
+  }
+
   const existing = await findTrainingByDate(dateKey);
 
   if (existing) {
     return existing;
-  }
-
-  if (!isOfficialPegasusTrainingDate(dateKey, blockedDates)) {
-    return null;
   }
 
   return prisma.training.create({
