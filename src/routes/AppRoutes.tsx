@@ -179,9 +179,9 @@ export function AppRoutes() {
             }
           />
           <Route
-            path="marketing/calendario"
+            path="rh/calendario"
             element={
-              <ProtectedRoute permissions={["marketing"]}>
+              <ProtectedRoute permissions={["rh"]}>
                 <MarketingCalendarPage />
               </ProtectedRoute>
             }

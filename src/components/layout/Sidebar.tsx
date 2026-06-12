@@ -89,6 +89,7 @@ export const menuGroups: MenuGroup[] = [
       { label: "Comunicados", path: "/app/rh/comunicados", icon: Radio, permissions: ["rh"] },
       { label: "Ouvidoria", path: "/app/rh/ouvidoria", icon: Inbox, permissions: ["rh"] },
       { label: "Lesões", path: "/app/rh/lesoes", icon: Activity, permissions: ["rh"] },
+      { label: "Calendário", path: "/app/rh/calendario", icon: CalendarDays, permissions: ["rh"] },
     ],
   },
   {
@@ -227,12 +228,6 @@ export const menuGroups: MenuGroup[] = [
         label: "Marketing",
         path: "/app/marketing",
         icon: Megaphone,
-        permissions: ["marketing"],
-      },
-      {
-        label: "Calendário",
-        path: "/app/marketing/calendario",
-        icon: CalendarDays,
         permissions: ["marketing"],
       },
     ],
