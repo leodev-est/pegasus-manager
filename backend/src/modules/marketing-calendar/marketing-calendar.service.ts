@@ -25,82 +25,17 @@ export const marketingCalendarService = {
   async getEventsForMonth(year: number, month: number) {
     const { start, end } = toDateRange(year, month);
 
-    const [events, athletes, kanbanTasks] = await Promise.all([
-      prisma.marketingEvent.findMany({
-        where: { date: { gte: start, lt: end } },
-        orderBy: [{ date: "asc" }, { time: "asc" }],
-      }),
-      prisma.athlete.findMany({
-        where: {
-          status: { in: ["ativo", "teste"] },
-          birthDate: { not: null },
-        },
-        select: { id: true, name: true, birthDate: true },
-      }),
-      prisma.task.findMany({
-        where: {
-          area: "marketing",
-          status: { in: ["scheduled", "published"] },
-          scheduledAt: { gte: start, lt: end },
-        },
-        select: { id: true, title: true, description: true, status: true, scheduledAt: true, channel: true, createdAt: true, updatedAt: true },
-      }),
-    ]);
+    const events = await prisma.marketingEvent.findMany({
+      where: { date: { gte: start, lt: end } },
+      orderBy: [{ date: "asc" }, { time: "asc" }],
+    });
 
-    const birthdays = athletes
-      .filter((a) => {
-        if (!a.birthDate) return false;
-        const bm = a.birthDate.getUTCMonth() + 1;
-        return bm === month;
-      })
-      .map((a) => {
-        const bd = a.birthDate!;
-        const dateKey = `${year}-${String(month).padStart(2, "0")}-${String(bd.getUTCDate()).padStart(2, "0")}`;
-        return {
-          id: `birthday-${a.id}`,
-          title: `🎂 ${a.name}`,
-          description: `Aniversário de ${a.name}`,
-          date: dateKey,
-          time: null as string | null,
-          type: "aniversario",
-          athleteId: a.id,
-          athleteName: a.name,
-          isReadOnly: true,
-          createdBy: null as string | null,
-          createdAt: null as Date | null,
-          updatedAt: null as Date | null,
-        };
-      });
-
-    const mappedEvents = events.map((e) => ({
+    return events.map((e) => ({
       ...e,
       date: toDateKey(e.date),
       athleteName: null as string | null,
       isReadOnly: false,
     }));
-
-    const mappedTasks = kanbanTasks.map((t) => ({
-      id: `task-${t.id}`,
-      title: t.title,
-      description: t.description ?? (t.channel ? `Canal: ${t.channel}` : null),
-      date: toDateKey(t.scheduledAt!),
-      time: null as string | null,
-      type: t.status === "published" ? "publicado" : "agendado",
-      athleteId: null as string | null,
-      athleteName: null as string | null,
-      isReadOnly: true,
-      createdBy: null as string | null,
-      createdAt: t.createdAt,
-      updatedAt: t.updatedAt,
-    }));
-
-    return [...mappedEvents, ...birthdays, ...mappedTasks].sort((a, b) => {
-      if (a.date !== b.date) return a.date < b.date ? -1 : 1;
-      if (!a.time && !b.time) return 0;
-      if (!a.time) return 1;
-      if (!b.time) return -1;
-      return a.time < b.time ? -1 : 1;
-    });
   },
 
   async createEvent(payload: MarketingEventPayload) {
