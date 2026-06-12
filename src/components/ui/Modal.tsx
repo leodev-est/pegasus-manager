@@ -1,5 +1,7 @@
-import type { ReactNode } from "react";
+import * as Dialog from "@radix-ui/react-dialog";
 import { X } from "lucide-react";
+import type { ReactNode } from "react";
+import { cn } from "../../lib/utils";
 
 type ModalProps = {
   title: string;
@@ -7,32 +9,67 @@ type ModalProps = {
   isOpen: boolean;
   onClose: () => void;
   children: ReactNode;
+  size?: "md" | "lg" | "xl";
 };
 
-export function Modal({ title, description, isOpen, onClose, children }: ModalProps) {
-  if (!isOpen) {
-    return null;
-  }
+const sizeMap = {
+  md: "max-w-lg",
+  lg: "max-w-2xl",
+  xl: "max-w-4xl",
+};
 
+export function Modal({ title, description, isOpen, onClose, children, size = "lg" }: ModalProps) {
   return (
-    <div className="fixed inset-0 z-50 grid place-items-center bg-pegasus-navy/60 px-2 py-3 backdrop-blur-sm sm:px-4 sm:py-6">
-      <section className="max-h-[96vh] w-full max-w-3xl overflow-y-auto rounded-2xl bg-white shadow-2xl sm:max-h-[92vh] sm:rounded-3xl">
-        <header className="sticky top-0 z-10 flex items-start justify-between gap-4 border-b border-blue-100 bg-white px-4 py-4 sm:px-6 sm:py-5">
-          <div>
-            <h2 className="text-xl font-black text-pegasus-navy">{title}</h2>
-            {description ? <p className="mt-1 text-sm text-slate-500">{description}</p> : null}
+    <Dialog.Root open={isOpen} onOpenChange={(open) => !open && onClose()}>
+      <Dialog.Portal>
+        {/* Overlay */}
+        <Dialog.Overlay
+          className={cn(
+            "fixed inset-0 z-50 bg-black/50 backdrop-blur-sm",
+            "data-[state=open]:animate-in data-[state=open]:fade-in-0",
+            "data-[state=closed]:animate-out data-[state=closed]:fade-out-0",
+            "duration-200",
+          )}
+        />
+
+        {/* Content */}
+        <Dialog.Content
+          className={cn(
+            "fixed left-1/2 top-1/2 z-50 -translate-x-1/2 -translate-y-1/2",
+            "w-[calc(100vw-2rem)] max-h-[90vh] overflow-y-auto",
+            sizeMap[size],
+            "rounded-2xl bg-white shadow-2xl",
+            "data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95 data-[state=open]:slide-in-from-top-4",
+            "data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95 data-[state=closed]:slide-out-to-top-4",
+            "duration-200",
+          )}
+        >
+          {/* Header */}
+          <div className="sticky top-0 z-10 flex items-start justify-between gap-4 border-b border-slate-100 bg-white px-5 py-4 sm:px-6 sm:py-5">
+            <div>
+              <Dialog.Title className="text-lg font-bold text-slate-900">
+                {title}
+              </Dialog.Title>
+              {description && (
+                <Dialog.Description className="mt-0.5 text-sm text-slate-500">
+                  {description}
+                </Dialog.Description>
+              )}
+            </div>
+            <Dialog.Close asChild>
+              <button
+                type="button"
+                className="grid h-8 w-8 shrink-0 place-items-center rounded-lg text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-600"
+              >
+                <X size={16} />
+              </button>
+            </Dialog.Close>
           </div>
-          <button
-            aria-label="Fechar"
-            className="focus-ring grid h-10 w-10 place-items-center rounded-full bg-pegasus-ice text-pegasus-primary"
-            onClick={onClose}
-            type="button"
-          >
-            <X size={18} />
-          </button>
-        </header>
-        <div className="p-4 sm:p-6">{children}</div>
-      </section>
-    </div>
+
+          {/* Body */}
+          <div className="p-5 sm:p-6">{children}</div>
+        </Dialog.Content>
+      </Dialog.Portal>
+    </Dialog.Root>
   );
 }

@@ -45,11 +45,11 @@ textarea {
 
 @layer components {
   .panel {
-    @apply rounded-2xl border border-blue-100 bg-white shadow-soft dark:border-slate-700 dark:bg-slate-800 dark:shadow-none;
+    @apply rounded-2xl border border-blue-100 bg-white shadow-soft transition-shadow duration-200 dark:border-slate-700 dark:bg-slate-800 dark:shadow-none;
   }
 
   .focus-ring {
-    @apply focus:outline-none focus:ring-2 focus:ring-pegasus-sky focus:ring-offset-2 dark:focus:ring-offset-slate-900;
+    @apply focus:outline-none focus-visible:ring-2 focus-visible:ring-pegasus-sky focus-visible:ring-offset-2 dark:focus-visible:ring-offset-slate-900;
   }
 }
 
@@ -57,7 +57,6 @@ textarea {
    DARK MODE OVERRIDES
    ===================== */
 
-/* Inputs */
 .dark input,
 .dark textarea,
 .dark select {
@@ -71,12 +70,10 @@ textarea {
   color: #64748b;
 }
 
-/* Brand colors */
 .dark .text-pegasus-navy    { color: #e2e8f0 !important; }
 .dark .text-pegasus-primary { color: #60a5fa !important; }
 .dark .text-pegasus-medium  { color: #93c5fd !important; }
 
-/* Hierarquia de texto — corrigida (era incorreta antes) */
 .dark .text-slate-900 { color: #f1f5f9 !important; }
 .dark .text-slate-800 { color: #f1f5f9 !important; }
 .dark .text-slate-700 { color: #e2e8f0 !important; }
@@ -84,31 +81,25 @@ textarea {
 .dark .text-slate-500 { color: #94a3b8 !important; }
 .dark .text-slate-400 { color: #64748b !important; }
 
-/* Fundos */
 .dark .bg-white           { background-color: #1e293b !important; }
 .dark .bg-pegasus-surface { background-color: #0f172a !important; }
 .dark .bg-pegasus-ice     { background-color: #1e3354 !important; }
 .dark .bg-slate-50        { background-color: #0f172a !important; }
 .dark .bg-slate-50\/40    { background-color: rgba(15, 23, 42, 0.6) !important; }
 
-/* Hover */
 .dark .hover\:bg-slate-50:hover  { background-color: #263347 !important; }
 .dark .hover\:bg-slate-100:hover { background-color: #263347 !important; }
 
-/* Calendário: célula "hoje" e hover */
 .dark .bg-blue-50\/60              { background-color: rgba(30, 64, 175, 0.18) !important; }
 .dark .hover\:bg-blue-50\/40:hover { background-color: rgba(30, 64, 175, 0.12) !important; }
 
-/* Notificação não lida */
 .dark .bg-blue-50\/70 { background-color: rgba(30, 51, 84, 0.7) !important; }
 
-/* Bordas */
 .dark .border-blue-100  { border-color: #1e3a5f !important; }
 .dark .border-blue-50   { border-color: #1e3356 !important; }
 .dark .border-slate-200 { border-color: #334155 !important; }
 .dark .border-slate-100 { border-color: #1e293b !important; }
 
-/* Stat cards */
 .dark .text-2xl.text-pegasus-primary,
 .dark .text-3xl.text-pegasus-primary {
   color: #60a5fa !important;

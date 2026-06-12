@@ -1,5 +1,6 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter } from "react-router-dom";
+import { Toaster } from "sonner";
 import { AuthProvider } from "./auth/AuthContext";
 import { AppRoutes } from "./routes/AppRoutes";
 import { ToastProvider } from "./components/ui/Toast";
@@ -32,6 +33,13 @@ export default function App() {
           </ErrorBoundary>
         </ToastProvider>
         <PwaUpdatePrompt />
+        <Toaster
+          richColors
+          position="top-right"
+          toastOptions={{
+            style: { borderRadius: "12px", fontSize: "14px" },
+          }}
+        />
       </ThemeProvider>
     </QueryClientProvider>
   );

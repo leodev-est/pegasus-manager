@@ -1,4 +1,5 @@
 import type { Config } from "tailwindcss";
+import animate from "tailwindcss-animate";
 
 const config: Config = {
   content: ["./index.html", "./src/**/*.{ts,tsx}"],
@@ -17,10 +18,23 @@ const config: Config = {
       },
       boxShadow: {
         soft: "0 18px 45px rgba(11, 46, 89, 0.10)",
+        glow: "0 0 0 3px rgba(66, 165, 245, 0.25)",
+      },
+      borderRadius: {
+        "4xl": "2rem",
+      },
+      keyframes: {
+        shimmer: {
+          "0%": { backgroundPosition: "-200% 0" },
+          "100%": { backgroundPosition: "200% 0" },
+        },
+      },
+      animation: {
+        shimmer: "shimmer 1.5s infinite linear",
       },
     },
   },
-  plugins: [],
+  plugins: [animate],
 };
 
 export default config;
