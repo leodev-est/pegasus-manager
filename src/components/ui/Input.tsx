@@ -13,7 +13,7 @@ export function Input({ className, label, ...props }: InputProps) {
       </span>
       <input
         className={cn(
-          "h-11 w-full rounded-xl border border-slate-200 bg-white px-3.5 text-sm text-slate-900",
+          "h-11 w-full rounded-md border border-slate-200 bg-white px-3.5 text-sm text-slate-900",
           "placeholder:text-slate-400",
           "outline-none transition-all duration-150",
           "hover:border-slate-300",

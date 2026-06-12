@@ -22,7 +22,7 @@ export function ConfirmDialog({
   return (
     <Modal isOpen={isOpen} onClose={onClose} title={title}>
       <div className="flex gap-4">
-        <span className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-rose-50 text-rose-600">
+        <span className="grid h-12 w-12 shrink-0 place-items-center rounded-lg bg-rose-50 text-rose-600">
           <AlertTriangle size={22} />
         </span>
         <div>

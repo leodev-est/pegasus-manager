@@ -209,7 +209,7 @@ export function Topbar({ onMenuClick }: TopbarProps) {
           </button>
           <img
             alt="Pegasus"
-            className="hidden h-9 w-9 shrink-0 rounded-xl object-contain shadow-sm sm:block lg:hidden xl:block"
+            className="hidden h-9 w-9 shrink-0 rounded-md object-contain shadow-sm sm:block lg:hidden xl:block"
             src={logoIcon}
           />
           <div className="min-w-0">
@@ -220,7 +220,7 @@ export function Topbar({ onMenuClick }: TopbarProps) {
 
         <div className="flex shrink-0 items-center gap-2 sm:gap-3">
           <div className="relative hidden min-w-72 xl:block" ref={searchRef}>
-            <label className="flex items-center gap-2 rounded-full border border-blue-100 bg-white px-4 py-2 text-sm text-slate-500 shadow-sm dark:border-slate-700 dark:bg-slate-800 dark:text-slate-400">
+            <label className="flex items-center gap-2 rounded-md border border-blue-100 bg-white px-4 py-2 text-sm text-slate-500 shadow-sm dark:border-slate-700 dark:bg-slate-800 dark:text-slate-400">
               <Search size={17} />
               <input
                 className="w-full bg-transparent text-slate-700 outline-none placeholder:text-slate-400"
@@ -231,7 +231,7 @@ export function Topbar({ onMenuClick }: TopbarProps) {
               />
             </label>
             {isSearchOpen && searchResults.length > 0 ? (
-              <div className="absolute left-0 top-12 z-50 w-full overflow-hidden rounded-2xl border border-blue-100 bg-white shadow-2xl dark:border-slate-700 dark:bg-slate-800">
+              <div className="absolute left-0 top-12 z-50 w-full overflow-hidden rounded-lg border border-blue-100 bg-white shadow-2xl dark:border-slate-700 dark:bg-slate-800">
                 {Object.entries(
                   searchResults.reduce<Record<string, SearchResult[]>>((acc, result) => {
                     if (!acc[result.category]) acc[result.category] = [];
@@ -291,7 +291,7 @@ export function Topbar({ onMenuClick }: TopbarProps) {
             </button>
 
             {isNotificationsOpen ? (
-              <section className="fixed inset-x-2 top-[4.5rem] z-50 overflow-hidden rounded-2xl border border-blue-100 bg-white shadow-2xl dark:border-slate-700 dark:bg-slate-800 sm:absolute sm:inset-x-auto sm:right-0 sm:top-12 sm:w-[22rem]">
+              <section className="fixed inset-x-2 top-[4.5rem] z-50 overflow-hidden rounded-lg border border-blue-100 bg-white shadow-2xl dark:border-slate-700 dark:bg-slate-800 sm:absolute sm:inset-x-auto sm:right-0 sm:top-12 sm:w-[22rem]">
                 <header className="flex items-center justify-between gap-3 border-b border-blue-100 p-4">
                   <div>
                     <p className="font-black text-pegasus-navy">Notificações</p>
@@ -343,7 +343,7 @@ export function Topbar({ onMenuClick }: TopbarProps) {
             ) : null}
           </div>
 
-          <div className="flex min-w-0 items-center gap-2 rounded-full border border-blue-100 bg-white py-1 pl-1 pr-2 shadow-sm dark:border-slate-700 dark:bg-slate-800 sm:pr-3">
+          <div className="flex min-w-0 items-center gap-2 rounded-md border border-blue-100 bg-white py-1 pl-1 pr-2 shadow-sm dark:border-slate-700 dark:bg-slate-800 sm:pr-3">
             <span className="grid h-8 w-8 place-items-center rounded-full bg-pegasus-primary text-xs font-bold text-white">
               {getInitials(user?.name)}
             </span>
@@ -351,7 +351,7 @@ export function Topbar({ onMenuClick }: TopbarProps) {
             <span className="hidden text-xs font-semibold text-slate-500 lg:inline">{userRole}</span>
             <ShieldCheck className="hidden text-pegasus-medium sm:block" size={16} />
           </div>
-          <Button onClick={handleLogout} variant="secondary" className="min-h-10 rounded-full px-3">
+          <Button onClick={handleLogout} variant="secondary" className="min-h-10 px-3">
             <LogOut size={17} />
             <span className="hidden sm:inline">Sair</span>
           </Button>

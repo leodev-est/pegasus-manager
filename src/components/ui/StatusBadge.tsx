@@ -4,7 +4,7 @@ import { cn } from "../../lib/utils";
 export type StatusTone = "success" | "warning" | "info" | "neutral" | "danger";
 
 const badgeVariants = cva(
-  "inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold ring-1 ring-inset",
+  "inline-flex items-center gap-1.5 rounded px-2.5 py-1 text-xs font-semibold ring-1 ring-inset",
   {
     variants: {
       tone: {

@@ -14,7 +14,7 @@ export function Textarea({ className, label, rows = 4, ...props }: TextareaProps
       <textarea
         rows={rows}
         className={cn(
-          "w-full resize-y rounded-xl border border-slate-200 bg-white px-3.5 py-3 text-sm text-slate-900",
+          "w-full resize-y rounded-md border border-slate-200 bg-white px-3.5 py-3 text-sm text-slate-900",
           "placeholder:text-slate-400",
           "outline-none transition-all duration-150",
           "hover:border-slate-300",

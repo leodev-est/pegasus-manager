@@ -14,7 +14,7 @@ export function Select({ className, label, options, ...props }: SelectProps) {
       </span>
       <select
         className={cn(
-          "h-11 w-full rounded-xl border border-slate-200 bg-white px-3.5 text-sm text-slate-900",
+          "h-11 w-full rounded-md border border-slate-200 bg-white px-3.5 text-sm text-slate-900",
           "outline-none transition-all duration-150 cursor-pointer",
           "hover:border-slate-300",
           "focus:border-pegasus-sky focus:ring-2 focus:ring-pegasus-sky/20",

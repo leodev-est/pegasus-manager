@@ -45,7 +45,7 @@ textarea {
 
 @layer components {
   .panel {
-    @apply rounded-2xl border border-blue-100 bg-white shadow-soft transition-shadow duration-200 dark:border-slate-700 dark:bg-slate-800 dark:shadow-none;
+    @apply rounded-lg border border-blue-100 bg-white shadow-soft transition-shadow duration-200 dark:border-slate-700 dark:bg-slate-800 dark:shadow-none;
   }
 
   .focus-ring {

@@ -284,7 +284,7 @@ export function Sidebar({ isMobileOpen = false, onNavigate, onOpenTour }: Sideba
       <div className="flex h-20 items-center gap-3 border-b border-white/10 px-6">
         <img
           alt="Projeto Pegasus"
-          className="h-12 w-12 shrink-0 rounded-2xl object-contain shadow-sm"
+          className="h-12 w-12 shrink-0 rounded-lg object-contain shadow-sm"
           src={logoIcon}
         />
         <div>
@@ -310,7 +310,7 @@ export function Sidebar({ isMobileOpen = false, onNavigate, onOpenTour }: Sideba
                     end
                     onClick={onNavigate}
                     className={({ isActive }) =>
-                      `flex min-h-11 items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition ${
+                      `flex min-h-11 items-center gap-3 rounded-md px-3 py-2.5 text-sm font-medium transition ${
                         isActive
                           ? "bg-white text-pegasus-primary shadow-sm"
                           : "text-blue-50 hover:bg-white/10 hover:text-white"
@@ -332,7 +332,7 @@ export function Sidebar({ isMobileOpen = false, onNavigate, onOpenTour }: Sideba
           <button
             type="button"
             onClick={onOpenTour}
-            className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-blue-200 transition hover:bg-white/10 hover:text-white"
+            className="flex w-full items-center gap-3 rounded-md px-3 py-2.5 text-sm font-medium text-blue-200 transition hover:bg-white/10 hover:text-white"
           >
             <HelpCircle size={18} />
             Tutorial do App
