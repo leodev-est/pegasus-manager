@@ -1,4 +1,4 @@
-﻿import { ClockArrowUp, Download, FileDown, Loader2, Plus, UserCheck } from "lucide-react";
+﻿import { ClockArrowUp, Download, FileDown, Info, Loader2, Plus, UserCheck } from "lucide-react";
 import { FormEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useAthletes, useInvalidateAthletes } from "../../hooks/useAthletes";
 import { useAuth } from "../../auth/AuthContext";
@@ -19,6 +19,7 @@ import { useToast } from "../../components/ui/Toast";
 import { getApiErrorMessage } from "../../services/api";
 import { exportToCSV } from "../../utils/exportUtils";
 import { attendanceService } from "../../services/attendanceService";
+import { athleteApplicationService, type AthleteApplication } from "../../services/athleteApplicationService";
 import {
   athleteService,
   type Athlete,
@@ -29,6 +30,43 @@ import {
   type MonthlyPaymentStatus,
   type PaymentStatusHistoryEntry,
 } from "../../services/athleteService";
+
+function InfoField({ label, value }: { label: string; value: React.ReactNode }) {
+  if (!value) return null;
+  return (
+    <div>
+      <p className="text-xs font-bold uppercase tracking-wide text-slate-400">{label}</p>
+      <p className="mt-0.5 text-sm text-pegasus-navy">{value}</p>
+    </div>
+  );
+}
+
+function ApplicationInfoGrid({ application: a }: { application: AthleteApplication }) {
+  const fmtDate = (v: string | null) => v ? new Date(v).toLocaleDateString("pt-BR") : "-";
+  const bool = (v: boolean | null) => v === null ? "-" : v ? "Sim" : "Não";
+  return (
+    <div className="grid gap-4 sm:grid-cols-2">
+      <InfoField label="Nome" value={a.name} />
+      <InfoField label="Nascimento" value={fmtDate(a.birthDate)} />
+      <InfoField label="Telefone" value={a.phone} />
+      <InfoField label="E-mail" value={a.email} />
+      <InfoField label="Posição" value={a.position} />
+      <InfoField label="Segunda Posição" value={a.secondPosition} />
+      <InfoField label="Disposto a Treinar em" value={a.willingPositions?.replace(/,/g, ", ")} />
+      <InfoField label="Nível" value={a.level} />
+      <InfoField label="Tempo de Experiência" value={a.experienceTime} />
+      <InfoField label="Joga em Time" value={bool(a.currentTeam)} />
+      <InfoField label="Time Atual" value={a.currentTeamName} />
+      <InfoField label="Disponível Sábados" value={bool(a.availableSaturdays)} />
+      <InfoField label="Disposto a Campeonatos" value={bool(a.willingToCompete)} />
+      <InfoField label="Indicação" value={a.referral} />
+      <div className="sm:col-span-2"><InfoField label="Motivação" value={a.motivation} /></div>
+      <div className="sm:col-span-2"><InfoField label="Como Descobriu" value={a.howFound} /></div>
+      <div className="sm:col-span-2"><InfoField label="Contribuição" value={a.contribution} /></div>
+      {a.notes && <div className="sm:col-span-2"><InfoField label="Observações Internas" value={a.notes} /></div>}
+    </div>
+  );
+}
 
 function frequencyTone(pct: number | null | undefined): string {
   if (pct == null) return "text-slate-400";
@@ -161,6 +199,9 @@ export function AthletesPage() {
   const [historyAthlete, setHistoryAthlete] = useState<Athlete | null>(null);
   const [paymentHistory, setPaymentHistory] = useState<PaymentStatusHistoryEntry[]>([]);
   const [isLoadingHistory, setIsLoadingHistory] = useState(false);
+  const [infoTarget, setInfoTarget] = useState<Athlete | null>(null);
+  const [infoApplication, setInfoApplication] = useState<AthleteApplication | null>(null);
+  const [isLoadingInfo, setIsLoadingInfo] = useState(false);
   const [genderSuggestion, setGenderSuggestion] = useState<{ gender: AthleteGender; probability: number } | null>(null);
   const [genderFilter, setGenderFilter] = useState<"todos" | "masculino" | "feminino">("todos");
 
@@ -199,6 +240,20 @@ export function AthletesPage() {
       showToast(getApiErrorMessage(error), "error");
     } finally {
       setIsLoadingHistory(false);
+    }
+  }
+
+  async function openInfo(athlete: Athlete) {
+    setInfoTarget(athlete);
+    setInfoApplication(null);
+    setIsLoadingInfo(true);
+    try {
+      const app = await athleteApplicationService.getByAthleteId(athlete.id);
+      setInfoApplication(app);
+    } catch {
+      // silently ignore
+    } finally {
+      setIsLoadingInfo(false);
     }
   }
 
@@ -455,6 +510,14 @@ export function AthletesPage() {
                     >
                       <ClockArrowUp size={13} />Histórico
                     </Button>
+                    <button
+                      className="flex items-center gap-1.5 rounded-xl bg-blue-50 px-3 py-1.5 text-sm font-semibold text-blue-700 hover:bg-blue-100"
+                      onClick={() => openInfo(athlete)}
+                      type="button"
+                    >
+                      <Info size={13} />
+                      Inscrição
+                    </button>
                     {athlete.status === "inativo" ? (
                       <ActionButtons
                         canDelete={false}
@@ -518,6 +581,14 @@ export function AthletesPage() {
                           >
                             <ClockArrowUp size={13} />Histórico
                           </Button>
+                          <button
+                            className="flex items-center gap-1.5 rounded-xl bg-blue-50 px-3 py-1.5 text-sm font-semibold text-blue-700 hover:bg-blue-100"
+                            onClick={() => openInfo(athlete)}
+                            type="button"
+                          >
+                            <Info size={15} />
+                            Inscrição
+                          </button>
                           {athlete.status === "inativo" ? (
                             <ActionButtons
                               canDelete={false}
@@ -556,6 +627,24 @@ export function AthletesPage() {
         )}
       </section>
 
+
+      {/* Modal de inscrição */}
+      <Modal
+        description="Dados preenchidos no formulário de inscrição."
+        isOpen={Boolean(infoTarget)}
+        onClose={() => { setInfoTarget(null); setInfoApplication(null); }}
+        title={infoTarget?.name ?? ""}
+      >
+        {isLoadingInfo ? (
+          <div className="flex items-center gap-2 py-4 text-sm text-pegasus-primary">
+            <Loader2 className="animate-spin" size={16} /> Carregando inscrição...
+          </div>
+        ) : infoApplication ? (
+          <ApplicationInfoGrid application={infoApplication} />
+        ) : (
+          <p className="py-4 text-sm text-slate-500">Este atleta não se inscreveu pelo site. Não há dados de inscrição disponíveis.</p>
+        )}
+      </Modal>
 
       {/* Modal de histórico de mensalidade */}
       <Modal
