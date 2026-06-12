@@ -11,8 +11,8 @@
 }
 
 .dark {
-  color: #e2e8f0;
-  background: #0f172a;
+  color: #ffffff;
+  background: #0a0a0a;
 }
 
 * {
@@ -45,7 +45,12 @@ textarea {
 
 @layer components {
   .panel {
-    @apply rounded-2xl border border-blue-100 bg-white shadow-soft dark:border-slate-700 dark:bg-slate-800 dark:shadow-none;
+    @apply rounded-2xl border border-blue-100 bg-white shadow-soft dark:shadow-none;
+  }
+
+  .dark .panel {
+    background-color: #141414;
+    border-color: #1e1e1e;
   }
 
   .focus-ring {
@@ -53,133 +58,91 @@ textarea {
   }
 }
 
-/* =====================
-   DARK MODE OVERRIDES
-   ===================== */
+/* ======================================
+   DARK MODE — preto + branco + azul
+   ====================================== */
 
 /* Inputs */
 .dark input,
 .dark textarea,
 .dark select {
-  background-color: #1e293b;
-  color: #e2e8f0;
-  border-color: #334155;
+  background-color: #1a1a1a;
+  color: #ffffff;
+  border-color: #2e2e2e;
 }
 
 .dark input::placeholder,
 .dark textarea::placeholder {
-  color: #64748b;
+  color: #555555;
 }
 
-/* Texto: azul-escuro → quase branco */
-.dark .text-pegasus-navy {
-  color: #e2e8f0 !important;
+/* Sidebar → preto puro */
+.dark .bg-pegasus-navy {
+  background-color: #0d0d0d !important;
 }
 
-/* Texto: azul-primário (#0D47A1) → azul claro visível no dark */
-.dark .text-pegasus-primary {
-  color: #60a5fa !important;
+/* Labels das seções do sidebar (DASHBOARD, RH...) */
+.dark .text-blue-200 {
+  color: #444444 !important;
 }
 
-/* Texto: azul-médio (#1565C0) → azul claro */
-.dark .text-pegasus-medium {
-  color: #93c5fd !important;
+/* Texto dos itens de nav inativos */
+.dark .text-blue-50 {
+  color: #a3a3a3 !important;
 }
 
-/* Texto principal escuro → branco/quase branco */
-.dark .text-slate-900 {
-  color: #f1f5f9 !important;
+/* Separador/borda do sidebar */
+.dark .border-white\/10 {
+  border-color: rgba(255, 255, 255, 0.05) !important;
 }
 
-.dark .text-slate-800 {
-  color: #f1f5f9 !important;
+/* Hover dos itens de nav */
+.dark .hover\:bg-white\/10:hover {
+  background-color: rgba(255, 255, 255, 0.06) !important;
 }
 
-.dark .text-slate-700 {
-  color: #e2e8f0 !important;
+.dark .hover\:text-white:hover {
+  color: #ffffff !important;
 }
 
-/* Texto secundário — hierarquia do mais visível ao mais sutil */
-.dark .text-slate-600 {
-  color: #94a3b8 !important;
-}
+/* Brand colors */
+.dark .text-pegasus-navy   { color: #ffffff !important; }
+.dark .text-pegasus-primary { color: #60a5fa !important; }
+.dark .text-pegasus-medium  { color: #93c5fd !important; }
 
-.dark .text-slate-500 {
-  color: #94a3b8 !important;
-}
+/* Hierarquia de texto: branco puro → cinza progressivo */
+.dark .text-slate-900 { color: #ffffff !important; }
+.dark .text-slate-800 { color: #f5f5f5 !important; }
+.dark .text-slate-700 { color: #e5e5e5 !important; }
+.dark .text-slate-600 { color: #a3a3a3 !important; }
+.dark .text-slate-500 { color: #737373 !important; }
+.dark .text-slate-400 { color: #555555 !important; }
 
-.dark .text-slate-400 {
-  color: #64748b !important;
-}
+/* Backgrounds */
+.dark .bg-white          { background-color: #141414 !important; }
+.dark .bg-pegasus-surface { background-color: #0a0a0a !important; }
+.dark .bg-pegasus-ice    { background-color: #101824 !important; }
+.dark .bg-slate-50       { background-color: #0d0d0d !important; }
+.dark .bg-slate-50\/40   { background-color: rgba(13, 13, 13, 0.7) !important; }
 
-/* Fundos brancos → dark */
-.dark .bg-white {
-  background-color: #1e293b !important;
-}
+/* Hover de células / linhas / botões */
+.dark .hover\:bg-slate-50:hover  { background-color: #1a1a1a !important; }
+.dark .hover\:bg-slate-100:hover { background-color: #1a1a1a !important; }
 
-.dark .bg-pegasus-surface {
-  background-color: #0f172a !important;
-}
-
-/* bg-slate-50 e variantes (fundos sutis, células vazias do calendário) */
-.dark .bg-slate-50 {
-  background-color: #0f172a !important;
-}
-
-.dark .bg-slate-50\/40 {
-  background-color: rgba(15, 23, 42, 0.6) !important;
-}
-
-/* Ice (fundo suave azulado) → dark azul escuro */
-.dark .bg-pegasus-ice {
-  background-color: #1e3354 !important;
-}
-
-/* Célula "hoje" no calendário */
-.dark .bg-blue-50\/60 {
-  background-color: rgba(30, 64, 175, 0.18) !important;
-}
-
-/* Hover de células do calendário */
-.dark .hover\:bg-blue-50\/40:hover {
-  background-color: rgba(30, 64, 175, 0.12) !important;
-}
-
-/* Hover de botões/linhas com bg-slate */
-.dark .hover\:bg-slate-50:hover {
-  background-color: #263347 !important;
-}
-
-.dark .hover\:bg-slate-100:hover {
-  background-color: #263347 !important;
-}
-
-/* Bordas azul-claro → dark */
-.dark .border-blue-100 {
-  border-color: #1e3a5f !important;
-}
-
-.dark .border-blue-50 {
-  border-color: #1e3356 !important;
-}
-
-/* Bordas slate (botões de navegação, separadores) */
-.dark .border-slate-200 {
-  border-color: #334155 !important;
-}
-
-.dark .border-slate-100 {
-  border-color: #1e293b !important;
-}
+/* Calendário: célula "hoje" e hover */
+.dark .bg-blue-50\/60          { background-color: rgba(37, 99, 235, 0.12) !important; }
+.dark .hover\:bg-blue-50\/40:hover { background-color: rgba(37, 99, 235, 0.08) !important; }
 
 /* Notificação não lida */
-.dark .bg-blue-50\/70 {
-  background-color: rgba(30, 51, 84, 0.7) !important;
-}
+.dark .bg-blue-50\/70 { background-color: rgba(37, 99, 235, 0.14) !important; }
 
-/* Badges de status info (usam bg-blue-X / text-blue-X) — deixa o Tailwind lidar */
+/* Bordas — neutras, sem azul */
+.dark .border-blue-100  { border-color: #1e1e1e !important; }
+.dark .border-blue-50   { border-color: #191919 !important; }
+.dark .border-slate-200 { border-color: #2a2a2a !important; }
+.dark .border-slate-100 { border-color: #1a1a1a !important; }
 
-/* Stat cards: o valor em azul primário precisa ser legível */
+/* Stat cards */
 .dark .text-2xl.text-pegasus-primary,
 .dark .text-3xl.text-pegasus-primary {
   color: #60a5fa !important;
