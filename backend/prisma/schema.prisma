@@ -525,6 +525,21 @@ model TrainingPlan {
   @@index([athleteId])
 }
 
+model MarketingEvent {
+  id          String   @id @default(uuid())
+  title       String
+  description String?
+  date        DateTime
+  time        String?
+  type        String   @default("atividade")
+  athleteId   String?
+  createdBy   String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([date])
+}
+
 model TrainingFeedback {
   id          String   @id @default(uuid())
   trainingId  String

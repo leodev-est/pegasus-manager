@@ -229,6 +229,12 @@ export const menuGroups: MenuGroup[] = [
         icon: Megaphone,
         permissions: ["marketing"],
       },
+      {
+        label: "Calendário",
+        path: "/app/marketing/calendario",
+        icon: CalendarDays,
+        permissions: ["marketing"],
+      },
     ],
   },
   {

@@ -32,6 +32,7 @@ import { gameConvocationsRouter } from "./modules/game-convocations/game-convoca
 import { muralRoutes } from "./modules/mural/mural.routes";
 import { injuriesRoutes } from "./modules/injuries/injuries.routes";
 import { trainingPlansRoutes } from "./modules/training-plans/training-plans.routes";
+import { marketingCalendarRoutes } from "./modules/marketing-calendar/marketing-calendar.routes";
 
 export const routes = Router();
 
@@ -75,3 +76,4 @@ routes.use("/games", gameConvocationsRouter);
 routes.use("/mural", muralRoutes);
 routes.use("/injuries", injuriesRoutes);
 routes.use("/training-plans", trainingPlansRoutes);
+routes.use("/marketing-calendar", marketingCalendarRoutes);

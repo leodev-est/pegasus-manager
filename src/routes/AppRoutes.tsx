@@ -17,6 +17,7 @@ const AthleteEvaluationsPage = lazy(() => import("../pages/evaluations/AthleteEv
 const FinancePage = lazy(() => import("../pages/finance/FinancePage").then((m) => ({ default: m.FinancePage })));
 const ManagementKanbanPage = lazy(() => import("../pages/management/ManagementKanbanPage").then((m) => ({ default: m.ManagementKanbanPage })));
 const MarketingPage = lazy(() => import("../pages/marketing/MarketingPage").then((m) => ({ default: m.MarketingPage })));
+const MarketingCalendarPage = lazy(() => import("../pages/marketing/MarketingCalendarPage").then((m) => ({ default: m.MarketingCalendarPage })));
 const SchoolsPage = lazy(() => import("../pages/operational/SchoolsPage").then((m) => ({ default: m.SchoolsPage })));
 const SpreadsheetsPage = lazy(() => import("../pages/operational/SpreadsheetsPage").then((m) => ({ default: m.SpreadsheetsPage })));
 const MyProfilePage = lazy(() => import("../pages/profile/MyProfilePage").then((m) => ({ default: m.MyProfilePage })));
@@ -174,6 +175,14 @@ export function AppRoutes() {
             element={
               <ProtectedRoute permissions={["marketing"]}>
                 <MarketingPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="marketing/calendario"
+            element={
+              <ProtectedRoute permissions={["marketing"]}>
+                <MarketingCalendarPage />
               </ProtectedRoute>
             }
           />
