@@ -1,5 +1,5 @@
 import { CheckCircle, ClipboardList, Info, Loader2, MessageSquare, XCircle } from "lucide-react";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useTour } from "../../tours/useTour";
 import { useAthletes, useInvalidateAthletes } from "../../hooks/useAthletes";
 
@@ -22,14 +22,26 @@ const TOUR_STEPS = [
 import { Button } from "../../components/ui/Button";
 import { ConfirmDialog } from "../../components/ui/ConfirmDialog";
 import { EmptyState } from "../../components/ui/EmptyState";
+import { FilterBar } from "../../components/ui/FilterBar";
+import { Input } from "../../components/ui/Input";
 import { Modal } from "../../components/ui/Modal";
 import { PageHeader } from "../../components/ui/PageHeader";
+import { Select } from "../../components/ui/Select";
 import { Table } from "../../components/ui/Table";
 import { Textarea } from "../../components/ui/Textarea";
 import { useToast } from "../../components/ui/Toast";
 import { getApiErrorMessage } from "../../services/api";
 import { athleteService, type Athlete } from "../../services/athleteService";
 import { athleteApplicationService, type AthleteApplication } from "../../services/athleteApplicationService";
+
+const positionOptions = [
+  { label: "Todas as posições", value: "" },
+  { label: "Levantador", value: "Levantador" },
+  { label: "Ponteiro", value: "Ponteiro" },
+  { label: "Central", value: "Central" },
+  { label: "Líbero", value: "Líbero" },
+  { label: "Oposto", value: "Oposto" },
+];
 
 function formatDate(date: string) {
   return new Date(date).toLocaleDateString("pt-BR");
@@ -79,6 +91,18 @@ export function TestesPage() {
 
   useTour("testes:v1", isLoading ? [] : TOUR_STEPS);
   const [isSaving, setIsSaving] = useState(false);
+  const [search, setSearch] = useState("");
+  const [positionFilter, setPositionFilter] = useState("");
+  const [genderFilter, setGenderFilter] = useState<"todos" | "masculino" | "feminino">("todos");
+
+  const displayedAthletes = useMemo(() => {
+    return athletes.filter((a) => {
+      if (search && !a.name.toLowerCase().includes(search.toLowerCase())) return false;
+      if (positionFilter && a.position !== positionFilter) return false;
+      if (genderFilter !== "todos" && a.gender !== genderFilter) return false;
+      return true;
+    });
+  }, [athletes, search, positionFilter, genderFilter]);
 
   const [approveTarget, setApproveTarget] = useState<Athlete | null>(null);
   const [rejectTarget, setRejectTarget] = useState<Athlete | null>(null);
@@ -164,12 +188,52 @@ export function TestesPage() {
         description="Avalie e aprove atletas em período de teste."
       />
 
+      <FilterBar>
+        <Input
+          label="Buscar por nome"
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder="Nome do atleta"
+          value={search}
+        />
+        <Select
+          label="Posição"
+          onChange={(e) => setPositionFilter(e.target.value)}
+          options={positionOptions}
+          value={positionFilter}
+        />
+        <div className="flex flex-col gap-1">
+          <span className="mb-1.5 block text-sm font-semibold text-slate-700 dark:text-slate-200">Sexo</span>
+          <div className="flex overflow-hidden rounded-md border border-slate-200 bg-white text-sm font-medium">
+            {(["todos", "masculino", "feminino"] as const).map((opt) => (
+              <button
+                key={opt}
+                type="button"
+                onClick={() => setGenderFilter(opt)}
+                className={`flex-1 px-3 py-2 transition ${
+                  genderFilter === opt
+                    ? opt === "masculino"
+                      ? "bg-blue-100 text-blue-700"
+                      : opt === "feminino"
+                        ? "bg-pink-100 text-pink-700"
+                        : "bg-slate-100 text-slate-700"
+                    : "text-slate-500 hover:bg-slate-50"
+                }`}
+              >
+                {opt === "todos" ? "Todos" : opt === "masculino" ? "Masc." : "Fem."}
+              </button>
+            ))}
+          </div>
+        </div>
+      </FilterBar>
+
       <section data-tour="testes-lista" className="panel overflow-hidden">
         <div className="flex items-center gap-3 border-b border-blue-100 p-6">
           <ClipboardList className="text-pegasus-primary" size={22} />
           <div>
             <h2 className="text-xl font-bold text-pegasus-navy">Atletas em teste</h2>
-            <p className="text-sm text-slate-500">{athletes.length} atleta(s) aguardando avaliação.</p>
+            <p className="text-sm text-slate-500">
+              {displayedAthletes.length} de {athletes.length} atleta(s) em teste.
+            </p>
           </div>
         </div>
 
@@ -178,12 +242,12 @@ export function TestesPage() {
             <Loader2 className="animate-spin" size={18} />
             Carregando
           </div>
-        ) : athletes.length > 0 ? (
+        ) : displayedAthletes.length > 0 ? (
           <>
             {/* Mobile */}
             <div className="grid gap-3 p-4 md:hidden">
-              {athletes.map((athlete) => (
-                <article key={athlete.id} className="rounded-2xl border border-blue-100 bg-white p-4 shadow-sm">
+              {displayedAthletes.map((athlete) => (
+                <article key={athlete.id} className="rounded-lg border border-blue-100 bg-white p-4 shadow-sm">
                   <div className="mb-1 flex items-start justify-between gap-3">
                     <div>
                       <h3 className="font-bold text-pegasus-navy">{athlete.name}</h3>
@@ -192,13 +256,13 @@ export function TestesPage() {
                     <span className="text-xs text-slate-400">{formatDate(athlete.createdAt)}</span>
                   </div>
                   {athlete.notes ? (
-                    <p className="mt-2 rounded-xl bg-blue-50 px-3 py-2 text-xs text-slate-600">
+                    <p className="mt-2 rounded-md bg-blue-50 px-3 py-2 text-xs text-slate-600">
                       {athlete.notes}
                     </p>
                   ) : null}
                   <div className="mt-4 flex flex-wrap gap-2 border-t border-blue-50 pt-3">
                     <button
-                      className="flex items-center gap-1.5 rounded-xl bg-emerald-50 px-3 py-1.5 text-sm font-semibold text-emerald-700 hover:bg-emerald-100"
+                      className="flex items-center gap-1.5 rounded-md bg-emerald-50 px-3 py-1.5 text-sm font-semibold text-emerald-700 hover:bg-emerald-100"
                       onClick={() => setApproveTarget(athlete)}
                       type="button"
                     >
@@ -206,7 +270,7 @@ export function TestesPage() {
                       Aprovar
                     </button>
                     <button
-                      className="flex items-center gap-1.5 rounded-xl bg-rose-50 px-3 py-1.5 text-sm font-semibold text-rose-700 hover:bg-rose-100"
+                      className="flex items-center gap-1.5 rounded-md bg-rose-50 px-3 py-1.5 text-sm font-semibold text-rose-700 hover:bg-rose-100"
                       onClick={() => setRejectTarget(athlete)}
                       type="button"
                     >
@@ -214,7 +278,7 @@ export function TestesPage() {
                       Recusar
                     </button>
                     <button
-                      className="flex items-center gap-1.5 rounded-xl bg-slate-100 px-3 py-1.5 text-sm font-semibold text-slate-600 hover:bg-slate-200"
+                      className="flex items-center gap-1.5 rounded-md bg-slate-100 px-3 py-1.5 text-sm font-semibold text-slate-600 hover:bg-slate-200"
                       onClick={() => openNotes(athlete)}
                       type="button"
                     >
@@ -222,7 +286,7 @@ export function TestesPage() {
                       Observações
                     </button>
                     <button
-                      className="flex items-center gap-1.5 rounded-xl bg-blue-50 px-3 py-1.5 text-sm font-semibold text-blue-700 hover:bg-blue-100"
+                      className="flex items-center gap-1.5 rounded-md bg-blue-50 px-3 py-1.5 text-sm font-semibold text-blue-700 hover:bg-blue-100"
                       onClick={() => openInfo(athlete)}
                       type="button"
                     >
@@ -237,15 +301,16 @@ export function TestesPage() {
             {/* Desktop */}
             <div className="hidden md:block">
               <Table
-                headers={["Nome", "Posição", "Categoria", "Entrada", "Observações", "Ações"]}
-                minWidth="900px"
+                headers={["Nome", "Sexo", "Posição", "Categoria", "Entrada", "Observações", "Ações"]}
+                minWidth="960px"
               >
-                {athletes.map((athlete) => (
+                {displayedAthletes.map((athlete) => (
                   <tr key={athlete.id} className="bg-white">
                     <td className="px-6 py-4">
                       <p className="font-bold text-pegasus-navy">{athlete.name}</p>
                       <p className="text-xs text-slate-500">{athlete.email ?? "-"}</p>
                     </td>
+                    <td className="px-6 py-4 text-sm text-slate-600 capitalize">{athlete.gender ?? "-"}</td>
                     <td className="px-6 py-4 text-slate-600">{athlete.position ?? "-"}</td>
                     <td className="px-6 py-4 text-slate-600">{athlete.category ?? "-"}</td>
                     <td className="px-6 py-4 text-sm text-slate-500">{formatDate(athlete.createdAt)}</td>
@@ -259,7 +324,7 @@ export function TestesPage() {
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-2">
                         <button
-                          className="flex items-center gap-1.5 rounded-xl bg-emerald-50 px-3 py-1.5 text-sm font-semibold text-emerald-700 hover:bg-emerald-100"
+                          className="flex items-center gap-1.5 rounded-md bg-emerald-50 px-3 py-1.5 text-sm font-semibold text-emerald-700 hover:bg-emerald-100"
                           onClick={() => setApproveTarget(athlete)}
                           type="button"
                         >
@@ -267,7 +332,7 @@ export function TestesPage() {
                           Aprovar
                         </button>
                         <button
-                          className="flex items-center gap-1.5 rounded-xl bg-rose-50 px-3 py-1.5 text-sm font-semibold text-rose-700 hover:bg-rose-100"
+                          className="flex items-center gap-1.5 rounded-md bg-rose-50 px-3 py-1.5 text-sm font-semibold text-rose-700 hover:bg-rose-100"
                           onClick={() => setRejectTarget(athlete)}
                           type="button"
                         >
@@ -275,7 +340,7 @@ export function TestesPage() {
                           Recusar
                         </button>
                         <button
-                          className="flex items-center gap-1.5 rounded-xl bg-slate-100 px-3 py-1.5 text-sm font-semibold text-slate-600 hover:bg-slate-200"
+                          className="flex items-center gap-1.5 rounded-md bg-slate-100 px-3 py-1.5 text-sm font-semibold text-slate-600 hover:bg-slate-200"
                           onClick={() => openNotes(athlete)}
                           type="button"
                         >
@@ -283,7 +348,7 @@ export function TestesPage() {
                           Obs.
                         </button>
                         <button
-                          className="flex items-center gap-1.5 rounded-xl bg-blue-50 px-3 py-1.5 text-sm font-semibold text-blue-700 hover:bg-blue-100"
+                          className="flex items-center gap-1.5 rounded-md bg-blue-50 px-3 py-1.5 text-sm font-semibold text-blue-700 hover:bg-blue-100"
                           onClick={() => openInfo(athlete)}
                           type="button"
                         >
@@ -300,9 +365,9 @@ export function TestesPage() {
         ) : (
           <div className="p-6">
             <EmptyState
-              description="Nenhum atleta aguardando avaliação no momento."
+              description={athletes.length > 0 ? "Nenhum atleta encontrado com os filtros aplicados." : "Nenhum atleta aguardando avaliação no momento."}
               icon={ClipboardList}
-              title="Nenhum teste pendente"
+              title={athletes.length > 0 ? "Sem resultados" : "Nenhum teste pendente"}
             />
           </div>
         )}
