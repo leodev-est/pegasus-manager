@@ -7,5 +7,6 @@ RUN npx prisma generate
 COPY src ./src
 COPY tsconfig.json ./
 RUN npx tsc
+RUN npx tsc --project tsconfig.seed.json
 RUN npm prune --production
 CMD ["npm", "start"]
