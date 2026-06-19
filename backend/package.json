@@ -7,7 +7,7 @@
     "dev": "ts-node-dev --files src/index.ts",
     "prebuild": "rm -rf dist && prisma generate",
     "build": "tsc",
-    "prestart": "for i in 1 2 3 4 5; do npx prisma migrate deploy && break || (echo \"[migrate] tentativa $i falhou, aguardando...\" && sleep $((i * 4))); done",
+    "prestart": "for i in 1 2 3 4 5; do npx prisma migrate deploy && break || (echo \"[migrate] tentativa $i falhou, aguardando...\" && sleep $((i * 4))); done && npx prisma db seed",
     "start": "node dist/index.js",
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",

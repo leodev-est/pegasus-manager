@@ -12,15 +12,15 @@ import { startWhatsAppScheduler } from "./modules/whatsapp/whatsapp-scheduler";
 const PORT = process.env.PORT || 3000;
 
 function startKeepAlive(baseUrl: string) {
-  // Ping /health every 14 min to prevent Render free-tier spin-down
-  // Ping database every 4 min to prevent Neon free-tier auto-pause
+  // Ping own /health every 14 min to prevent Render free-tier spin-down
   setInterval(() => {
     fetch(`${baseUrl}/health`).catch(() => {});
   }, 14 * 60 * 1000);
 
+  // Ping database once a day to prevent Timescale free-tier auto-pause (3 days idle)
   setInterval(async () => {
     try { await prisma.$queryRaw`SELECT 1`; } catch {}
-  }, 4 * 60 * 1000);
+  }, 24 * 60 * 60 * 1000);
 }
 
 app.listen(PORT, async () => {
