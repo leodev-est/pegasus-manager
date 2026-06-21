@@ -78,13 +78,13 @@ export const authService = {
     const user = await findUserByEmail(normalizedLogin);
 
     if (!user || !user.active) {
-      throw new AppError("E-mail ou senha inválidos", 401);
+      throw new AppError("Login ou senha inválidos", 401);
     }
 
     const passwordMatches = await bcrypt.compare(password, user.password);
 
     if (!passwordMatches) {
-      throw new AppError("E-mail ou senha inválidos", 401);
+      throw new AppError("Login ou senha inválidos", 401);
     }
 
     const token = jwt.sign(
