@@ -529,13 +529,22 @@ export const financeService = {
     const monthEnd = new Date(Date.UTC(year, mon, 1));
     const dueDate = new Date(Date.UTC(year, mon - 1, 10));
 
+    // Último sábado do mês: atleta aprovado após essa data só conta no mês seguinte
+    const lastDayOfMonth = new Date(Date.UTC(year, mon, 0));
+    const dow = lastDayOfMonth.getUTCDay(); // 0=Dom, 6=Sáb
+    const daysBack = dow === 6 ? 0 : dow + 1;
+    const lastSaturdayEnd = new Date(Date.UTC(year, mon, 0));
+    lastSaturdayEnd.setUTCDate(lastDayOfMonth.getUTCDate() - daysBack);
+    lastSaturdayEnd.setUTCHours(23, 59, 59, 999);
+
     const setting = await prisma.trainingSetting.findFirst({ select: { monthlyFeeAmount: true } });
     const defaultAmount = Number(setting?.monthlyFeeAmount ?? 0);
 
-    type AthleteRow = { id: string; name: string; activatedAt: Date | null };
+    type AthleteRow = { id: string; name: string; activatedAt: Date | null; createdAt: Date };
     const athletes = await prisma.$queryRaw<AthleteRow[]>`
-      SELECT id, name, "activatedAt" FROM "Athlete"
+      SELECT id, name, "activatedAt", "createdAt" FROM "Athlete"
       WHERE status = 'ativo' AND "monthlyPaymentStatus" != 'isento'
+        AND COALESCE("activatedAt", "createdAt") <= ${lastSaturdayEnd}
       ORDER BY name ASC
     `;
 
@@ -583,8 +592,9 @@ export const financeService = {
         // Prorate the first month: days 1–15 → full amount, days 16–31 → 50%
         let amount = defaultAmount;
         let description = "Mensalidade";
-        if (athlete.activatedAt) {
-          const activated = new Date(athlete.activatedAt);
+        const joinDate = athlete.activatedAt ?? athlete.createdAt;
+        if (joinDate) {
+          const activated = new Date(joinDate);
           const activatedYear = activated.getUTCFullYear();
           const activatedMonth = activated.getUTCMonth() + 1;
           if (activatedYear === year && activatedMonth === mon) {
