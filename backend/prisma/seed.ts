@@ -91,7 +91,7 @@ const rolePermissions: Record<string, string[]> = {
 const users = [
   { name: "Leo", username: "leo", roles: ["Diretor", "Gestao", "Atleta"] },
   { name: "Allef", username: "allef", roles: ["Diretor", "Gestao", "Atleta"] },
-  { name: "Giu", username: "giulia", roles: ["RH", "Financeiro", "Marketing", "Gestao", "Atleta"] },
+  { name: "Giulia", username: "giulia", roles: ["RH", "Financeiro", "Marketing", "Gestao", "Atleta"] },
   { name: "Victoria", username: "victoria", roles: ["Gestor", "Operacional", "Gestao", "Atleta"] },
   { name: "Vito", username: "vito", roles: ["Marketing", "ChefeMarketing", "Gestao", "Atleta"] },
 ];
