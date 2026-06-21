@@ -503,8 +503,24 @@ export const attendanceService = {
       };
     }
 
+    // A partir de 2026-06-21, só exibe atletas cuja entrada no sistema
+    // é anterior ou igual à data do treino (evita exibir quem ainda não estava no time).
+    const FILTER_START = "2026-06-21";
+    const applyDateFilter = dateKey >= FILTER_START;
+    const trainingDayEnd = new Date(`${dateKey}T23:59:59.999Z`);
+
     const athletes = await prisma.athlete.findMany({
-      where: { status: "ativo" },
+      where: {
+        status: "ativo",
+        ...(applyDateFilter
+          ? {
+              OR: [
+                { activatedAt: { lte: trainingDayEnd } },
+                { activatedAt: null, createdAt: { lte: trainingDayEnd } },
+              ],
+            }
+          : {}),
+      },
       orderBy: { name: "asc" },
       include: {
         attendances: {
