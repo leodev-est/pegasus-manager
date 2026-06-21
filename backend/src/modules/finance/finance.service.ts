@@ -544,7 +544,6 @@ export const financeService = {
     const athletes = await prisma.$queryRaw<AthleteRow[]>`
       SELECT id, name, "activatedAt", "createdAt" FROM "Athlete"
       WHERE status = 'ativo' AND "monthlyPaymentStatus" != 'isento'
-        AND COALESCE("activatedAt", "createdAt") <= ${lastSaturdayEnd}
       ORDER BY name ASC
     `;
 
@@ -589,10 +588,13 @@ export const financeService = {
 
     for (const athlete of athletes) {
       if (!existingByAthleteId.has(athlete.id)) {
+        // Só auto-cria registro se o atleta entrou até o último sábado do mês
+        const joinDate = athlete.activatedAt ?? athlete.createdAt;
+        if (joinDate > lastSaturdayEnd) continue;
+
         // Prorate the first month: days 1–15 → full amount, days 16–31 → 50%
         let amount = defaultAmount;
         let description = "Mensalidade";
-        const joinDate = athlete.activatedAt ?? athlete.createdAt;
         if (joinDate) {
           const activated = new Date(joinDate);
           const activatedYear = activated.getUTCFullYear();
@@ -624,6 +626,7 @@ export const financeService = {
     }
 
     return athletes
+      .filter((athlete) => existingByAthleteId.has(athlete.id))
       .map((athlete) => {
         const payment = existingByAthleteId.get(athlete.id)!;
         if (filterStatus && filterStatus !== "todos" && payment.status !== filterStatus) return null;
