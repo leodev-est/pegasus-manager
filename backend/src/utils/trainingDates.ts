@@ -54,7 +54,8 @@ export function getBrazilDateKey(date = new Date()) {
 }
 
 export function dateKeyToDate(dateKey: string) {
-  return new Date(`${dateKey}T12:00:00.000Z`);
+  // 20:30 UTC = 17:30 BRT (horário oficial dos treinos Pegasus)
+  return new Date(`${dateKey}T20:30:00.000Z`);
 }
 
 export function isOfficialPegasusTrainingDate(date: Date | string, blockedDates: string[]) {
