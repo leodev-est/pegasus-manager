@@ -275,11 +275,13 @@ export const financeService = {
       `,
       prisma.$queryRaw<AggRow[]>`
         SELECT COALESCE(SUM(amount), 0) AS value FROM "Payment"
-        WHERE "referenceMonth" = ${month} AND LOWER(category) = 'mensalidade' AND status != 'pago'
+        WHERE "referenceMonth" = ${month} AND LOWER(category) = 'mensalidade'
+          AND status IN ('pendente', 'atrasado')
       `,
       prisma.$queryRaw<AggRow[]>`
         SELECT COALESCE(SUM(amount), 0) AS value FROM "Payment"
         WHERE "referenceMonth" = ${month} AND LOWER(category) = 'mensalidade'
+          AND status != 'isento'
       `,
       prisma.$queryRaw<CountRow[]>`
         SELECT COUNT(*) AS count FROM "Payment"
@@ -288,6 +290,7 @@ export const financeService = {
       prisma.$queryRaw<CountRow[]>`
         SELECT COUNT(*) AS count FROM "Payment"
         WHERE "referenceMonth" = ${month} AND LOWER(category) = 'mensalidade'
+          AND status != 'isento'
       `,
     ]);
 
