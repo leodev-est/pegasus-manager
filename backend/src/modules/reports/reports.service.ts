@@ -26,26 +26,36 @@ async function generatePdfBuffer(month: string): Promise<Buffer> {
       where: { createdAt: { gte: start, lt: end } },
       include: { athlete: { select: { name: true } } },
     }),
-    prisma.cashMovement.findMany({ where: { date: { gte: start, lt: end } } }),
+    prisma.cashMovement.findMany({ where: { date: { gte: start, lt: end } }, orderBy: { date: "asc" } }),
     prisma.training.findMany({ where: { date: { gte: start, lt: end } }, orderBy: { date: "asc" } }),
     prisma.game.findMany({ where: { date: { gte: start, lt: end } }, orderBy: { date: "asc" } }),
     prisma.athlete.findMany({
-      where: { createdAt: { gte: start, lt: end } },
-      select: { name: true, createdAt: true, category: true },
+      where: { activatedAt: { gte: start, lt: end } },
+      select: { name: true, activatedAt: true, category: true },
+      orderBy: { activatedAt: "asc" },
     }),
   ]);
 
   const totalReceita = payments.filter((p) => p.type === "receita" && p.status === "pago").reduce((s, p) => s + Number(p.amount), 0);
-  const totalDespesa = payments.filter((p) => p.type === "despesa").reduce((s, p) => s + Number(p.amount), 0);
-  const totalMovimento = movements.filter((m) => m.type === "entrada").reduce((s, m) => s + Number(m.amount), 0)
-    - movements.filter((m) => m.type === "saida").reduce((s, m) => s + Number(m.amount), 0);
+  const totalDespesaPayments = payments.filter((p) => p.type === "despesa").reduce((s, p) => s + Number(p.amount), 0);
+  const saidasMovimento = movements.filter((mv) => mv.type === "saida");
+  const entradasMovimento = movements.filter((mv) => mv.type === "entrada");
+  const totalSaidasMovimento = saidasMovimento.reduce((s, mv) => s + Number(mv.amount), 0);
+  const totalEntradasMovimento = entradasMovimento.reduce((s, mv) => s + Number(mv.amount), 0);
+  const totalDespesaGeral = totalDespesaPayments + totalSaidasMovimento;
 
   const mensalidades = payments.filter((p) => p.category === "mensalidade" || p.description?.toLowerCase().includes("mensalidade"));
   const mensalidadesPago = mensalidades.filter((p) => p.status === "pago").length;
   const label = monthLabel(month);
 
+  const W = 595.28;
+  const H = 841.89;
+  const ML = 40;
+  const MR = 40;
+  const contentW = W - ML - MR;
+
   return new Promise((resolve, reject) => {
-    const doc = new PDFDocument({ margin: 48, size: "A4" });
+    const doc = new PDFDocument({ margin: ML, size: "A4", autoFirstPage: true, bufferPages: false });
     const chunks: Buffer[] = [];
     doc.on("data", (chunk: Buffer) => chunks.push(chunk));
     doc.on("end", () => resolve(Buffer.concat(chunks)));
@@ -53,109 +63,126 @@ async function generatePdfBuffer(month: string): Promise<Buffer> {
 
     const navy = "#1e3a5f";
     const gray = "#64748b";
-    const light = "#f1f5f9";
+    const light = "#eef2f8";
+    const accent = "#3b82f6";
 
-    // Header
-    doc.rect(0, 0, doc.page.width, 80).fill(navy);
-    doc.fillColor("white").fontSize(22).font("Helvetica-Bold").text("Pegasus Manager", 48, 24);
-    doc.fontSize(11).font("Helvetica").text(`Relatório Mensal — ${label}`, 48, 52);
-    doc.fillColor(navy).fontSize(10);
+    // ── Header ──────────────────────────────────────────────────────────────
+    doc.rect(0, 0, W, 62).fill(navy);
+    doc.fillColor("white").fontSize(20).font("Helvetica-Bold").text("Pegasus Manager", ML, 14, { lineBreak: false });
+    doc.fontSize(10).font("Helvetica").fillColor("#93c5fd").text(`Relatório Mensal — ${label}`, ML, 40, { lineBreak: false });
 
-    let y = 108;
+    let y = 82;
 
+    // ── helpers ─────────────────────────────────────────────────────────────
     function sectionTitle(title: string) {
-      doc.rect(48, y, doc.page.width - 96, 24).fill(light);
-      doc.fillColor(navy).font("Helvetica-Bold").fontSize(11).text(title, 56, y + 6);
-      doc.fillColor(navy).font("Helvetica").fontSize(10);
-      y += 34;
+      doc.rect(ML, y, contentW, 20).fill(light);
+      doc.fillColor(navy).font("Helvetica-Bold").fontSize(9.5)
+        .text(title, ML + 6, y + 5, { lineBreak: false });
+      y += 26;
     }
 
-    function row(label: string, value: string, indent = 0) {
-      doc.fillColor(gray).text(label, 48 + indent, y);
-      doc.fillColor(navy).font("Helvetica-Bold").text(value, 0, y, { align: "right" });
-      doc.font("Helvetica");
-      y += 18;
+    function row(lbl: string, value: string, indent = 0, bold = false) {
+      const lx = ML + indent;
+      const lw = contentW * 0.65;
+      const rx = ML;
+      const rw = contentW;
+      doc.font("Helvetica").fontSize(9).fillColor(gray)
+        .text(lbl, lx, y, { width: lw - indent, lineBreak: false });
+      doc.font(bold ? "Helvetica-Bold" : "Helvetica").fontSize(9).fillColor(navy)
+        .text(value, rx, y, { width: rw, align: "right", lineBreak: false });
+      y += 16;
     }
 
-    function checkPage() {
-      if (y > doc.page.height - 80) {
-        doc.addPage();
-        y = 48;
+    function rowDivider() {
+      y += 2;
+      doc.moveTo(ML, y).lineTo(ML + contentW, y).strokeColor("#dde3f0").lineWidth(0.5).stroke();
+      y += 5;
+    }
+
+    function gap(n = 10) { y += n; }
+
+    // ── Resumo Financeiro ────────────────────────────────────────────────────
+    sectionTitle("Resumo Financeiro");
+    row("Receitas pagas (mensalidades e outros)", formatCurrency(totalReceita));
+    if (totalEntradasMovimento > 0) {
+      row("Entradas de caixa", formatCurrency(totalEntradasMovimento));
+    }
+    rowDivider();
+    if (totalDespesaPayments > 0) {
+      row("Despesas (pagamentos lançados)", formatCurrency(totalDespesaPayments));
+    }
+    if (saidasMovimento.length > 0) {
+      for (const mv of saidasMovimento) {
+        row(mv.description, `− ${formatCurrency(Number(mv.amount))}`, 8);
       }
     }
+    if (totalDespesaGeral === 0) {
+      row("Despesas do mês", formatCurrency(0));
+    } else {
+      rowDivider();
+      row("Total de saídas", formatCurrency(totalDespesaGeral), 0, true);
+    }
+    rowDivider();
+    row("Saldo do mês", formatCurrency(totalReceita + totalEntradasMovimento - totalDespesaGeral), 0, true);
+    gap(10);
 
-    // FINANCEIRO
-    sectionTitle("Resumo Financeiro");
-    row("Total receitas pagas", formatCurrency(totalReceita));
-    row("Total despesas", formatCurrency(totalDespesa));
-    row("Saldo caixa (movimentações)", formatCurrency(totalMovimento));
-    row("Saldo líquido", formatCurrency(totalReceita - totalDespesa));
-    y += 8;
-
+    // ── Mensalidades ──────────────────────────────────────────────────────────
     if (mensalidades.length > 0) {
       sectionTitle("Mensalidades");
       row("Total de atletas cobrados", String(mensalidades.length));
       row("Pagamentos confirmados", String(mensalidadesPago));
-      row("Taxa de adimplência", `${mensalidades.length > 0 ? Math.round((mensalidadesPago / mensalidades.length) * 100) : 0}%`);
-      y += 8;
+      row("Taxa de adimplência", `${Math.round((mensalidadesPago / mensalidades.length) * 100)}%`);
+      gap(10);
     }
 
-    checkPage();
-
-    // TREINOS
+    // ── Treinos ───────────────────────────────────────────────────────────────
     sectionTitle(`Treinos (${trainings.length})`);
     if (trainings.length === 0) {
-      doc.fillColor(gray).text("Nenhum treino realizado no mês.", 48, y);
-      y += 18;
+      doc.font("Helvetica").fontSize(9).fillColor(gray)
+        .text("Nenhum treino realizado no mês.", ML, y, { lineBreak: false });
+      y += 16;
     } else {
-      for (const t of trainings.slice(0, 20)) {
-        checkPage();
+      for (const t of trainings) {
         row(formatDate(t.date), t.title, 8);
       }
-      if (trainings.length > 20) {
-        doc.fillColor(gray).text(`... e mais ${trainings.length - 20} treinos.`, 48, y);
-        y += 18;
-      }
     }
-    y += 8;
+    gap(10);
 
-    checkPage();
-
-    // JOGOS
+    // ── Jogos ─────────────────────────────────────────────────────────────────
     sectionTitle(`Jogos (${games.length})`);
     if (games.length === 0) {
-      doc.fillColor(gray).text("Nenhum jogo registrado no mês.", 48, y);
-      y += 18;
+      doc.font("Helvetica").fontSize(9).fillColor(gray)
+        .text("Nenhum jogo registrado no mês.", ML, y, { lineBreak: false });
+      y += 16;
     } else {
       for (const g of games) {
-        checkPage();
-        const result = `${g.scorePegasus} × ${g.scoreOpponent} vs ${g.opponent}`;
-        row(formatDate(g.date), result, 8);
+        row(`${formatDate(g.date)} · vs ${g.opponent}`, `${g.scorePegasus} × ${g.scoreOpponent}`, 8);
       }
     }
-    y += 8;
+    gap(10);
 
-    checkPage();
-
-    // NOVOS ATLETAS
-    sectionTitle(`Novos Atletas (${athletes.length})`);
+    // ── Atletas aprovados ────────────────────────────────────────────────────
+    sectionTitle(`Atletas aprovados no mês (${athletes.length})`);
     if (athletes.length === 0) {
-      doc.fillColor(gray).text("Nenhum novo atleta cadastrado no mês.", 48, y);
-      y += 18;
+      doc.font("Helvetica").fontSize(9).fillColor(gray)
+        .text("Nenhum atleta aprovado este mês.", ML, y, { lineBreak: false });
+      y += 16;
     } else {
       for (const a of athletes) {
-        checkPage();
-        row(a.name, a.category ?? "Sem categoria", 8);
+        row(a.name, a.category ?? "—", 8);
       }
     }
 
-    // Footer
-    doc.rect(0, doc.page.height - 36, doc.page.width, 36).fill(light);
-    doc.fillColor(gray).fontSize(8).text(
-      `Gerado em ${new Date().toLocaleString("pt-BR")} · Pegasus Manager`,
-      48,
-      doc.page.height - 22,
-    );
+    // ── Footer ────────────────────────────────────────────────────────────────
+    const footerY = H - 28;
+    doc.rect(0, footerY, W, 28).fill(light);
+    doc.font("Helvetica").fontSize(7.5).fillColor(gray)
+      .text(
+        `Gerado em ${new Date().toLocaleString("pt-BR")} · Pegasus Manager`,
+        ML,
+        footerY + 9,
+        { width: contentW, align: "center", lineBreak: false },
+      );
 
     doc.end();
   });
