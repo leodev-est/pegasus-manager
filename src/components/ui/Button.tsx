@@ -16,9 +16,9 @@ const buttonVariants = cva(
     variants: {
       variant: {
         primary: [
-          "bg-pegasus-primary text-white",
-          "shadow-md shadow-blue-900/20",
-          "hover:bg-pegasus-medium hover:shadow-lg hover:shadow-blue-900/25 hover:-translate-y-px",
+          "bg-gradient-to-br from-pegasus-primary to-pegasus-medium text-white",
+          "shadow-md shadow-blue-900/25",
+          "hover:from-[#0B3D8C] hover:to-pegasus-primary hover:shadow-lg hover:shadow-blue-900/30 hover:-translate-y-px",
         ],
         secondary: [
           "border border-blue-100 bg-white text-pegasus-primary",

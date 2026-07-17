@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Outlet } from "react-router-dom";
+import { Outlet, useLocation } from "react-router-dom";
 import { useAuth } from "../../auth/AuthContext";
 import { AthleteWelcomeTour, useAthleteWelcomeTour } from "../athlete/AthleteWelcomeTour";
 import { usePushSetup } from "../../hooks/usePushSetup";
@@ -9,6 +9,7 @@ import { Topbar } from "./Topbar";
 export function AppLayout() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const { user } = useAuth();
+  const location = useLocation();
   usePushSetup();
 
   const isAthlete =
@@ -47,7 +48,9 @@ export function AppLayout() {
       <div className="min-w-0 max-w-full lg:pl-72">
         <Topbar onMenuClick={() => setIsSidebarOpen(true)} />
         <main className="w-full min-w-0 max-w-full px-4 py-5 sm:px-5 md:px-8 md:py-8">
-          <Outlet />
+          <div key={location.pathname} className="page-enter">
+            <Outlet />
+          </div>
         </main>
       </div>
 

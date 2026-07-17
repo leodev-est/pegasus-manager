@@ -277,29 +277,31 @@ export function Sidebar({ isMobileOpen = false, onNavigate, onOpenTour }: Sideba
 
   return (
     <aside
-      className={`fixed inset-y-0 left-0 z-40 flex w-[min(19rem,86vw)] flex-col border-r border-blue-100 bg-pegasus-navy text-white shadow-2xl transition-transform duration-200 lg:w-72 lg:translate-x-0 lg:shadow-none ${
+      className={`fixed inset-y-0 left-0 z-40 flex w-[min(19rem,86vw)] flex-col border-r border-white/5 bg-gradient-to-b from-[#071b33] via-[#0B2E59] to-[#0D3870] text-white shadow-2xl transition-transform duration-200 lg:w-72 lg:translate-x-0 lg:shadow-none ${
         isMobileOpen ? "translate-x-0" : "-translate-x-full"
       }`}
     >
-      <div className="flex h-20 items-center gap-3 border-b border-white/10 px-6">
-        <img
-          alt="Projeto Pegasus"
-          className="h-12 w-12 shrink-0 rounded-lg object-contain shadow-sm"
-          src={logoIcon}
-        />
+      <div className="flex h-20 items-center gap-3 border-b border-white/[0.08] px-5">
+        <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-white/10 p-1.5 ring-1 ring-white/10">
+          <img
+            alt="Projeto Pegasus"
+            className="h-full w-full rounded-lg object-contain"
+            src={logoIcon}
+          />
+        </div>
         <div>
-          <p className="text-lg font-bold">Pegasus Manager</p>
-          <p className="text-xs text-blue-100">Projeto esportivo</p>
+          <p className="text-[15px] font-bold tracking-tight text-white">Pegasus Manager</p>
+          <p className="text-[11px] text-blue-300/70">Projeto esportivo</p>
         </div>
       </div>
 
-      <nav className="flex-1 space-y-5 overflow-y-auto px-4 py-6">
+      <nav className="flex-1 space-y-4 overflow-y-auto px-3 py-5">
         {visibleGroups.map((group) => (
           <div key={group.title}>
-            <p className="mb-2 px-3 text-xs font-semibold uppercase tracking-[0.16em] text-blue-200">
+            <p className="mb-1.5 px-3 text-[10px] font-bold uppercase tracking-[0.18em] text-blue-300/50">
               {group.title}
             </p>
-            <div className="space-y-1">
+            <div className="space-y-0.5">
               {group.items.map((item) => {
                 const Icon = item.icon;
 
@@ -309,16 +311,26 @@ export function Sidebar({ isMobileOpen = false, onNavigate, onOpenTour }: Sideba
                     to={item.path}
                     end
                     onClick={onNavigate}
-                    className={({ isActive }) =>
-                      `flex min-h-11 items-center gap-3 rounded-md px-3 py-2.5 text-sm font-medium transition ${
-                        isActive
-                          ? "bg-white text-pegasus-primary shadow-sm"
-                          : "text-blue-50 hover:bg-white/10 hover:text-white"
-                      }`
-                    }
+                    className="block"
                   >
-                    <Icon size={18} />
-                    <span>{item.label}</span>
+                    {({ isActive }) => (
+                      <div
+                        className={`relative flex min-h-10 items-center gap-3 rounded-lg px-3 py-2.5 text-sm transition-all duration-150 ${
+                          isActive
+                            ? "bg-white/[0.13] font-semibold text-white"
+                            : "font-medium text-blue-200/70 hover:bg-white/[0.07] hover:text-white"
+                        }`}
+                      >
+                        {isActive && (
+                          <span className="absolute inset-y-2 left-0 w-[3px] rounded-r-full bg-sky-400" />
+                        )}
+                        <Icon
+                          size={17}
+                          className={isActive ? "shrink-0 text-sky-300" : "shrink-0"}
+                        />
+                        <span>{item.label}</span>
+                      </div>
+                    )}
                   </NavLink>
                 );
               })}
@@ -328,13 +340,13 @@ export function Sidebar({ isMobileOpen = false, onNavigate, onOpenTour }: Sideba
       </nav>
 
       {onOpenTour && (
-        <div className="border-t border-white/10 px-4 py-3">
+        <div className="border-t border-white/[0.08] px-3 py-3">
           <button
             type="button"
             onClick={onOpenTour}
-            className="flex w-full items-center gap-3 rounded-md px-3 py-2.5 text-sm font-medium text-blue-200 transition hover:bg-white/10 hover:text-white"
+            className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-blue-200/70 transition hover:bg-white/[0.07] hover:text-white"
           >
-            <HelpCircle size={18} />
+            <HelpCircle size={17} />
             Tutorial do App
           </button>
         </div>
