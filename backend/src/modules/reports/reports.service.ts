@@ -21,7 +21,7 @@ async function generatePdfBuffer(month: string): Promise<Buffer> {
   const start = new Date(Date.UTC(year, m - 1, 1));
   const end = new Date(Date.UTC(year, m, 1));
 
-  const [payments, movements, trainings, games, athletes] = await Promise.all([
+  const [payments, movements, trainings, games, athletes, allPaidPayments, allMoves] = await Promise.all([
     prisma.payment.findMany({
       where: { createdAt: { gte: start, lt: end } },
       include: { athlete: { select: { name: true } } },
@@ -34,7 +34,15 @@ async function generatePdfBuffer(month: string): Promise<Buffer> {
       select: { name: true, activatedAt: true, category: true },
       orderBy: { activatedAt: "asc" },
     }),
+    prisma.payment.findMany({ where: { status: "pago" }, select: { amount: true, type: true } }),
+    prisma.cashMovement.findMany({ select: { amount: true, type: true } }),
   ]);
+
+  const totalCaixaAtual =
+    allPaidPayments.filter((p) => p.type === "receita").reduce((s, p) => s + Number(p.amount), 0) -
+    allPaidPayments.filter((p) => p.type === "despesa").reduce((s, p) => s + Number(p.amount), 0) +
+    allMoves.filter((mv) => mv.type === "entrada").reduce((s, mv) => s + Number(mv.amount), 0) -
+    allMoves.filter((mv) => mv.type === "saida").reduce((s, mv) => s + Number(mv.amount), 0);
 
   const totalReceita = payments.filter((p) => p.type === "receita" && p.status === "pago").reduce((s, p) => s + Number(p.amount), 0);
   const totalDespesaPayments = payments.filter((p) => p.type === "despesa").reduce((s, p) => s + Number(p.amount), 0);
@@ -55,7 +63,11 @@ async function generatePdfBuffer(month: string): Promise<Buffer> {
   const contentW = W - ML - MR;
 
   return new Promise((resolve, reject) => {
-    const doc = new PDFDocument({ margin: ML, size: "A4", autoFirstPage: true, bufferPages: false });
+    const doc = new PDFDocument({
+      margins: { top: ML, bottom: 0, left: ML, right: MR },
+      size: "A4",
+      autoFirstPage: true,
+    });
     const chunks: Buffer[] = [];
     doc.on("data", (chunk: Buffer) => chunks.push(chunk));
     doc.on("end", () => resolve(Buffer.concat(chunks)));
@@ -124,6 +136,7 @@ async function generatePdfBuffer(month: string): Promise<Buffer> {
     }
     rowDivider();
     row("Saldo do mês", formatCurrency(totalReceita + totalEntradasMovimento - totalDespesaGeral), 0, true);
+    row("Saldo total do caixa", formatCurrency(totalCaixaAtual), 0, true);
     gap(10);
 
     // ── Mensalidades ──────────────────────────────────────────────────────────
