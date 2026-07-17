@@ -11,6 +11,7 @@ type NotificationPayload = {
   title?: string;
   type?: string;
   userId?: string;
+  meta?: string;
 };
 
 function validateType(type?: string): asserts type is NotificationType {
@@ -73,6 +74,7 @@ export const notificationsService = {
         title: requireText(payload.title, "Título"),
         type: payload.type,
         userId: payload.userId,
+        meta: payload.meta ?? null,
       },
     });
 

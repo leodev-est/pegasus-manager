@@ -1,6 +1,6 @@
 import { api } from "./api";
 
-export type AthleteStatus = "ativo" | "teste" | "inativo";
+export type AthleteStatus = "ativo" | "teste" | "inativo" | "lesao";
 export type MonthlyPaymentStatus = "pago" | "pendente" | "atrasado" | "isento";
 export type AthleteGender = "masculino" | "feminino";
 
@@ -122,6 +122,10 @@ export const athleteService = {
   },
   async getPaymentStatusHistory(id: string) {
     const { data } = await api.get<PaymentStatusHistoryEntry[]>(`/athletes/${id}/payment-status-history`);
+    return data;
+  },
+  async isentarLesao(id: string) {
+    const { data } = await api.post<Athlete>(`/athletes/${id}/isentar-lesao`);
     return data;
   },
 };

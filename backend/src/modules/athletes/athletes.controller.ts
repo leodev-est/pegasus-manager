@@ -107,4 +107,13 @@ export const athletesController = {
       next(error);
     }
   }) satisfies RequestHandler,
+
+  isentarLesao: (async (request, response, next) => {
+    try {
+      const result = await athletesService.isentarLesao(getParamId(request.params.id));
+      response.json(result);
+    } catch (error) {
+      next(error);
+    }
+  }) satisfies RequestHandler,
 };

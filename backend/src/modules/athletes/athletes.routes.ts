@@ -19,4 +19,5 @@ athletesRoutes.post(
 athletesRoutes.patch("/:id", permissionMiddleware("athletes:update"), athletesController.update);
 athletesRoutes.patch("/:id/payment-status", permissionMiddleware(["athletes:update", "finance:update"]), athletesController.updatePaymentStatus);
 athletesRoutes.get("/:id/payment-status-history", permissionMiddleware(["athletes:read", "finance:read"]), athletesController.getPaymentStatusHistory);
+athletesRoutes.post("/:id/isentar-lesao", permissionMiddleware("athletes:update"), athletesController.isentarLesao);
 athletesRoutes.delete("/:id", permissionMiddleware("athletes:delete"), athletesController.softDelete);

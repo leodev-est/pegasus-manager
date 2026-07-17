@@ -279,6 +279,7 @@ model Notification {
   message   String
   type      String
   read      Boolean  @default(false)
+  meta      String?
   createdAt DateTime @default(now())
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 

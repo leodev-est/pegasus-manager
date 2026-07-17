@@ -9,6 +9,7 @@ export type Notification = {
   message: string;
   type: NotificationType;
   read: boolean;
+  meta?: string | null;
   createdAt: string;
 };
 

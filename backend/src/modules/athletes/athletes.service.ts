@@ -10,7 +10,7 @@ import { notificationsService } from "../notifications/notifications.service";
 const CACHE_PREFIX = "athletes:";
 const CACHE_TTL = 60_000;
 
-const allowedStatuses = ["ativo", "teste", "inativo"] as const;
+const allowedStatuses = ["ativo", "teste", "inativo", "lesao"] as const;
 const allowedPaymentStatuses = ["pago", "pendente", "atrasado", "isento"] as const;
 const includeUser = {
   user: {
@@ -55,7 +55,7 @@ function normalizeOptional(value: string | null | undefined) {
 
 function validateStatus(status?: string) {
   if (status && !allowedStatuses.includes(status as AthleteStatus)) {
-    throw new AppError("Status deve ser ativo, teste ou inativo", 400);
+    throw new AppError("Status deve ser ativo, teste, inativo ou lesao", 400);
   }
 }
 
@@ -239,10 +239,28 @@ export const athletesService = {
       delete data.activatedAt;
     }
 
+    // Se saindo de lesão com isenção de lesão ativa → reverte para pendente
+    const wasInjured = currentAthlete.status === "lesao";
+    if (wasInjured && data.status && data.status !== "lesao" && currentAthlete.monthlyPaymentStatus === "isento") {
+      data.monthlyPaymentStatus = "pendente";
+    }
+
     const athlete = await prisma.athlete.update({
       where: { id },
       data,
     });
+
+    // Notifica diretores quando atleta vai para lesão
+    if (data.status === "lesao" && !wasInjured) {
+      notificationsService
+        .notifyByRoles(["Diretor"], {
+          title: "Atleta com lesão",
+          message: `${athlete.name} foi marcado(a) como lesionado(a). Deseja isentar das mensalidades até o retorno?`,
+          type: "sistema",
+          meta: JSON.stringify({ action: "lesao_isencao", athleteId: athlete.id, athleteName: athlete.name }),
+        })
+        .catch(() => {});
+    }
 
     if (athlete.status === "ativo") {
       const syncedUser = await syncActiveAthleteUser(athlete);
@@ -275,6 +293,19 @@ export const athletesService = {
       where: { id: athlete.id },
       include: includeUser,
     });
+  },
+
+  async isentarLesao(id: string) {
+    const athlete = await this.findById(id);
+    if (athlete.status !== "lesao") {
+      throw new AppError("Atleta não está com lesão", 400);
+    }
+    const updated = await prisma.athlete.update({
+      where: { id },
+      data: { monthlyPaymentStatus: "isento" },
+    });
+    invalidateAthleteCache();
+    return updated;
   },
 
   async softDelete(id: string) {

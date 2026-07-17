@@ -1,4 +1,4 @@
-import { Bell, LogOut, Menu, Moon, Search, ShieldCheck, Sun } from "lucide-react";
+import { Bell, Check, LogOut, Menu, Moon, Search, ShieldCheck, Sun, X } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
@@ -6,6 +6,7 @@ import { useAuth } from "../../auth/AuthContext";
 import { useTheme } from "../../contexts/ThemeContext";
 import logoIcon from "../../assets/logo/logo-icon.png";
 import { api } from "../../services/api";
+import { athleteService } from "../../services/athleteService";
 import { type Notification } from "../../services/notificationService";
 import { useMarkAllAsRead, useMarkAsRead, useNotifications, NOTIFICATIONS_KEY } from "../../hooks/useNotifications";
 import { Button } from "../ui/Button";
@@ -134,6 +135,7 @@ export function Topbar({ onMenuClick }: TopbarProps) {
   const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
+  const [isentandoId, setIsentandoId] = useState<string | null>(null);
 
   const { data: notifications = [], isFetching: isLoadingNotifications } = useNotifications();
   const { mutate: markAsRead } = useMarkAsRead();
@@ -188,6 +190,19 @@ export function Topbar({ onMenuClick }: TopbarProps) {
   function handleNotificationClick(notification: Notification) {
     if (!notification.read) {
       markAsRead(notification.id);
+    }
+  }
+
+  async function handleIsentarLesao(notification: Notification, athleteId: string) {
+    setIsentandoId(notification.id);
+    try {
+      await athleteService.isentarLesao(athleteId);
+      markAsRead(notification.id);
+      queryClient.invalidateQueries({ queryKey: [NOTIFICATIONS_KEY] });
+    } catch {
+      // silently fail
+    } finally {
+      setIsentandoId(null);
     }
   }
 
@@ -311,30 +326,73 @@ export function Topbar({ onMenuClick }: TopbarProps) {
                   {isLoadingNotifications ? (
                     <div className="p-4 text-sm font-bold text-pegasus-primary">Carregando notificações</div>
                   ) : notifications.length > 0 ? (
-                    notifications.slice(0, 10).map((notification) => (
-                      <button
-                        className={`block w-full border-b border-blue-50 p-4 text-left transition hover:bg-pegasus-ice ${
-                          notification.read ? "bg-white" : "bg-blue-50/70"
-                        }`}
-                        key={notification.id}
-                        onClick={() => handleNotificationClick(notification)}
-                        type="button"
-                      >
-                        <div className="flex items-start justify-between gap-3">
-                          <div>
-                            <p className="break-words font-black text-pegasus-navy">{notification.title}</p>
-                            <p className="mt-1 break-words text-sm leading-5 text-slate-600">{notification.message}</p>
+                    notifications.slice(0, 10).map((notification) => {
+                      let meta: { action?: string; athleteId?: string; athleteName?: string } | null = null;
+                      try { meta = notification.meta ? JSON.parse(notification.meta) : null; } catch { /* */ }
+                      const isLesaoAction = meta?.action === "lesao_isencao" && meta.athleteId && !notification.read;
+
+                      if (isLesaoAction) {
+                        return (
+                          <div
+                            className="border-b border-blue-50 bg-amber-50/60 p-4 dark:bg-amber-900/20"
+                            key={notification.id}
+                          >
+                            <div className="flex items-start justify-between gap-3">
+                              <div>
+                                <p className="break-words font-black text-pegasus-navy">{notification.title}</p>
+                                <p className="mt-1 break-words text-sm leading-5 text-slate-600">{notification.message}</p>
+                              </div>
+                              <span className="mt-1 h-2.5 w-2.5 shrink-0 rounded-full bg-amber-500" />
+                            </div>
+                            <div className="mt-3 flex items-center gap-2">
+                              <button
+                                className="flex items-center gap-1 rounded-md bg-emerald-600 px-3 py-1.5 text-xs font-bold text-white transition hover:bg-emerald-700 disabled:opacity-50"
+                                disabled={isentandoId === notification.id}
+                                onClick={() => handleIsentarLesao(notification, meta!.athleteId!)}
+                                type="button"
+                              >
+                                <Check size={12} />
+                                Sim, isentar
+                              </button>
+                              <button
+                                className="flex items-center gap-1 rounded-md bg-slate-200 px-3 py-1.5 text-xs font-bold text-slate-700 transition hover:bg-slate-300 dark:bg-slate-700 dark:text-slate-200"
+                                onClick={() => markAsRead(notification.id)}
+                                type="button"
+                              >
+                                <X size={12} />
+                                Não
+                              </button>
+                              <span className="ml-auto text-xs text-slate-400">{formatRelativeTime(notification.createdAt)}</span>
+                            </div>
                           </div>
-                          {!notification.read ? (
-                            <span className="mt-1 h-2.5 w-2.5 shrink-0 rounded-full bg-pegasus-primary" />
-                          ) : null}
-                        </div>
-                        <div className="mt-3 flex items-center justify-between gap-3 text-xs font-bold text-slate-500">
-                          <span>{typeLabel(notification.type)}</span>
-                          <span>{formatRelativeTime(notification.createdAt)}</span>
-                        </div>
-                      </button>
-                    ))
+                        );
+                      }
+
+                      return (
+                        <button
+                          className={`block w-full border-b border-blue-50 p-4 text-left transition hover:bg-pegasus-ice ${
+                            notification.read ? "bg-white dark:bg-slate-800" : "bg-blue-50/70 dark:bg-blue-900/20"
+                          }`}
+                          key={notification.id}
+                          onClick={() => handleNotificationClick(notification)}
+                          type="button"
+                        >
+                          <div className="flex items-start justify-between gap-3">
+                            <div>
+                              <p className="break-words font-black text-pegasus-navy">{notification.title}</p>
+                              <p className="mt-1 break-words text-sm leading-5 text-slate-600">{notification.message}</p>
+                            </div>
+                            {!notification.read ? (
+                              <span className="mt-1 h-2.5 w-2.5 shrink-0 rounded-full bg-pegasus-primary" />
+                            ) : null}
+                          </div>
+                          <div className="mt-3 flex items-center justify-between gap-3 text-xs font-bold text-slate-500">
+                            <span>{typeLabel(notification.type)}</span>
+                            <span>{formatRelativeTime(notification.createdAt)}</span>
+                          </div>
+                        </button>
+                      );
+                    })
                   ) : (
                     <div className="p-6 text-center text-sm text-slate-500">Nenhuma notificação</div>
                   )}
