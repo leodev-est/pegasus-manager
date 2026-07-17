@@ -6,6 +6,6 @@ import { reportsController } from "./reports.controller";
 export const reportsRoutes = Router();
 
 reportsRoutes.use(authMiddleware);
-reportsRoutes.get("/", permissionMiddleware("financeiro:read"), reportsController.list);
-reportsRoutes.post("/generate", permissionMiddleware("financeiro:read"), reportsController.generate);
-reportsRoutes.get("/:id/download", permissionMiddleware("financeiro:read"), reportsController.download);
+reportsRoutes.get("/", permissionMiddleware("finance:read"), reportsController.list);
+reportsRoutes.post("/generate", permissionMiddleware("finance:read"), reportsController.generate);
+reportsRoutes.get("/:id/download", permissionMiddleware("finance:read"), reportsController.download);

@@ -35,9 +35,11 @@ export const reportsController = {
     try {
       const { id } = req.params;
       const { content, fileName } = await reportsService.download(id);
+      const buf = Buffer.isBuffer(content) ? content : Buffer.from(content);
       res.setHeader("Content-Type", "application/pdf");
       res.setHeader("Content-Disposition", `attachment; filename="${fileName}"`);
-      res.send(content);
+      res.setHeader("Content-Length", buf.length);
+      res.end(buf);
     } catch (err: unknown) {
       res.status(404).json({ error: err instanceof Error ? err.message : "Relatório não encontrado" });
     }

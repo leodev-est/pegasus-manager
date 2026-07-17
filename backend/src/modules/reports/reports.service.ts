@@ -173,13 +173,10 @@ export const reportsService = {
 
     const pdfBuffer = await generatePdfBuffer(target);
 
-    const ab = new ArrayBuffer(pdfBuffer.length);
-    new Uint8Array(ab).set(pdfBuffer);
-    const content = new Uint8Array(ab);
     const report = await prisma.monthlyReport.upsert({
       where: { month: target },
-      update: { content, fileSize: pdfBuffer.length, generatedAt: new Date(), sentAt: null, fileName },
-      create: { month: target, fileName, content, fileSize: pdfBuffer.length },
+      update: { content: pdfBuffer, fileSize: pdfBuffer.length, generatedAt: new Date(), sentAt: null, fileName },
+      create: { month: target, fileName, content: pdfBuffer, fileSize: pdfBuffer.length },
     });
 
     // Try to send by email to gestão
