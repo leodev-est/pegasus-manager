@@ -246,6 +246,7 @@ export const reportsService = {
   async download(id: string) {
     const report = await prisma.monthlyReport.findUnique({ where: { id } });
     if (!report) throw new Error("Relatório não encontrado.");
+    await prisma.monthlyReport.delete({ where: { id } });
     return { content: report.content, fileName: report.fileName };
   },
 };
