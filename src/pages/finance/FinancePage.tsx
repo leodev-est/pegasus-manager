@@ -12,6 +12,7 @@ import { FilterBar } from "../../components/ui/FilterBar";
 import { Input } from "../../components/ui/Input";
 import { Modal } from "../../components/ui/Modal";
 import { PageHeader } from "../../components/ui/PageHeader";
+import { ORG_NAME } from "../../config/org";
 import { Select } from "../../components/ui/Select";
 import { StatusBadge, type StatusTone } from "../../components/ui/StatusBadge";
 import { Table } from "../../components/ui/Table";
@@ -323,7 +324,7 @@ export function FinancePage() {
   const demonstrationText = useMemo(
     () =>
       [
-        `Demonstrativo Financeiro Pegasus - ${month}`,
+        `Demonstrativo Financeiro ${ORG_NAME} - ${month}`,
         `Caixa atual: ${formatCurrency(summary.currentCash)}`,
         `Entradas do mês: ${formatCurrency(summary.monthlyRevenue)}`,
         `Saídas do mês: ${formatCurrency(summary.monthlyExpenses)}`,

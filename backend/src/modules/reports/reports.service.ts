@@ -38,6 +38,12 @@ async function generatePdfBuffer(month: string): Promise<Buffer> {
     prisma.cashMovement.findMany({ select: { amount: true, type: true } }),
   ]);
 
+  const setting = await prisma.trainingSetting.findUnique({
+    where: { id: "singleton" },
+    select: { systemName: true },
+  });
+  const orgName = setting?.systemName ?? "Pegasus Manager";
+
   const totalCaixaAtual =
     allPaidPayments.filter((p) => p.type === "receita").reduce((s, p) => s + Number(p.amount), 0) -
     allPaidPayments.filter((p) => p.type === "despesa").reduce((s, p) => s + Number(p.amount), 0) +
@@ -80,7 +86,7 @@ async function generatePdfBuffer(month: string): Promise<Buffer> {
 
     // ── Header ──────────────────────────────────────────────────────────────
     doc.rect(0, 0, W, 62).fill(navy);
-    doc.fillColor("white").fontSize(20).font("Helvetica-Bold").text("Pegasus Manager", ML, 14, { lineBreak: false });
+    doc.fillColor("white").fontSize(20).font("Helvetica-Bold").text(orgName, ML, 14, { lineBreak: false });
     doc.fontSize(10).font("Helvetica").fillColor("#93c5fd").text(`Relatório Mensal — ${label}`, ML, 40, { lineBreak: false });
 
     let y = 82;
@@ -191,7 +197,7 @@ async function generatePdfBuffer(month: string): Promise<Buffer> {
     doc.rect(0, footerY, W, 28).fill(light);
     doc.font("Helvetica").fontSize(7.5).fillColor(gray)
       .text(
-        `Gerado em ${new Date().toLocaleString("pt-BR")} · Pegasus Manager`,
+        `Gerado em ${new Date().toLocaleString("pt-BR")} · ${orgName}`,
         ML,
         footerY + 9,
         { width: contentW, align: "center", lineBreak: false },
@@ -236,6 +242,7 @@ export const reportsService = {
 
       const settings = await prisma.trainingSetting.findUnique({ where: { id: "singleton" } });
       const emailCfg = settings;
+      const orgName = settings?.systemName ?? "Pegasus Manager";
 
       for (const u of gestaoUsers) {
         if (!u.email) continue;
@@ -243,7 +250,7 @@ export const reportsService = {
           await emailService.sendEmail(
             u.email,
             `Relatório Mensal — ${label}`,
-            `<p>Olá,</p><p>Segue em anexo o relatório mensal do Pegasus Manager referente a <strong>${label}</strong>.</p>`,
+            `<p>Olá,</p><p>Segue em anexo o relatório mensal do ${orgName} referente a <strong>${label}</strong>.</p>`,
           );
         } catch { /* Silently fail */ }
       }

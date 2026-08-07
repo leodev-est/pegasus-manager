@@ -20,6 +20,7 @@ const TOUR_STEPS = [
 ];
 import type { AuthUser } from "../../auth/AuthContext";
 import { PageHeader } from "../../components/ui/PageHeader";
+import { ORG_NAME } from "../../config/org";
 import { StatusBadge } from "../../components/ui/StatusBadge";
 import { Table } from "../../components/ui/Table";
 import { useToast } from "../../components/ui/Toast";
@@ -116,7 +117,7 @@ export function AccessControlPage() {
     <div className="space-y-8">
       <PageHeader
         title="Controle de Acessos"
-        description="Mapa inicial de usuários, perfis e permissões por área do Pegasus Manager."
+        description={`Mapa inicial de usuários, perfis e permissões por área do ${ORG_NAME}.`}
       />
 
       <section className="grid gap-6 xl:grid-cols-[1.2fr_0.8fr]">

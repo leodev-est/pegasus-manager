@@ -19,6 +19,7 @@ import { getApiErrorMessage } from "../../services/api";
 import { calendarService } from "../../services/calendarService";
 import { settingsService, type TrainingConfig } from "../../services/settingsService";
 import { MANUAL_BLOCKED_DATES, OFFICIAL_TRAINING } from "../../data/trainingConfig";
+import { ORG_NAME } from "../../config/org";
 
 function addUTCDays(date: Date, days: number): Date {
   return new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate() + days));
@@ -125,7 +126,7 @@ const TOUR_STEPS = [
   {
     popover: {
       title: "📅 Calendário de Treinos",
-      description: "Veja todos os treinos oficiais Pegasus no calendário. A gestão pode bloquear sábados e ajustar configurações.",
+      description: `Veja todos os treinos oficiais ${ORG_NAME} no calendário. A gestão pode bloquear sábados e ajustar configurações.`,
     },
   },
   {
@@ -252,7 +253,7 @@ export function TrainingCalendarPage() {
     <div className="space-y-8">
       <PageHeader
         title="Calendário de Treinos"
-        description="Agenda oficial dos treinos Pegasus aos sábados, com bloqueios e informações fixas do local."
+        description={`Agenda oficial dos treinos ${ORG_NAME} aos sábados, com bloqueios e informações fixas do local.`}
       />
 
       <section data-tour="cal-info" className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
@@ -392,7 +393,7 @@ export function TrainingCalendarPage() {
             <p><strong className="text-pegasus-navy">Local:</strong> {trainingConfig.trainingLocation}</p>
             <p><strong className="text-pegasus-navy">Dependência:</strong> {trainingConfig.trainingDependency}</p>
             <p><strong className="text-pegasus-navy">Modalidade:</strong> {OFFICIAL_TRAINING.modality}</p>
-            <p><strong className="text-pegasus-navy">Observações:</strong> Treino oficial Pegasus aos sábados. Verifique comunicados internos em caso de feriados ou ajustes operacionais.</p>
+            <p><strong className="text-pegasus-navy">Observações:</strong> Treino oficial {ORG_NAME} aos sábados. Verifique comunicados internos em caso de feriados ou ajustes operacionais.</p>
           </div>
         ) : null}
       </Modal>

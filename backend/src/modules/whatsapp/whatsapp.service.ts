@@ -555,19 +555,25 @@ class WhatsAppService {
     });
     if (!athlete) return;
 
+    const setting = await prisma.trainingSetting.findUnique({
+      where: { id: "singleton" },
+      select: { systemName: true },
+    });
+    const orgName = setting?.systemName ?? "Pegasus Manager";
+
     const tempPassword = process.env.ATHLETE_TEMP_PASSWORD ?? "pegasus2026";
     const credentialsBlock = isNewUser && username
       ? `\n\n🔐 *Seus dados de acesso:*\n👤 Usuário: *${username}*\n🔑 Senha provisória: *${tempPassword}*\n\nAcesse o sistema e troque sua senha no primeiro login.`
       : username ? `\n\n👤 Seu usuário de acesso: *${username}*` : "";
-    const waMessage = `🎉 Parabéns ${first(athlete.name)}! Sua aprovação como atleta do *Projeto Pegasus* está confirmada. Bem-vindo(a) ao time! 🏐${credentialsBlock}`;
-    const emailText = `Parabéns ${first(athlete.name)}! Sua aprovação como atleta do Projeto Pegasus está confirmada. Bem-vindo(a) ao time!${credentialsBlock.replace(/\*/g, "")}`;
+    const waMessage = `🎉 Parabéns ${first(athlete.name)}! Sua aprovação como atleta do *Projeto ${orgName}* está confirmada. Bem-vindo(a) ao time! 🏐${credentialsBlock}`;
+    const emailText = `Parabéns ${first(athlete.name)}! Sua aprovação como atleta do Projeto ${orgName} está confirmada. Bem-vindo(a) ao time!${credentialsBlock.replace(/\*/g, "")}`;
 
     let sent = false;
     if (this.status === "connected" && athlete.phone) {
       try { await this.sendMessage(athlete.phone, waMessage); sent = true; } catch { /* fallthrough */ }
     }
     if (!sent) {
-      await emailService.sendFallback(athlete.email, "Aprovação como atleta Pegasus", emailText).catch(() => {});
+      await emailService.sendFallback(athlete.email, `Aprovação como atleta ${orgName}`, emailText).catch(() => {});
     }
   }
 
@@ -578,7 +584,11 @@ class WhatsAppService {
     });
     if (!athlete) return;
 
-    const message = `Olá ${first(athlete.name)}! Sua avaliação técnica foi atualizada. Acesse o sistema Pegasus para conferir suas notas.`;
+    const setting = await prisma.trainingSetting.findUnique({
+      where: { id: "singleton" },
+      select: { systemName: true },
+    });
+    const message = `Olá ${first(athlete.name)}! Sua avaliação técnica foi atualizada. Acesse o sistema ${setting?.systemName ?? "Pegasus Manager"} para conferir suas notas.`;
 
     let sent = false;
     if (this.status === "connected" && athlete.phone) {

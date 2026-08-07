@@ -3,6 +3,7 @@ import { OFFICIAL_TRAINING } from "../../data/trainingConfig";
 import { FormEvent, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import logoFull from "../../assets/logo/logo-full.png";
+import { ORG_NAME, ORG_LOGO_URL } from "../../config/org";
 import {
   athleteApplicationService,
   type PublicApplicationPayload,
@@ -243,7 +244,7 @@ function validate(form: FormData): string | null {
   if (!form.level) return "Selecione seu nível atual.";
   if (!form.willingToCompete) return "Informe sua disponibilidade para campeonatos.";
   if (!form.motivation.trim()) return "Conte seu motivo para entrar no time.";
-  if (!form.howFound.trim()) return "Informe como você descobriu o Pegasus.";
+  if (!form.howFound.trim()) return `Informe como você descobriu o ${ORG_NAME}.`;
   return null;
 }
 
@@ -373,9 +374,9 @@ export function InscricaoPage() {
       <header className="bg-pegasus-navy text-white">
         <div className="mx-auto flex max-w-4xl items-center justify-between gap-4 px-4 py-4 sm:px-6">
           <Link to="/" className="flex items-center gap-3">
-            <img src={logoFull} alt="Projeto Pegasus" className="h-10 w-20 rounded-xl object-contain" />
+            <img src={ORG_LOGO_URL || logoFull} alt={`Projeto ${ORG_NAME}`} className="h-10 w-20 rounded-xl object-contain" />
             <div>
-              <p className="font-bold leading-tight">Projeto Pegasus</p>
+              <p className="font-bold leading-tight">Projeto {ORG_NAME}</p>
               <p className="text-xs text-blue-200">Caminho Para o Time</p>
             </div>
           </Link>
@@ -398,7 +399,7 @@ export function InscricaoPage() {
           </div>
           <h1 className="mt-4 text-3xl font-black sm:text-4xl">Caminho Para o Time</h1>
           <p className="mt-3 max-w-xl text-base leading-7 text-blue-100">
-            Preencha o formulário abaixo para fazer sua inscrição no <strong className="text-white">Projeto Pegasus</strong>.
+            Preencha o formulário abaixo para fazer sua inscrição no <strong className="text-white">Projeto {ORG_NAME}</strong>.
             Nossa equipe analisará seu perfil e entrará em contato.
           </p>
         </div>
@@ -592,14 +593,14 @@ export function InscricaoPage() {
                 disabled={isSubmitting}
                 label="Por que você quer entrar no time?"
                 onChange={(v) => set("motivation", v)}
-                placeholder="Conte sua motivação, objetivos e o que espera do Projeto Pegasus..."
+                placeholder={`Conte sua motivação, objetivos e o que espera do Projeto ${ORG_NAME}...`}
                 required
                 rows={4}
                 value={form.motivation}
               />
               <TextareaInput
                 disabled={isSubmitting}
-                label="Como você descobriu o Projeto Pegasus?"
+                label={`Como você descobriu o Projeto ${ORG_NAME}?`}
                 onChange={(v) => set("howFound", v)}
                 placeholder="Instagram, indicação de amigo, evento..."
                 required

@@ -6,7 +6,7 @@ const TOUR_STEPS = [
   {
     popover: {
       title: "⚙️ Configurações",
-      description: "Parâmetros globais do sistema Pegasus: horário de treino, mensalidade, frequência mínima, notificações e integrações.",
+      description: `Parâmetros globais do sistema ${ORG_NAME}: horário de treino, mensalidade, frequência mínima, notificações e integrações.`,
     },
   },
   {
@@ -26,6 +26,7 @@ import { useToast } from "../../components/ui/Toast";
 import { getApiErrorMessage } from "../../services/api";
 import { googleCalendarService, type GoogleCalendarStatus } from "../../services/googleCalendarService";
 import { settingsService, type TrainingConfig } from "../../services/settingsService";
+import { ORG_NAME } from "../../config/org";
 
 const defaultConfig: TrainingConfig = {
   trainingTime: "17:30 às 19:00",
@@ -41,7 +42,7 @@ const defaultConfig: TrainingConfig = {
   notifyOnApproval: true,
   notifyOnOverdue: true,
   notifyOnTraining: false,
-  systemName: "Pegasus Manager",
+  systemName: ORG_NAME,
   timezone: "America/Sao_Paulo",
   blockedDates: [],
   emailEnabled: false,
@@ -52,7 +53,7 @@ const defaultConfig: TrainingConfig = {
   emailUser: null,
   emailPassword: null,
   emailFrom: null,
-  emailFromName: "Pegasus Manager",
+  emailFromName: ORG_NAME,
 };
 
 type Tab = "treinos" | "mensalidades" | "notificacoes" | "frequencia" | "sistema" | "canais";
@@ -181,7 +182,7 @@ export function ConfiguracoesPage() {
     <div className="space-y-8">
       <PageHeader
         title="Configurações"
-        description="Parâmetros gerais do sistema Pegasus."
+        description={`Parâmetros gerais do sistema ${ORG_NAME}.`}
       />
 
       <div data-tour="config-tabs" className="flex gap-1 border-b border-slate-200 overflow-x-auto">
@@ -285,7 +286,7 @@ export function ConfiguracoesPage() {
                   <Input label="Usuário/Login" value={form.emailUser ?? ""} onChange={(e) => setForm({ ...form, emailUser: e.target.value || null })} disabled={isSaving} placeholder="usuario@gmail.com" />
                   <Input label="Senha" type="password" value={emailPassword} onChange={(e) => setEmailPassword(e.target.value)} disabled={isSaving} placeholder={form.emailUser ? "Deixe em branco para manter" : "Senha ou App Password"} />
                   <Input label="Remetente (from)" value={form.emailFrom ?? ""} onChange={(e) => setForm({ ...form, emailFrom: e.target.value || null })} disabled={isSaving} placeholder="noreply@seudominio.com" />
-                  <Input label="Nome do remetente" value={form.emailFromName} onChange={(e) => setForm({ ...form, emailFromName: e.target.value })} disabled={isSaving} placeholder="Pegasus Manager" />
+                  <Input label="Nome do remetente" value={form.emailFromName} onChange={(e) => setForm({ ...form, emailFromName: e.target.value })} disabled={isSaving} placeholder={ORG_NAME} />
                 </div>
                 <div>
                   <ToggleRow label="Conexão segura (TLS)" description="Usa TLS na conexão SMTP (porta 465)." checked={form.emailSecure} onChange={(v) => setForm({ ...form, emailSecure: v })} />

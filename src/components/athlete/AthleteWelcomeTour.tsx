@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { ORG_NAME } from "../../config/org";
 
 type Slide = {
   icon: React.ElementType;
@@ -30,9 +31,9 @@ const SLIDES: Slide[] = [
   {
     icon: Trophy,
     color: "text-pegasus-primary bg-pegasus-primary/10",
-    title: "Bem-vindo ao Pegasus Manager!",
+    title: `Bem-vindo ao ${ORG_NAME}!`,
     description:
-      "Este é o sistema do Projeto Pegasus. Aqui você acompanha seus treinos, jogos e se comunica com a equipe. Veja a seguir tudo o que está disponível para você.",
+      `Este é o sistema do Projeto ${ORG_NAME}. Aqui você acompanha seus treinos, jogos e se comunica com a equipe. Veja a seguir tudo o que está disponível para você.`,
   },
   {
     icon: LayoutDashboard,
@@ -66,7 +67,7 @@ const SLIDES: Slide[] = [
     color: "text-amber-600 bg-amber-50 dark:bg-amber-900/20",
     title: "Jogos e Resultados",
     description:
-      "Consulte o histórico de jogos do Pegasus: resultados, placares, sets e informações de cada partida disputada.",
+      `Consulte o histórico de jogos do ${ORG_NAME}: resultados, placares, sets e informações de cada partida disputada.`,
     path: "/app/jogos",
     cta: "Ver Jogos",
   },
@@ -129,7 +130,7 @@ const SLIDES: Slide[] = [
     color: "text-teal-600 bg-teal-50 dark:bg-teal-900/20",
     title: "Sugestões",
     description:
-      "Tem uma ideia ou algo que gostaria de ver no clube? Envie suas sugestões diretamente para a gestão do Pegasus.",
+      `Tem uma ideia ou algo que gostaria de ver no clube? Envie suas sugestões diretamente para a gestão do ${ORG_NAME}.`,
     path: "/app/atleta/sugestoes",
     cta: "Enviar Sugestão",
   },

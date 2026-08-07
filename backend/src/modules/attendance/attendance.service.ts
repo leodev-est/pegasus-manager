@@ -117,14 +117,20 @@ async function ensureOfficialTrainingForDate(dateKey: string, blockedDates: stri
     return existing;
   }
 
+  const settings = await prisma.trainingSetting.findUnique({
+    where: { id: "singleton" },
+    select: { systemName: true },
+  });
+  const orgName = settings?.systemName ?? "Pegasus Manager";
+
   return prisma.training.create({
     data: {
       category: OFFICIAL_TRAINING_MODALITY,
-      createdBy: "Pegasus",
+      createdBy: orgName,
       date: dateKeyToDate(dateKey),
-      notes: `Treino oficial Pegasus. Local: ${OFFICIAL_TRAINING_PLACE}. Horario: ${OFFICIAL_TRAINING_TIME}.`,
-      objective: "Treino oficial semanal do Projeto Pegasus.",
-      title: "Treino oficial Pegasus",
+      notes: `Treino oficial ${orgName}. Local: ${OFFICIAL_TRAINING_PLACE}. Horario: ${OFFICIAL_TRAINING_TIME}.`,
+      objective: `Treino oficial semanal do Projeto ${orgName}.`,
+      title: `Treino oficial ${orgName}`,
     },
   });
 }

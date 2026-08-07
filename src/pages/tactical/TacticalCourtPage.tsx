@@ -31,6 +31,7 @@ import {
   type FormationPositions,
   type FormationSlot,
 } from "../../services/formationService";
+import { ORG_NAME } from "../../config/org";
 
 const slots: Array<{
   id: FormationSlot;
@@ -370,7 +371,7 @@ export function TacticalCourtPage() {
       } else {
         const created = await formationService.create({
           name: formationName || "Formação base",
-          createdBy: user?.name ?? "Pegasus",
+          createdBy: user?.name ?? ORG_NAME,
           positions,
         });
         setSelectedFormationId(created.id);

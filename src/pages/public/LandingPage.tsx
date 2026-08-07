@@ -19,6 +19,7 @@ import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import logoHero from "../../assets/logo/logo-hero.png";
 import logoIcon from "../../assets/logo/logo-icon.png";
+import { ORG_NAME, ORG_LOGO_URL } from "../../config/org";
 
 // ── Scroll Reveal ─────────────────────────────────────────────────────────────
 function Reveal({
@@ -268,8 +269,8 @@ export function LandingPage() {
         <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-5 py-3 sm:px-8">
           {/* Logo / brand — clicking goes to top */}
           <button onClick={scrollToTop} className="flex items-center gap-2.5 transition hover:opacity-80">
-            <img src={logoIcon} alt="Pegasus" className="h-8 w-8 rounded-lg object-contain" />
-            <span className="font-black text-white">Projeto Pegasus</span>
+            <img src={ORG_LOGO_URL || logoIcon} alt={ORG_NAME} className="h-8 w-8 rounded-lg object-contain" />
+            <span className="font-black text-white">Projeto {ORG_NAME}</span>
           </button>
 
           <div className="flex items-center gap-3">
@@ -362,8 +363,8 @@ export function LandingPage() {
         <div className="relative z-10 flex max-w-4xl flex-col items-center">
           <Reveal>
             <img
-              src={logoHero}
-              alt="Projeto Pegasus"
+              src={ORG_LOGO_URL || logoHero}
+              alt={`Projeto ${ORG_NAME}`}
               className="mx-auto mb-2 h-72 w-auto sm:h-96"
               style={{ filter: "drop-shadow(0 0 40px rgba(66,165,245,0.5))" }}
             />
@@ -462,9 +463,9 @@ export function LandingPage() {
                   "Não é sobre quem já chegou.<br />É sobre quem quer chegar."
                 </p>
                 <div className="mt-8 flex items-center gap-3 border-t border-white/20 pt-6">
-                  <img src={logoIcon} alt="Pegasus" className="h-10 w-10 rounded-xl object-contain" />
+                  <img src={ORG_LOGO_URL || logoIcon} alt={ORG_NAME} className="h-10 w-10 rounded-xl object-contain" />
                   <div>
-                    <p className="font-bold text-white">Projeto Pegasus</p>
+                    <p className="font-bold text-white">Projeto {ORG_NAME}</p>
                     <p className="text-sm text-[#42A5F5]">Voleibol e comunidade</p>
                   </div>
                 </div>
@@ -589,21 +590,21 @@ export function LandingPage() {
 
           <div className="relative z-10">
             <Reveal direction="none">
-              <img src={logoIcon} alt="Pegasus" className="mx-auto mb-6 h-16 w-16 rounded-2xl object-contain" />
+              <img src={ORG_LOGO_URL || logoIcon} alt={ORG_NAME} className="mx-auto mb-6 h-16 w-16 rounded-2xl object-contain" />
               <h2 className="text-4xl font-black leading-tight sm:text-5xl md:text-6xl">
                 Sua vez de entrar<br />em quadra.
               </h2>
               <p className="mx-auto mt-5 max-w-lg text-lg text-blue-100">
                 Você não precisa de peneira, de histórico, de experiência prévia.
                 Precisa só de vontade.{" "}
-                <span className="font-bold text-[#42A5F5]">Vem fazer parte do Pegasus.</span>
+                <span className="font-bold text-[#42A5F5]">Vem fazer parte do {ORG_NAME}.</span>
               </p>
               <div className="mt-10 flex flex-col items-center gap-3 sm:flex-row sm:justify-center">
                 <Link
                   to="/inscricao"
                   className="inline-flex min-h-12 items-center gap-2 rounded-full bg-[#42A5F5] px-10 py-4 text-lg font-black text-[#071428] shadow-xl shadow-[#42A5F5]/20 transition hover:brightness-105 active:scale-[0.97]"
                 >
-                  Quero fazer parte do Pegasus
+                  Quero fazer parte do {ORG_NAME}
                   <ArrowRight size={20} />
                 </Link>
                 <a
@@ -624,9 +625,9 @@ export function LandingPage() {
         <div className="mx-auto max-w-6xl">
           <div className="flex flex-col items-center gap-6 sm:flex-row sm:justify-between">
             <button onClick={scrollToTop} className="flex items-center gap-3 transition hover:opacity-80">
-              <img src={logoIcon} alt="Pegasus" className="h-9 w-9 rounded-xl object-contain" />
+              <img src={ORG_LOGO_URL || logoIcon} alt={ORG_NAME} className="h-9 w-9 rounded-xl object-contain" />
               <div className="text-left">
-                <p className="font-black text-white">Projeto Pegasus</p>
+                <p className="font-black text-white">Projeto {ORG_NAME}</p>
                 <p className="text-xs text-[#42A5F5]">Voleibol · Inclusão · Propósito</p>
               </div>
             </button>
@@ -652,7 +653,7 @@ export function LandingPage() {
           </div>
 
           <p className="mt-8 text-center text-xs text-blue-400/50">
-            © {new Date().getFullYear()} Projeto Pegasus · Todos os direitos reservados.
+            © {new Date().getFullYear()} Projeto {ORG_NAME} · Todos os direitos reservados.
           </p>
         </div>
       </footer>

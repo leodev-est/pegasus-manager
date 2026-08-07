@@ -32,6 +32,7 @@ import { PageHeader } from "../../components/ui/PageHeader";
 import { StatusBadge } from "../../components/ui/StatusBadge";
 import { useToast } from "../../components/ui/Toast";
 import { whatsappService, type WhatsAppState } from "../../services/whatsappService";
+import { ORG_NAME } from "../../config/org";
 
 const STATUS_LABEL: Record<string, string> = {
   connected: "Conectado",
@@ -135,7 +136,7 @@ export function WhatsAppPage() {
     <div className="space-y-8">
       <PageHeader
         title="WhatsApp"
-        description="Conecte o número de WhatsApp do Pegasus para enviar notificações automáticas aos atletas."
+        description={`Conecte o número de WhatsApp do ${ORG_NAME} para enviar notificações automáticas aos atletas.`}
       />
 
       <section data-tour="whats-status" className="panel p-6">
@@ -209,7 +210,7 @@ export function WhatsAppPage() {
             <div>
               <p className="font-bold text-pegasus-navy">Vincular com código de telefone</p>
               <p className="mt-1 text-sm text-slate-500">
-                Digite o número do WhatsApp que será vinculado ao Pegasus e clique em Gerar código.
+                Digite o número do WhatsApp que será vinculado ao {ORG_NAME} e clique em Gerar código.
               </p>
             </div>
 
@@ -295,7 +296,7 @@ export function WhatsAppPage() {
       <section className="rounded-2xl border border-amber-200 bg-amber-50 p-5">
         <p className="text-sm font-bold text-amber-800">Importante</p>
         <ul className="mt-2 list-inside list-disc space-y-1 text-sm text-amber-700">
-          <li>Use um número secundário dedicado ao Pegasus — não o seu número pessoal.</li>
+          <li>Use um número secundário dedicado ao {ORG_NAME} — não o seu número pessoal.</li>
           <li>A sessão fica salva no servidor. Após um novo deploy, será necessário conectar novamente.</li>
           <li>Os atletas precisam ter telefone cadastrado no sistema para receber mensagens.</li>
         </ul>

@@ -214,11 +214,15 @@ export const googleCalendarService = {
     if (!client) return null;
 
     try {
+      const setting = await prisma.trainingSetting.findUnique({
+        where: { id: "singleton" },
+        select: { systemName: true },
+      });
       const cal = google.calendar({ version: "v3", auth: client.auth });
       const res = await cal.events.insert({
         calendarId: client.calendarId,
         requestBody: {
-          summary: "🚫 Treino Cancelado — Pegasus",
+          summary: `🚫 Treino Cancelado — ${setting?.systemName ?? "Pegasus Manager"}`,
           start: { date },
           end: { date },
         },

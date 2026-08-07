@@ -5,6 +5,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "../../auth/AuthContext";
 import { useTheme } from "../../contexts/ThemeContext";
 import logoIcon from "../../assets/logo/logo-icon.png";
+import { ORG_NAME, ORG_LOGO_URL } from "../../config/org";
 import { api } from "../../services/api";
 import { athleteService } from "../../services/athleteService";
 import { type Notification } from "../../services/notificationService";
@@ -223,13 +224,13 @@ export function Topbar({ onMenuClick }: TopbarProps) {
             <Menu size={20} />
           </button>
           <img
-            alt="Pegasus"
+            alt={ORG_NAME}
             className="hidden h-9 w-9 shrink-0 rounded-md object-contain shadow-sm sm:block lg:hidden xl:block"
-            src={logoIcon}
+            src={ORG_LOGO_URL || logoIcon}
           />
           <div className="min-w-0">
             <p className="text-sm font-semibold text-pegasus-medium">Sistema administrativo</p>
-            <p className="hidden text-xs text-slate-500 sm:block">Gestão integrada do Projeto Pegasus</p>
+            <p className="hidden text-xs text-slate-500 sm:block">Gestão integrada do Projeto {ORG_NAME}</p>
           </div>
         </div>
 

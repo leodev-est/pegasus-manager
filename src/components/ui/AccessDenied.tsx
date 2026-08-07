@@ -1,6 +1,7 @@
 ﻿import { LockKeyhole } from "lucide-react";
 import { Link } from "react-router-dom";
 import { EmptyState } from "./EmptyState";
+import { ORG_NAME } from "../../config/org";
 
 export function AccessDenied() {
   return (
@@ -9,7 +10,7 @@ export function AccessDenied() {
         <EmptyState
           icon={LockKeyhole}
           title="Acesso negado"
-          description="Seu perfil não possui permissão para acessar esta área do Pegasus Manager."
+          description={`Seu perfil não possui permissão para acessar esta área do ${ORG_NAME}.`}
         />
         <div className="mt-5 flex justify-center">
           <Link

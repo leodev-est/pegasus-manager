@@ -258,6 +258,7 @@ export function AthletesPage() {
   }
 
   function fetchGenderSuggestion(name: string) {
+    if (import.meta.env.VITE_FEATURE_GENDERIZE_API === "false") return;
     const firstName = name.trim().split(" ")[0];
     if (!firstName || firstName.length < 2) { setGenderSuggestion(null); return; }
     if (genderizeTimer.current) clearTimeout(genderizeTimer.current);
