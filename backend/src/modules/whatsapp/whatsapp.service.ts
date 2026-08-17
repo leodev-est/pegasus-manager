@@ -1,6 +1,10 @@
 import { prisma } from "../../config/prisma";
 import { emailService } from "../email/email.service";
 
+// Desativado temporariamente — defina FEATURE_WHATSAPP=true para reativar
+// (conexão via Evolution API, scheduler de lembretes e envio de mensagens).
+export const WHATSAPP_ENABLED = process.env.FEATURE_WHATSAPP === "true";
+
 const raw = (process.env.EVOLUTION_API_URL ?? "").replace(/\/$/, "");
 const EVOLUTION_URL = raw && !raw.startsWith("http") ? `https://${raw}` : raw;
 const EVOLUTION_KEY = process.env.EVOLUTION_API_KEY ?? "";
@@ -73,11 +77,13 @@ class WhatsAppService {
   setPairingCode(code: string): void { this.cachedPairingCode = code; }
 
   setQr(base64: string): void {
+    if (!WHATSAPP_ENABLED) return;
     this.cachedQr = base64.startsWith("data:") ? base64 : `data:image/png;base64,${base64}`;
     this.status = "connecting";
   }
 
   setConnected(): void {
+    if (!WHATSAPP_ENABLED) return;
     this.status = "connected";
     this.cachedQr = null;
     this.lastError = null;
@@ -96,6 +102,10 @@ class WhatsAppService {
 
   /** Called once on startup to restore a persisted session. */
   async init(): Promise<void> {
+    if (!WHATSAPP_ENABLED) {
+      console.log("[WhatsApp] Desativado (FEATURE_WHATSAPP != true) — pulando inicialização.");
+      return;
+    }
     if (!EVOLUTION_URL || !EVOLUTION_KEY) {
       console.log("[WhatsApp] Evolution API não configurada — defina EVOLUTION_API_URL e EVOLUTION_API_KEY");
       return;
@@ -128,6 +138,10 @@ class WhatsAppService {
   }
 
   async getFullStatus(): Promise<{ status: ConnectionStatus; qrDataUrl: string | null; lastError: string | null }> {
+    if (!WHATSAPP_ENABLED) {
+      return { status: "disconnected", qrDataUrl: null, lastError: "WhatsApp está temporariamente desativado." };
+    }
+
     if (this.status === "disconnected") {
       return { status: "disconnected", qrDataUrl: null, lastError: this.lastError };
     }
@@ -179,6 +193,10 @@ class WhatsAppService {
   }
 
   async connect(): Promise<void> {
+    if (!WHATSAPP_ENABLED) {
+      this.lastError = "WhatsApp está temporariamente desativado.";
+      return;
+    }
     if (this.status === "connected") return;
 
     if (!EVOLUTION_URL || !EVOLUTION_KEY) {

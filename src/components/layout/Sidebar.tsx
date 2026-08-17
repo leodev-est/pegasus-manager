@@ -9,7 +9,6 @@
   Landmark,
   LayoutDashboard,
   Megaphone,
-  MessageCircle,
   MessageSquare,
   MessageSquarePlus,
   Radio,
@@ -255,7 +254,7 @@ export const menuGroups: MenuGroup[] = [
     items: [
       { label: "Acessos", path: "/app/admin/acessos", icon: Users, permissions: ["admin"] },
       { label: "Auditoria", path: "/app/admin/auditoria", icon: ShieldCheck, permissions: ["admin"] },
-      { label: "WhatsApp", path: "/app/admin/whatsapp", icon: MessageCircle, permissions: ["admin"] },
+      // WhatsApp temporariamente desativado — item de menu oculto, rota/página intactas.
       { label: "Configurações", path: "/app/admin/configuracoes", icon: Settings, permissions: ["admin"] },
     ],
   },
