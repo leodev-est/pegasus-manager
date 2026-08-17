@@ -2,6 +2,8 @@ import { api } from "./api";
 
 export type AttendanceStatus = "presente" | "falta" | "justificada" | "programado";
 
+export type TrainingGender = "feminino" | "masculino";
+
 export type AttendanceTraining = {
   id: string;
   title: string;
@@ -9,6 +11,7 @@ export type AttendanceTraining = {
   horario: string;
   local: string;
   modalidade: string;
+  turma: string | null;
 };
 
 export type TodayCheckIn = {
@@ -30,6 +33,7 @@ export type FrequencyDetail = {
   horario: string;
   local: string;
   modalidade: string;
+  turma: string | null;
   status: AttendanceStatus;
 };
 
@@ -54,6 +58,7 @@ export type AthleteFrequency = Omit<MyFrequency, "athlete"> & {
     name: string;
     category: string | null;
     position: string | null;
+    gender: string | null;
   };
 };
 
@@ -90,8 +95,11 @@ export type MonthlyAttendanceStat = {
 export type Chamada = {
   available: boolean;
   date: string;
+  gender: TrainingGender | null;
   training: AttendanceTraining | null;
   athletes: ChamadaAthlete[];
+  athletesWithoutGender: Array<{ id: string; name: string }>;
+  reason?: "cancelado" | "sem_treino";
 };
 
 export const attendanceService = {
@@ -124,13 +132,17 @@ export const attendanceService = {
     return data;
   },
 
-  async getChamada(date: string) {
-    const { data } = await api.get<Chamada>("/attendance/chamada", { params: { date } });
+  async getChamada(date: string, gender?: TrainingGender) {
+    const { data } = await api.get<Chamada>("/attendance/chamada", { params: { date, gender } });
     return data;
   },
 
-  async markChamadaBulk(date: string, entries: Array<{ athleteId: string; status: ChamadaAttendanceStatus }>) {
-    const { data } = await api.post("/attendance/chamada/bulk", { date, entries });
+  async markChamadaBulk(
+    date: string,
+    entries: Array<{ athleteId: string; status: ChamadaAttendanceStatus }>,
+    gender?: TrainingGender,
+  ) {
+    const { data } = await api.post("/attendance/chamada/bulk", { date, entries, gender });
     return data;
   },
 

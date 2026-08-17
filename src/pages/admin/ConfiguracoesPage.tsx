@@ -30,6 +30,8 @@ import { ORG_NAME } from "../../config/org";
 
 const defaultConfig: TrainingConfig = {
   trainingTime: "17:30 às 19:00",
+  trainingTimeFemale: "16:00 às 17:30",
+  trainingTimeMale: "17:30 às 19:00",
   trainingLocation: "Jerusalém",
   trainingDependency: "Quadra - CREC",
   trainingDaysOfWeek: ["saturday"],
@@ -208,7 +210,9 @@ export function ConfiguracoesPage() {
             <section className="panel p-6 space-y-5">
               <h2 className="font-bold text-pegasus-navy">Parâmetros de Treino</h2>
               <div className="grid gap-5 md:grid-cols-2">
-                <Input label="Horário" value={form.trainingTime} onChange={(e) => setForm({ ...form, trainingTime: e.target.value })} disabled={isSaving} placeholder="Ex: 17:30 às 19:00" />
+                <Input label="Horário — Feminino (a partir de 22/08)" value={form.trainingTimeFemale} onChange={(e) => setForm({ ...form, trainingTimeFemale: e.target.value })} disabled={isSaving} placeholder="Ex: 16:00 às 17:30" />
+                <Input label="Horário — Masculino (a partir de 22/08)" value={form.trainingTimeMale} onChange={(e) => setForm({ ...form, trainingTimeMale: e.target.value })} disabled={isSaving} placeholder="Ex: 17:30 às 19:00" />
+                <Input label="Horário — turma única (antes de 22/08)" value={form.trainingTime} onChange={(e) => setForm({ ...form, trainingTime: e.target.value })} disabled={isSaving} placeholder="Ex: 17:30 às 19:00" />
                 <Input label="Local" value={form.trainingLocation} onChange={(e) => setForm({ ...form, trainingLocation: e.target.value })} disabled={isSaving} placeholder="Ex: Jerusalém" />
                 <Input label="Dependência" value={form.trainingDependency} onChange={(e) => setForm({ ...form, trainingDependency: e.target.value })} disabled={isSaving} placeholder="Ex: Quadra - CREC" />
                 <Input label="Duração (min)" type="number" min="30" value={form.trainingDuration} onChange={(e) => setForm({ ...form, trainingDuration: Number(e.target.value) })} disabled={isSaving} />

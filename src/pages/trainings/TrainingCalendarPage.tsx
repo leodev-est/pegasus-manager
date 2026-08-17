@@ -79,6 +79,9 @@ function buildStaticBlockedDates(): Set<string> {
 
 const STATIC_BLOCKED_DATES = buildStaticBlockedDates();
 
+// Mesma data de corte usada no backend (utils/trainingDates.ts).
+const GENDER_SPLIT_START_DATE = "2026-08-22";
+
 const WEEK_DAYS = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
 
 function toDateKey(date: Date) {
@@ -160,15 +163,19 @@ export function TrainingCalendarPage() {
   const [dynamicBlockedDates, setDynamicBlockedDates] = useState<Set<string>>(new Set());
   const [isLoadingDates, setIsLoadingDates] = useState(false);
   const [isTogglingDate, setIsTogglingDate] = useState(false);
-  const [trainingConfig, setTrainingConfig] = useState<TrainingConfig>({
+  const [trainingConfig, setTrainingConfig] = useState<
+    Pick<TrainingConfig, "trainingTime" | "trainingTimeFemale" | "trainingTimeMale" | "trainingLocation" | "trainingDependency">
+  >({
     trainingTime: OFFICIAL_TRAINING.time,
+    trainingTimeFemale: "16:00 às 17:30",
+    trainingTimeMale: OFFICIAL_TRAINING.time,
     trainingLocation: OFFICIAL_TRAINING.location,
     trainingDependency: OFFICIAL_TRAINING.dependency,
-    monthlyFeeAmount: 0,
   });
 
   const infoCards: Array<{ label: string; value: string; icon: LucideIcon }> = [
-    { label: "Horário", value: trainingConfig.trainingTime, icon: Clock },
+    { label: "Horário — Feminino (a partir de 22/08)", value: trainingConfig.trainingTimeFemale, icon: Clock },
+    { label: "Horário — Masculino (a partir de 22/08)", value: trainingConfig.trainingTimeMale, icon: Clock },
     { label: "Local", value: trainingConfig.trainingLocation, icon: MapPin },
     { label: "Dependência", value: trainingConfig.trainingDependency, icon: CalendarDays },
     { label: "Modalidade", value: OFFICIAL_TRAINING.modality, icon: CalendarDays },
@@ -322,6 +329,7 @@ export function TrainingCalendarPage() {
             const isDynBlocked = isDynamicallyBlocked(day);
             const isSaturday = day.getUTCDay() === 6;
             const isEditableDay = canEditCalendar && isSaturday;
+            const isSplit = official && toDateKey(day) >= GENDER_SPLIT_START_DATE;
 
             return (
               <button
@@ -340,7 +348,12 @@ export function TrainingCalendarPage() {
                 type="button"
               >
                 <span className="text-sm font-black text-pegasus-navy">{day.getUTCDate()}</span>
-                {official ? (
+                {official && isSplit ? (
+                  <span className="mt-2 flex flex-wrap gap-1">
+                    <span className="rounded-lg bg-pink-500 px-1.5 py-0.5 text-[10px] font-bold text-white">Fem</span>
+                    <span className="rounded-lg bg-blue-500 px-1.5 py-0.5 text-[10px] font-bold text-white">Masc</span>
+                  </span>
+                ) : official ? (
                   <span className="mt-2 block rounded-xl bg-pegasus-primary px-2 py-1 text-xs font-bold text-white">
                     Treino
                   </span>
@@ -389,7 +402,19 @@ export function TrainingCalendarPage() {
         {selectedDate ? (
           <div className="space-y-4 text-sm leading-6 text-slate-600">
             <p><strong className="text-pegasus-navy">Data:</strong> {formatDate(selectedDate)}</p>
-            <p><strong className="text-pegasus-navy">Horário:</strong> {trainingConfig.trainingTime}</p>
+            {toDateKey(selectedDate) >= GENDER_SPLIT_START_DATE ? (
+              <p>
+                <strong className="text-pegasus-navy">Horário:</strong>{" "}
+                <span className="rounded-full bg-pink-100 px-2 py-0.5 text-xs font-bold text-pink-700">
+                  Feminino {trainingConfig.trainingTimeFemale}
+                </span>{" "}
+                <span className="rounded-full bg-blue-100 px-2 py-0.5 text-xs font-bold text-blue-700">
+                  Masculino {trainingConfig.trainingTimeMale}
+                </span>
+              </p>
+            ) : (
+              <p><strong className="text-pegasus-navy">Horário:</strong> {trainingConfig.trainingTime}</p>
+            )}
             <p><strong className="text-pegasus-navy">Local:</strong> {trainingConfig.trainingLocation}</p>
             <p><strong className="text-pegasus-navy">Dependência:</strong> {trainingConfig.trainingDependency}</p>
             <p><strong className="text-pegasus-navy">Modalidade:</strong> {OFFICIAL_TRAINING.modality}</p>
