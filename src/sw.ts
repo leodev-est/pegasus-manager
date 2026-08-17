@@ -1,5 +1,6 @@
 /// <reference lib="webworker" />
 import { cleanupOutdatedCaches, precacheAndRoute } from "workbox-precaching";
+import { ORG_SHORT_NAME } from "./config/org";
 
 declare const self: ServiceWorkerGlobalScope;
 
@@ -9,7 +10,7 @@ precacheAndRoute(self.__WB_MANIFEST);
 self.addEventListener("push", (event) => {
   if (!event.data) return;
 
-  let payload: { title: string; body: string; url?: string } = { title: "Pegasus", body: "" };
+  let payload: { title: string; body: string; url?: string } = { title: ORG_SHORT_NAME, body: "" };
   try {
     payload = event.data.json();
   } catch {

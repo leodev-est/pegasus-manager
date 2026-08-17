@@ -226,10 +226,15 @@ export const athleteApplicationsService = {
 
     if (application.phone) {
       const firstName = application.name.split(" ")[0];
+      const setting = await prisma.trainingSetting.findUnique({
+        where: { id: "singleton" },
+        select: { systemName: true },
+      });
+      const orgName = setting?.systemName ?? "Pegasus Manager";
       whatsAppService
         .sendMessage(
           application.phone,
-          `Olá ${firstName}, agradecemos seu interesse no *Projeto Pegasus*! Infelizmente, após análise, não temos uma vaga adequada ao seu perfil neste momento. Continuamos acompanhando novos talentos e podemos entrar em contato futuramente. Obrigado! 🏐`,
+          `Olá ${firstName}, agradecemos seu interesse no *Projeto ${orgName}*! Infelizmente, após análise, não temos uma vaga adequada ao seu perfil neste momento. Continuamos acompanhando novos talentos e podemos entrar em contato futuramente. Obrigado! 🏐`,
         )
         .catch(() => {});
     }

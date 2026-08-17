@@ -25,6 +25,7 @@ import {
   type AthleteApplicationPayload,
   type AthleteApplicationStatus,
 } from "../../services/athleteApplicationService";
+import { ORG_NAME } from "../../config/org";
 
 type ApplicationForm = {
   name: string;
@@ -168,7 +169,7 @@ function calcAge(birthDate: string | null): string {
 
 function formatWhatsAppMessage(a: AthleteApplication): string {
   const lines: string[] = [];
-  lines.push(`📋 *Nova Inscrição — Projeto Pegasus*`);
+  lines.push(`📋 *Nova Inscrição — Projeto ${ORG_NAME}*`);
   lines.push(``);
   lines.push(`👤 *Nome:* ${a.name}`);
   if (a.birthDate) lines.push(`📅 *Nascimento:* ${formatBirthDate(a.birthDate)}${calcAge(a.birthDate)}`);
@@ -263,7 +264,7 @@ function ApplicationDetailModal({
           <DetailField label="Motivação para Entrar no Time" value={application.motivation} />
         </div>
         <div className="sm:col-span-2">
-          <DetailField label="Como Descobriu o Pegasus" value={application.howFound} />
+          <DetailField label={`Como Descobriu o ${ORG_NAME}`} value={application.howFound} />
         </div>
         {application.contribution && (
           <div className="sm:col-span-2">
@@ -482,7 +483,7 @@ export function AthleteApplicationsPage() {
       return `• ${parts.join(" — ")}`;
     }
 
-    const out: string[] = [`📋 *Classificação de Inscrições — Projeto Pegasus*`];
+    const out: string[] = [`📋 *Classificação de Inscrições — Projeto ${ORG_NAME}*`];
 
     if (sim.length > 0) {
       out.push("", `✅ *BOA IDEIA (${sim.length})*`);
@@ -821,7 +822,7 @@ export function AthleteApplicationsPage() {
             ) : null}
           </div>
           <Textarea disabled={isSaving} label="Motivação" onChange={(e) => setForm({ ...form, motivation: e.target.value })} value={form.motivation} />
-          <Textarea disabled={isSaving} label="Como descobriu o Pegasus" onChange={(e) => setForm({ ...form, howFound: e.target.value })} value={form.howFound} />
+          <Textarea disabled={isSaving} label={`Como descobriu o ${ORG_NAME}`} onChange={(e) => setForm({ ...form, howFound: e.target.value })} value={form.howFound} />
           <Textarea disabled={isSaving} label="Como pode contribuir" onChange={(e) => setForm({ ...form, contribution: e.target.value })} value={form.contribution} />
           <Textarea disabled={isSaving} label="Observações internas" onChange={(e) => setForm({ ...form, notes: e.target.value })} value={form.notes} />
           <div className="flex flex-col gap-3 sm:flex-row">

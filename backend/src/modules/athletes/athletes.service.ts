@@ -270,9 +270,13 @@ export const athletesService = {
         whatsAppService.notifyAthleteApproved(athlete.id, username, isNewUser).catch(() => {});
 
         if (syncedUser) {
+          const setting = await prisma.trainingSetting.findUnique({
+            where: { id: "singleton" },
+            select: { systemName: true },
+          });
           notificationsService
             .createForUser(syncedUser.id, {
-              title: "Bem-vindo ao Pegasus! 🏐",
+              title: `Bem-vindo ao ${setting?.systemName ?? "Pegasus Manager"}! 🏐`,
               message: "Sua inscrição foi aprovada. Acesse o sistema para ver seus treinos e informações.",
               type: "sistema",
             })

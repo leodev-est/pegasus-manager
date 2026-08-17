@@ -22,6 +22,7 @@ import { CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YA
 import { useAuth } from "../../auth/AuthContext";
 import { useTour } from "../../tours/useTour";
 import { PageHeader } from "../../components/ui/PageHeader";
+import { ORG_NAME } from "../../config/org";
 import { StatCard } from "../../components/ui/StatCard";
 import { useToast } from "../../components/ui/Toast";
 import { athleteApplicationService, type AthleteApplication } from "../../services/athleteApplicationService";
@@ -126,7 +127,7 @@ function formatMonth(value: string) {
 const TOUR_STEPS = [
   {
     popover: {
-      title: "🏠 Dashboard Pegasus",
+      title: `🏠 Dashboard ${ORG_NAME}`,
       description: "Visão geral do clube em tempo real. Os indicadores visíveis dependem do seu perfil de acesso.",
     },
   },
@@ -335,7 +336,7 @@ export function DashboardPage() {
     <div className="w-full max-w-full space-y-8 overflow-hidden">
       <PageHeader
         title="Dashboard"
-        description="Visao geral operacional, financeira e esportiva do Projeto Pegasus."
+        description={`Visao geral operacional, financeira e esportiva do Projeto ${ORG_NAME}.`}
       />
 
       <section className="rounded-lg bg-pegasus-navy p-6 text-white shadow-soft">

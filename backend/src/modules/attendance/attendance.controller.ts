@@ -1,6 +1,10 @@
 import type { RequestHandler } from "express";
-import { getBrazilDateKey } from "../../utils/trainingDates";
+import { getBrazilDateKey, type TrainingGender } from "../../utils/trainingDates";
 import { attendanceService } from "./attendance.service";
+
+function getGenderParam(value: unknown): TrainingGender | undefined {
+  return value === "feminino" || value === "masculino" ? value : undefined;
+}
 
 function getParamId(id: string | string[]) {
   return Array.isArray(id) ? id[0] : id;
@@ -66,7 +70,8 @@ export const attendanceController = {
   getChamada: (async (request, response, next) => {
     try {
       const dateKey = getQueryParam(request.query.date) ?? getBrazilDateKey();
-      const data = await attendanceService.getChamada(dateKey);
+      const gender = getGenderParam(request.query.gender);
+      const data = await attendanceService.getChamada(dateKey, gender);
       response.json(data);
     } catch (error) {
       next(error);
@@ -75,8 +80,12 @@ export const attendanceController = {
 
   markChamadaBulk: (async (request, response, next) => {
     try {
-      const { date, entries } = request.body as { date: string; entries: Array<{ athleteId: string; status: string }> };
-      const data = await attendanceService.markChamadaBulk(date, entries);
+      const { date, entries, gender } = request.body as {
+        date: string;
+        entries: Array<{ athleteId: string; status: string }>;
+        gender?: string;
+      };
+      const data = await attendanceService.markChamadaBulk(date, entries, getGenderParam(gender));
       response.json(data);
     } catch (error) {
       next(error);

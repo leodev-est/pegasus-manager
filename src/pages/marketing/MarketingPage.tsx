@@ -16,6 +16,7 @@ import {
   type MarketingTaskPayload,
 } from "../../services/marketingService";
 import { userService } from "../../services/userService";
+import { ORG_NAME } from "../../config/org";
 
 const columns: Array<{ label: string; value: MarketingStatus }> = [
   { label: "Ideias", value: "ideas" },
@@ -213,7 +214,7 @@ export function MarketingPage() {
         channelOptions={channels.map((item) => ({ label: label(item), value: item }))}
         columns={columns}
         currentUserName={user?.name}
-        description="Kanban de comunicação, conteúdo e identidade visual do Projeto Pegasus."
+        description={`Kanban de comunicação, conteúdo e identidade visual do Projeto ${ORG_NAME}.`}
         emptyStatus="ideas"
         labelsAsTab
         minDueDate={today}

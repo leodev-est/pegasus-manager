@@ -5,9 +5,33 @@ import { useToast } from "../../components/ui/Toast";
 import {
   type ChamadaAthlete,
   type ChamadaAttendanceStatus,
+  type TrainingGender,
   attendanceService,
 } from "../../services/attendanceService";
 import { formatDateLong } from "./attendanceUi";
+
+// Mesma data de corte usada no backend (utils/trainingDates.ts) — a partir dela
+// os treinos de sábado passam a ser divididos em turma feminina e masculina.
+const GENDER_SPLIT_START_DATE = "2026-08-22";
+
+function isGenderSplitDate(dateKey: string): boolean {
+  return dateKey >= GENDER_SPLIT_START_DATE;
+}
+
+const GENDER_TABS: Array<{ value: TrainingGender; label: string; active: string; idle: string }> = [
+  {
+    value: "feminino",
+    label: "Feminino",
+    active: "bg-pink-500 text-white shadow-sm",
+    idle: "border border-pink-200 text-pink-600 hover:bg-pink-50",
+  },
+  {
+    value: "masculino",
+    label: "Masculino",
+    active: "bg-blue-500 text-white shadow-sm",
+    idle: "border border-blue-200 text-blue-600 hover:bg-blue-50",
+  },
+];
 
 const TOUR_STEPS = [
   {
@@ -86,12 +110,15 @@ type ChamadaData = Awaited<ReturnType<typeof attendanceService.getChamada>>;
 export function ChamadaPage() {
   const { showToast } = useToast();
   const [dateKey, setDateKey] = useState(() => nearestSaturday(getBrazilTodayKey()));
+  const [gender, setGender] = useState<TrainingGender>("feminino");
   // showToast still used for save errors below
   const [retryCount, setRetryCount] = useState(0);
   const [chamada, setChamada] = useState<ChamadaData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isError, setIsError] = useState(false);
   const [savingId, setSavingId] = useState<string | null>(null);
+
+  const split = isGenderSplitDate(dateKey);
 
   useTour("chamada:v1", isLoading ? [] : TOUR_STEPS);
 
@@ -102,13 +129,13 @@ export function ChamadaPage() {
     setChamada(null);
 
     attendanceService
-      .getChamada(dateKey)
+      .getChamada(dateKey, split ? gender : undefined)
       .then((data) => { if (!cancelled) setChamada(data); })
       .catch(() => { if (!cancelled) setIsError(true); })
       .finally(() => { if (!cancelled) setIsLoading(false); });
 
     return () => { cancelled = true; };
-  }, [dateKey, retryCount]);
+  }, [dateKey, split, gender, retryCount]);
 
   async function handleStatusClick(athlete: ChamadaAthlete, status: ChamadaAttendanceStatus) {
     if (savingId === athlete.id || athlete.status === status) return;
@@ -123,7 +150,7 @@ export function ChamadaPage() {
     );
 
     try {
-      await attendanceService.markChamadaBulk(dateKey, [{ athleteId: athlete.id, status }]);
+      await attendanceService.markChamadaBulk(dateKey, [{ athleteId: athlete.id, status }], split ? gender : undefined);
     } catch {
       setChamada((prev) =>
         prev
@@ -166,6 +193,15 @@ export function ChamadaPage() {
             <p className="mt-0.5 flex items-center justify-center gap-1 text-xs text-pegasus-medium">
               <MapPin size={12} />
               {chamada.training.local} · {chamada.training.horario}
+              {chamada.training.turma && (
+                <span
+                  className={`ml-1 rounded-full px-2 py-0.5 text-[10px] font-bold ${
+                    chamada.training.turma === "Feminino" ? "bg-pink-100 text-pink-700" : "bg-blue-100 text-blue-700"
+                  }`}
+                >
+                  {chamada.training.turma}
+                </span>
+              )}
             </p>
           )}
         </div>
@@ -177,6 +213,36 @@ export function ChamadaPage() {
           <ChevronRight size={18} />
         </button>
       </div>
+
+      {split && (
+        <div className="flex gap-2">
+          {GENDER_TABS.map((tab) => (
+            <button
+              key={tab.value}
+              type="button"
+              onClick={() => setGender(tab.value)}
+              className={`flex-1 rounded-xl px-4 py-2.5 text-sm font-bold transition ${
+                gender === tab.value ? tab.active : tab.idle
+              }`}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </div>
+      )}
+
+      {chamada?.athletesWithoutGender && chamada.athletesWithoutGender.length > 0 && (
+        <div className="flex items-start gap-2 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+          <AlertCircle size={16} className="mt-0.5 shrink-0" />
+          <p>
+            {chamada.athletesWithoutGender.length} atleta{chamada.athletesWithoutGender.length !== 1 ? "s" : ""} ativo
+            {chamada.athletesWithoutGender.length !== 1 ? "s" : ""} sem turma (feminino/masculino) definida não
+            aparece{chamada.athletesWithoutGender.length !== 1 ? "m" : ""} em nenhuma chamada: {" "}
+            <strong>{chamada.athletesWithoutGender.map((a) => a.name).join(", ")}</strong>. Complete o cadastro em
+            Atletas para liberar o check-in.
+          </p>
+        </div>
+      )}
 
       {isLoading ? (
         <div className="flex items-center justify-center py-16">
@@ -196,12 +262,12 @@ export function ChamadaPage() {
         </div>
       ) : !chamada?.available ? (
         <div className="flex flex-col items-center justify-center gap-3 rounded-2xl border border-blue-100 bg-white py-16 text-center shadow-soft">
-          <ClipboardList className={(chamada as { reason?: string }).reason === "cancelado" ? "text-red-300" : "text-blue-200"} size={40} />
+          <ClipboardList className={chamada?.reason === "cancelado" ? "text-red-300" : "text-blue-200"} size={40} />
           <p className="font-bold text-pegasus-navy">
-            {(chamada as { reason?: string }).reason === "cancelado" ? "Treino cancelado nesta data" : "Sem treino nesta data"}
+            {chamada?.reason === "cancelado" ? "Treino cancelado nesta data" : "Sem treino nesta data"}
           </p>
           <p className="text-sm text-pegasus-medium">
-            {(chamada as { reason?: string }).reason === "cancelado"
+            {chamada?.reason === "cancelado"
               ? "Esta data está bloqueada no calendário."
               : "Navegue para um sábado de treino."}
           </p>

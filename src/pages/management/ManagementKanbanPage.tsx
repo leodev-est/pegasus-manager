@@ -25,6 +25,7 @@ import { Input } from "../../components/ui/Input";
 import { Select } from "../../components/ui/Select";
 import { useToast } from "../../components/ui/Toast";
 import { getApiErrorMessage } from "../../services/api";
+import { ORG_NAME } from "../../config/org";
 import {
   kanbanService,
   type ManagementTask,
@@ -120,7 +121,7 @@ export function ManagementKanbanPage() {
       canUpdate={canUpdate}
       columns={columns}
       currentUserName={user?.name}
-      description="Planejamento administrativo, operacional e institucional do Projeto Pegasus."
+      description={`Planejamento administrativo, operacional e institucional do Projeto ${ORG_NAME}.`}
       emptyStatus="todo"
       filters={
         <div data-tour="kanban-filtros">

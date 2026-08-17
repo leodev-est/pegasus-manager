@@ -9,6 +9,7 @@ import { PageHeader } from "../../components/ui/PageHeader";
 import { useToast } from "../../components/ui/Toast";
 import { getApiErrorMessage } from "../../services/api";
 import { gamesService, type Game, type GamePayload } from "../../services/gamesService";
+import { ORG_NAME } from "../../config/org";
 
 const CURRENT_MONTH = new Date().toISOString().slice(0, 7);
 
@@ -25,7 +26,7 @@ const TOUR_STEPS = [
   {
     popover: {
       title: "🏆 Jogos e Resultados",
-      description: "Histórico completo de partidas do Pegasus: placar, sets, local e observações de cada jogo.",
+      description: `Histórico completo de partidas do ${ORG_NAME}: placar, sets, local e observações de cada jogo.`,
     },
   },
   {
@@ -97,7 +98,7 @@ function SetsPanel({ game, canEdit, onRefresh }: { game: Game; canEdit: boolean;
   return (
     <div className="mt-3 rounded-xl border border-blue-50 bg-pegasus-surface p-3">
       <p className="mb-2 text-xs font-bold uppercase tracking-wide text-slate-400">
-        Sets{sets.length > 0 ? ` — Pegasus ${setsPeg} × ${setsOpp} adversário` : ""}
+        Sets{sets.length > 0 ? ` — ${ORG_NAME} ${setsPeg} × ${setsOpp} adversário` : ""}
       </p>
       <div className="flex flex-wrap gap-2">
         {sets.map((s) => (
@@ -242,7 +243,7 @@ export function GamesPage() {
     <div className="space-y-8">
       <PageHeader
         title="Jogos e Resultados"
-        description="Histórico de partidas, sets e estatísticas do Projeto Pegasus."
+        description={`Histórico de partidas, sets e estatísticas do Projeto ${ORG_NAME}.`}
         action={
           canEdit ? (
             <Button onClick={openCreate}>
@@ -287,7 +288,7 @@ export function GamesPage() {
               <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <div className="flex flex-1 flex-col gap-1">
                   <div className="flex flex-wrap items-center gap-2">
-                    <span className="font-semibold text-pegasus-navy">Pegasus</span>
+                    <span className="font-semibold text-pegasus-navy">{ORG_NAME}</span>
                     <span className="text-xl font-bold text-pegasus-primary">
                       {game.scorePegasus} × {game.scoreOpponent}
                     </span>
@@ -369,7 +370,7 @@ export function GamesPage() {
           </div>
           <div className="grid grid-cols-2 gap-4">
             <Input
-              label="Placar Pegasus"
+              label={`Placar ${ORG_NAME}`}
               type="number"
               min="0"
               value={form.scorePegasus}

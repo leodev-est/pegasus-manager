@@ -153,7 +153,18 @@ export function AttendanceAdminPage() {
               <article className="rounded-2xl border border-blue-100 bg-white p-4 shadow-sm" key={item.athlete.id}>
                 <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                   <div>
-                    <h3 className="font-black text-pegasus-navy">{item.athlete.name}</h3>
+                    <div className="flex items-center gap-2">
+                      <h3 className="font-black text-pegasus-navy">{item.athlete.name}</h3>
+                      {item.athlete.gender && (
+                        <span
+                          className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${
+                            item.athlete.gender === "feminino" ? "bg-pink-100 text-pink-700" : "bg-blue-100 text-blue-700"
+                          }`}
+                        >
+                          {item.athlete.gender === "feminino" ? "Feminino" : "Masculino"}
+                        </span>
+                      )}
+                    </div>
                     <p className="text-sm text-slate-500">
                       {item.athlete.category ?? "Sem categoria"} · {item.athlete.position ?? "Sem posição"}
                     </p>
@@ -208,6 +219,15 @@ export function AttendanceAdminPage() {
                     <p className="font-black text-pegasus-navy">{formatDate(detail.date)}</p>
                     <p className="text-sm text-slate-500">
                       {detail.horario} · {detail.local}
+                      {detail.turma && (
+                        <span
+                          className={`ml-2 rounded-full px-2 py-0.5 text-[10px] font-bold ${
+                            detail.turma === "Feminino" ? "bg-pink-100 text-pink-700" : "bg-blue-100 text-blue-700"
+                          }`}
+                        >
+                          {detail.turma}
+                        </span>
+                      )}
                     </p>
                   </div>
                   <StatusBadge label={statusLabel(detail.status)} tone={statusTone(detail.status)} />

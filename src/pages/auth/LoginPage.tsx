@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../../auth/AuthContext";
 import logoFull from "../../assets/logo/logo-full.png";
+import { ORG_NAME, ORG_LOGO_URL } from "../../config/org";
 import { Button } from "../../components/ui/Button";
 import { useToast } from "../../components/ui/Toast";
 
@@ -64,11 +65,11 @@ export function LoginPage() {
           <div className="rounded-3xl border border-white/20 bg-white p-8 text-pegasus-navy shadow-2xl shadow-blue-950/30">
             <div className="text-center">
               <img
-                src={logoFull}
-                alt="Projeto Pegasus"
+                src={ORG_LOGO_URL || logoFull}
+                alt={`Projeto ${ORG_NAME}`}
                 className="mx-auto h-auto w-full max-w-[280px] rounded-2xl object-contain shadow-lg sm:max-w-[320px]"
               />
-              <h1 className="mt-6 text-3xl font-black">Pegasus Manager</h1>
+              <h1 className="mt-6 text-3xl font-black">{ORG_NAME}</h1>
               <p className="mt-1 text-sm font-semibold text-pegasus-medium">
                 Gestão esportiva com propósito
               </p>

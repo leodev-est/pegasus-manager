@@ -9,7 +9,6 @@
   Landmark,
   LayoutDashboard,
   Megaphone,
-  MessageCircle,
   MessageSquare,
   MessageSquarePlus,
   Radio,
@@ -28,6 +27,7 @@
 import { NavLink } from "react-router-dom";
 import { useAuth } from "../../auth/AuthContext";
 import logoIcon from "../../assets/logo/logo-icon.png";
+import { ORG_NAME, ORG_LOGO_URL } from "../../config/org";
 
 export type MenuItem = {
   label: string;
@@ -254,7 +254,7 @@ export const menuGroups: MenuGroup[] = [
     items: [
       { label: "Acessos", path: "/app/admin/acessos", icon: Users, permissions: ["admin"] },
       { label: "Auditoria", path: "/app/admin/auditoria", icon: ShieldCheck, permissions: ["admin"] },
-      { label: "WhatsApp", path: "/app/admin/whatsapp", icon: MessageCircle, permissions: ["admin"] },
+      // WhatsApp temporariamente desativado — item de menu oculto, rota/página intactas.
       { label: "Configurações", path: "/app/admin/configuracoes", icon: Settings, permissions: ["admin"] },
     ],
   },
@@ -284,13 +284,13 @@ export function Sidebar({ isMobileOpen = false, onNavigate, onOpenTour }: Sideba
       <div className="flex h-20 items-center gap-3 border-b border-white/[0.08] px-5">
         <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-white/10 p-1.5 ring-1 ring-white/10">
           <img
-            alt="Projeto Pegasus"
+            alt={`Projeto ${ORG_NAME}`}
             className="h-full w-full rounded-lg object-contain"
-            src={logoIcon}
+            src={ORG_LOGO_URL || logoIcon}
           />
         </div>
         <div>
-          <p className="text-[15px] font-bold tracking-tight text-white">Pegasus Manager</p>
+          <p className="text-[15px] font-bold tracking-tight text-white">{ORG_NAME}</p>
           <p className="text-[11px] text-blue-300/70">Projeto esportivo</p>
         </div>
       </div>

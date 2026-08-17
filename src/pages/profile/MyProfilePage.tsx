@@ -27,6 +27,7 @@ import { getApiErrorMessage } from "../../services/api";
 import { evaluationService, type CoachEvaluationPayload, type SelfEvaluationPayload } from "../../services/evaluationService";
 import { googleCalendarService, type GoogleCalendarStatus } from "../../services/googleCalendarService";
 import { profileService, type MyProfile } from "../../services/profileService";
+import { ORG_NAME } from "../../config/org";
 
 function initials(name: string) {
   return name
@@ -75,7 +76,7 @@ const TOUR_STEPS = [
   {
     popover: {
       title: "👤 Meu Perfil",
-      description: "Sua página pessoal no Pegasus: informações de contato, estatísticas de frequência, autoavaliação e próximos treinos.",
+      description: `Sua página pessoal no ${ORG_NAME}: informações de contato, estatísticas de frequência, autoavaliação e próximos treinos.`,
     },
   },
   {
@@ -324,7 +325,7 @@ export function MyProfilePage() {
   const athlete = profile.athlete;
   const evaluation = profile.evaluation;
   const overall = evaluation.overall;
-  const profileName = athlete?.name ?? profile.user.name ?? user?.name ?? "Pegasus";
+  const profileName = athlete?.name ?? profile.user.name ?? user?.name ?? ORG_NAME;
 
   return (
     <div className="space-y-8">
@@ -432,7 +433,7 @@ export function MyProfilePage() {
                 <div className="rounded-2xl border border-blue-100 bg-white p-4" key={training.id}>
                   <p className="font-black text-pegasus-navy">{training.title}</p>
                   <p className="mt-1 text-sm text-slate-500">{formatDate(training.date)} · {OFFICIAL_TRAINING.location} · {OFFICIAL_TRAINING.time}</p>
-                  <p className="mt-2 text-sm text-slate-600">{training.objective ?? "Treino oficial Pegasus."}</p>
+                  <p className="mt-2 text-sm text-slate-600">{training.objective ?? `Treino oficial ${ORG_NAME}.`}</p>
                 </div>
               ))
             ) : (

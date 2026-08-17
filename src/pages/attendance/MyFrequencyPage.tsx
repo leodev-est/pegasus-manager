@@ -4,6 +4,7 @@ import { useTour } from "../../tours/useTour";
 import { EmptyState } from "../../components/ui/EmptyState";
 import { Input } from "../../components/ui/Input";
 import { PageHeader } from "../../components/ui/PageHeader";
+import { ORG_NAME } from "../../config/org";
 import { StatusBadge } from "../../components/ui/StatusBadge";
 import { useToast } from "../../components/ui/Toast";
 import { getApiErrorMessage } from "../../services/api";
@@ -23,7 +24,7 @@ const TOUR_STEPS = [
   {
     popover: {
       title: "📅 Minha Frequência",
-      description: "Acompanhe sua presença nos treinos do Pegasus. Veja o percentual geral e o detalhe mês a mês.",
+      description: `Acompanhe sua presença nos treinos do ${ORG_NAME}. Veja o percentual geral e o detalhe mês a mês.`,
     },
   },
   {
@@ -91,7 +92,7 @@ export function MyFrequencyPage() {
 
   return (
     <div className="space-y-8">
-      <PageHeader title="Minha Frequência" description="Acompanhe sua presença nos treinos oficiais Pegasus." />
+      <PageHeader title="Minha Frequência" description={`Acompanhe sua presença nos treinos oficiais ${ORG_NAME}.`} />
 
       {/* Total geral */}
       <section data-tour="freq-geral" className="panel p-6">

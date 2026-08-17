@@ -1,5 +1,6 @@
 ﻿import { ArrowLeft, Home, SearchX } from "lucide-react";
 import { Link } from "react-router-dom";
+import { ORG_NAME } from "../../config/org";
 
 export function NotFoundPage() {
   return (
@@ -13,7 +14,7 @@ export function NotFoundPage() {
         </p>
         <h1 className="mt-3 text-3xl font-black sm:text-4xl">Esse caminho não existe</h1>
         <p className="mx-auto mt-4 max-w-md text-sm leading-6 text-slate-600">
-          O link pode ter mudado ou a página não está disponível no Pegasus Manager.
+          O link pode ter mudado ou a página não está disponível no {ORG_NAME}.
         </p>
         <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:justify-center">
           <Link

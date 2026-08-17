@@ -2,6 +2,7 @@ import { prisma } from "../../config/prisma";
 import { AppError } from "../../middlewares/error.middleware";
 import { notificationsService } from "../notifications/notifications.service";
 import { whatsAppService } from "../whatsapp/whatsapp.service";
+import { getBrazilDateKey } from "../../utils/trainingDates";
 
 type SelfEvaluationPayload = {
   improvements?: string | null;
@@ -193,7 +194,14 @@ export const evaluationsService = {
       technical: parseRating(payload.technical, "Tecnica"),
     };
 
-    const evaluation = await prisma.athleteEvaluation.create({ data });
+    // Ajustes feitos no mesmo dia atualizam o registro em vez de criar um novo
+    // ponto no histórico — só uma sessão de avaliação nova (outro dia) vira snapshot.
+    const latest = await getEvaluationByAthleteId(athleteId);
+    const isSameDayEdit = latest && getBrazilDateKey(latest.createdAt) === getBrazilDateKey();
+
+    const evaluation = isSameDayEdit
+      ? await prisma.athleteEvaluation.update({ where: { id: latest.id }, data })
+      : await prisma.athleteEvaluation.create({ data });
 
     const athleteUser = await prisma.user.findUnique({
       where: { athleteId },

@@ -2,6 +2,8 @@ import { api } from "./api";
 
 export type TrainingConfig = {
   trainingTime: string;
+  trainingTimeFemale: string;
+  trainingTimeMale: string;
   trainingLocation: string;
   trainingDependency: string;
   trainingDaysOfWeek: string[];

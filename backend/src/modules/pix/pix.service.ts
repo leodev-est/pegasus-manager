@@ -26,9 +26,10 @@ export const pixService = {
 
     const client = await getMPClient();
     const paymentClient = new Payment(client);
+    const settings = await getSettings();
 
     const amount = Number(payment.amount);
-    const description = payment.description || `Mensalidade Pegasus`;
+    const description = payment.description || `Mensalidade ${settings?.systemName ?? "Pegasus Manager"}`;
 
     const response = await paymentClient.create({
       body: {

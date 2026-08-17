@@ -20,6 +20,7 @@ const TOUR_STEPS = [
 ];
 import { Button } from "../../components/ui/Button";
 import { PageHeader } from "../../components/ui/PageHeader";
+import { ORG_NAME } from "../../config/org";
 import { useToast } from "../../components/ui/Toast";
 import { getApiErrorMessage } from "../../services/api";
 import { suggestionService } from "../../services/suggestionService";
@@ -54,7 +55,7 @@ export function SugestoesPage() {
     <div className="space-y-8">
       <PageHeader
         title="Caixinha de Sugestões"
-        description="Compartilhe ideias, críticas ou sugestões para melhorar o Pegasus."
+        description={`Compartilhe ideias, críticas ou sugestões para melhorar o ${ORG_NAME}.`}
       />
 
       {sent ? (

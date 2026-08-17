@@ -185,6 +185,8 @@ model TrainingSetting {
   blockedDates             String[]
   blockedDateEventIds      Json     @default("{}")
   trainingTime             String   @default("17:30 às 19:00")
+  trainingTimeFemale       String   @default("16:00 às 17:30")
+  trainingTimeMale         String   @default("17:30 às 19:00")
   trainingLocation         String   @default("Jerusalém")
   trainingDependency       String   @default("Quadra - CREC")
   trainingDaysOfWeek       String[] @default([])
@@ -223,6 +225,9 @@ model Training {
   date           DateTime
   title          String
   category       String?
+  // "feminino" | "masculino" | null. Treinos oficiais criados a partir de
+  // 22/08/2026 são divididos por turma; antes disso, fica null (turma única).
+  gender         String?
   objective      String?
   warmup         String?
   fundamentals   String?

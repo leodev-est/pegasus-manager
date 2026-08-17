@@ -47,17 +47,13 @@ function initials(name: string) {
 }
 
 function overallTone(overall: number | null) {
-  if (overall === null) return "from-slate-500 to-slate-700";
-  if (overall >= 8) return "from-emerald-500 to-pegasus-primary";
-  if (overall >= 5) return "from-amber-400 to-pegasus-primary";
-  return "from-rose-500 to-pegasus-primary";
+  // Cor neutra (sem julgamento de "bom"/"ruim") — a nota isolada não diz nada
+  // sem um histórico pra comparar.
+  return overall === null ? "from-slate-500 to-slate-700" : "from-pegasus-navy to-pegasus-medium";
 }
 
 function ratingTone(overall: number | null) {
-  if (overall === null) return "neutral";
-  if (overall >= 8) return "success";
-  if (overall >= 5) return "warning";
-  return "danger";
+  return overall === null ? "neutral" : "info";
 }
 
 const TOUR_STEPS = [
@@ -258,7 +254,7 @@ export function AthleteEvaluationsPage() {
                     <p className="truncate font-black text-pegasus-navy group-hover:text-pegasus-primary">{s.name}</p>
                     <p className="text-xs text-slate-500">{s.position ?? s.category ?? "—"}</p>
                   </div>
-                  <div className={`ml-auto text-3xl font-black ${s.overall !== null ? overallTone(s.overall).includes("emerald") ? "text-emerald-600" : overallTone(s.overall).includes("amber") ? "text-amber-500" : "text-rose-600" : "text-slate-300"}`}>
+                  <div className={`ml-auto text-3xl font-black ${s.overall !== null ? "text-pegasus-primary" : "text-slate-300"}`}>
                     {s.overall ?? "—"}
                   </div>
                 </div>

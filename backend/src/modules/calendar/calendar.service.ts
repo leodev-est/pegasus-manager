@@ -4,6 +4,8 @@ import { whatsAppService } from "../whatsapp/whatsapp.service";
 
 type TrainingConfigData = {
   trainingTime?: string;
+  trainingTimeFemale?: string;
+  trainingTimeMale?: string;
   trainingLocation?: string;
   trainingDependency?: string;
   trainingDaysOfWeek?: string[];
@@ -104,7 +106,7 @@ export const calendarService = {
   async updateTrainingConfig(data: TrainingConfigData) {
     const update: Record<string, unknown> = {};
     const fields = [
-      "trainingTime", "trainingLocation", "trainingDependency", "trainingDaysOfWeek",
+      "trainingTime", "trainingTimeFemale", "trainingTimeMale", "trainingLocation", "trainingDependency", "trainingDaysOfWeek",
       "trainingDuration", "defaultTrainingCategory", "monthlyFeeAmount", "overduePaymentDays",
       "maxAbsencesPercentage", "minAttendanceToEvaluate", "notifyOnApproval", "notifyOnOverdue",
       "notifyOnTraining", "systemName", "timezone", "pixKey", "pixProvider", "pixApiKey",

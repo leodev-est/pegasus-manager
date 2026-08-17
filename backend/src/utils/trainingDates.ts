@@ -1,17 +1,21 @@
 import { prisma } from "../config/prisma";
 
-// Feriados nacionais em 2026 que caem numa sexta-feira.
-// O sábado subsequente não terá treino.
-export const FRIDAY_NATIONAL_HOLIDAYS_2026 = [
-  "2026-05-01", // Dia do Trabalho → cancela 02/05
-  "2026-11-20", // Consciência Negra → cancela 21/11
-  "2026-12-25", // Natal → cancela 26/12
-] as const;
 export const OFFICIAL_TRAINING_START_DATE = "2026-04-25";
 export const OFFICIAL_TRAINING_END_DATE = "2026-12-31";
-export const OFFICIAL_TRAINING_TIME = "17:30 às 19:00";
-export const OFFICIAL_TRAINING_PLACE = "Jerusalém";
 export const OFFICIAL_TRAINING_MODALITY = "Voleibol";
+
+// A partir desta data os treinos oficiais de sábado passam a ser divididos em
+// duas turmas (feminino/masculino), cada uma com seu próprio horário. Antes
+// dela, o comportamento é o de turma única (gender null), como sempre foi.
+export const GENDER_SPLIT_START_DATE = "2026-08-22";
+
+export type TrainingGender = "feminino" | "masculino";
+
+const WEEKDAY_KEYS = ["sunday", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday"] as const;
+
+export function isGenderSplitDate(date: Date | string): boolean {
+  return toDateKey(date) >= GENDER_SPLIT_START_DATE;
+}
 
 export async function loadBlockedDates(): Promise<string[]> {
   const setting = await prisma.trainingSetting.findUnique({
@@ -19,6 +23,45 @@ export async function loadBlockedDates(): Promise<string[]> {
     select: { blockedDates: true },
   });
   return setting?.blockedDates ?? [];
+}
+
+export async function loadTrainingSchedule() {
+  const setting = await prisma.trainingSetting.findUnique({
+    where: { id: "singleton" },
+    select: {
+      blockedDates: true,
+      trainingDaysOfWeek: true,
+      trainingTime: true,
+      trainingTimeFemale: true,
+      trainingTimeMale: true,
+      trainingLocation: true,
+    },
+  });
+  return {
+    blockedDates: setting?.blockedDates ?? [],
+    trainingDaysOfWeek: setting?.trainingDaysOfWeek?.length ? setting.trainingDaysOfWeek : ["saturday"],
+    trainingTime: setting?.trainingTime ?? "17:30 às 19:00",
+    trainingTimeFemale: setting?.trainingTimeFemale ?? "16:00 às 17:30",
+    trainingTimeMale: setting?.trainingTimeMale ?? "17:30 às 19:00",
+    trainingLocation: setting?.trainingLocation ?? "Jerusalém",
+  };
+}
+
+export type TrainingSchedule = Awaited<ReturnType<typeof loadTrainingSchedule>>;
+
+/** Horário aplicável para uma data/turma: legado antes do split, por gênero depois. */
+export function resolveTrainingTime(
+  dateKey: string,
+  gender: TrainingGender | null,
+  schedule: Pick<TrainingSchedule, "trainingTime" | "trainingTimeFemale" | "trainingTimeMale">,
+): string {
+  if (!isGenderSplitDate(dateKey) || !gender) return schedule.trainingTime;
+  return gender === "feminino" ? schedule.trainingTimeFemale : schedule.trainingTimeMale;
+}
+
+export function trainingGenderLabel(gender: TrainingGender | null): string | null {
+  if (!gender) return null;
+  return gender === "feminino" ? "Feminino" : "Masculino";
 }
 
 function toDateKey(date: Date | string) {
@@ -54,11 +97,11 @@ export function getBrazilDateKey(date = new Date()) {
 }
 
 export function dateKeyToDate(dateKey: string) {
-  // 20:30 UTC = 17:30 BRT (horário oficial dos treinos Pegasus)
+  // 20:30 UTC = 17:30 BRT (horário oficial dos treinos)
   return new Date(`${dateKey}T20:30:00.000Z`);
 }
 
-export function isOfficialPegasusTrainingDate(date: Date | string, blockedDates: string[]) {
+export function isOfficialTrainingDate(date: Date | string, blockedDates: string[], trainingDaysOfWeek: string[]) {
   const dateKey = toDateKey(date);
 
   if (
@@ -70,29 +113,24 @@ export function isOfficialPegasusTrainingDate(date: Date | string, blockedDates:
   }
 
   const d = dateKeyToDate(dateKey);
+  const weekday = WEEKDAY_KEYS[d.getUTCDay()];
 
-  if (d.getUTCDay() !== 6) {
-    return false;
-  }
-
-  // Sábado subsequente a feriado nacional na sexta não tem treino
-  const prevDayKey = toDateKey(new Date(d.getTime() - 24 * 60 * 60 * 1000));
-
-  if (FRIDAY_NATIONAL_HOLIDAYS_2026.includes(prevDayKey as (typeof FRIDAY_NATIONAL_HOLIDAYS_2026)[number])) {
-    return false;
-  }
-
-  return true;
+  return trainingDaysOfWeek.includes(weekday);
 }
 
-export function getOfficialTrainingDatesForMonth(year: number, month: number, blockedDates: string[]) {
+export function getOfficialTrainingDatesForMonth(
+  year: number,
+  month: number,
+  blockedDates: string[],
+  trainingDaysOfWeek: string[],
+) {
   const dates: string[] = [];
   const cursor = new Date(Date.UTC(year, month - 1, 1, 12));
 
   while (cursor.getUTCMonth() === month - 1) {
     const dateKey = toDateKey(cursor);
 
-    if (isOfficialPegasusTrainingDate(dateKey, blockedDates)) {
+    if (isOfficialTrainingDate(dateKey, blockedDates, trainingDaysOfWeek)) {
       dates.push(dateKey);
     }
 
