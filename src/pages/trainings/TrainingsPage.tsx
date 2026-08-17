@@ -1,4 +1,4 @@
-﻿import { CalendarDays, Dumbbell, Loader2, Plus } from "lucide-react";
+﻿import { CalendarDays, Dumbbell, Loader2, Plus, Star } from "lucide-react";
 import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 import { useAuth } from "../../auth/AuthContext";
 import { useTour } from "../../tours/useTour";
@@ -19,6 +19,19 @@ import {
   type Training,
   type TrainingPayload,
 } from "../../services/trainingService";
+import { trainingFeedbackService, type TrainingFeedback } from "../../services/trainingFeedbackService";
+
+type TrainingFeedbackWithAthlete = TrainingFeedback & { athlete: { id: string; name: string } };
+
+function ReadonlyStars({ value, size = 14 }: { value: number; size?: number }) {
+  return (
+    <div className="flex gap-0.5">
+      {[1, 2, 3, 4, 5].map((star) => (
+        <Star key={star} size={size} className={star <= Math.round(value) ? "fill-amber-400 text-amber-400" : "text-slate-300"} />
+      ))}
+    </div>
+  );
+}
 
 type TrainingForm = TrainingPayload;
 
@@ -121,6 +134,27 @@ export function TrainingsPage() {
   const [viewTraining, setViewTraining] = useState<Training | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<Training | null>(null);
   const [form, setForm] = useState<TrainingForm>(emptyTraining);
+  const [viewFeedback, setViewFeedback] = useState<TrainingFeedbackWithAthlete[]>([]);
+  const [isLoadingFeedback, setIsLoadingFeedback] = useState(false);
+
+  useEffect(() => {
+    if (!viewTraining) {
+      setViewFeedback([]);
+      return;
+    }
+    let cancelled = false;
+    setIsLoadingFeedback(true);
+    trainingFeedbackService
+      .getByTraining(viewTraining.id)
+      .then((data) => { if (!cancelled) setViewFeedback(data); })
+      .catch(() => { if (!cancelled) setViewFeedback([]); })
+      .finally(() => { if (!cancelled) setIsLoadingFeedback(false); });
+    return () => { cancelled = true; };
+  }, [viewTraining]);
+
+  const feedbackAverage = viewFeedback.length > 0
+    ? viewFeedback.reduce((sum, fb) => sum + fb.rating, 0) / viewFeedback.length
+    : 0;
 
   useTour("treinos:v1", isLoading ? [] : TOUR_STEPS);
 
@@ -364,6 +398,43 @@ export function TrainingsPage() {
                 <p className="mt-2 whitespace-pre-wrap">{value || "-"}</p>
               </section>
             ))}
+
+            <section className="rounded-2xl border border-blue-100 bg-white p-4">
+              <div className="flex items-center justify-between">
+                <h3 className="font-black text-pegasus-navy">Avaliação dos atletas</h3>
+                {viewFeedback.length > 0 && (
+                  <div className="flex items-center gap-2">
+                    <ReadonlyStars value={feedbackAverage} size={16} />
+                    <span className="text-xs font-bold text-slate-500">
+                      {feedbackAverage.toFixed(1)} ({viewFeedback.length})
+                    </span>
+                  </div>
+                )}
+              </div>
+
+              {isLoadingFeedback ? (
+                <p className="mt-3 flex items-center gap-2 text-sm text-slate-500">
+                  <Loader2 className="animate-spin" size={14} />
+                  Carregando avaliações...
+                </p>
+              ) : viewFeedback.length === 0 ? (
+                <p className="mt-2 text-sm text-slate-500">Nenhum atleta avaliou este treino ainda.</p>
+              ) : (
+                <div className="mt-3 space-y-3">
+                  {viewFeedback.map((fb) => (
+                    <div className="rounded-xl bg-pegasus-surface p-3" key={fb.id}>
+                      <div className="flex items-center justify-between gap-2">
+                        <p className="font-semibold text-pegasus-navy">{fb.athlete.name}</p>
+                        <ReadonlyStars value={fb.rating} />
+                      </div>
+                      {fb.comment ? (
+                        <p className="mt-1.5 text-sm italic text-slate-600">"{fb.comment}"</p>
+                      ) : null}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </section>
           </div>
         ) : null}
       </Modal>
