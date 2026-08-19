@@ -15,6 +15,7 @@ type FormData = {
   name: string;
   phone: string;
   birthDate: string;
+  gender: "" | "feminino" | "masculino";
   availableSaturdays: "" | "sim" | "nao";
   position: "" | "Levantador" | "Central" | "Líbero" | "Ponteiro" | "Oposto";
   secondPosition: "" | "Levantador" | "Central" | "Líbero" | "Ponteiro" | "Oposto";
@@ -34,6 +35,7 @@ const EMPTY: FormData = {
   name: "",
   phone: "",
   birthDate: "",
+  gender: "",
   availableSaturdays: "",
   position: "",
   secondPosition: "",
@@ -236,6 +238,7 @@ function SectionTitle({ step, title, description }: { step: number; title: strin
 function validate(form: FormData): string | null {
   if (!form.name.trim()) return "Por favor, informe seu nome.";
   if (!form.birthDate) return "Por favor, informe sua data de nascimento.";
+  if (!form.gender) return "Selecione a turma que deseja se inscrever.";
   if (!form.availableSaturdays) return "Informe sua disponibilidade aos sábados.";
   if (!form.position) return "Selecione sua posição de jogo.";
   if (!form.currentTeam) return "Informe se joga em algum time atualmente.";
@@ -334,6 +337,7 @@ export function InscricaoPage() {
         name: form.name.trim(),
         phone: form.phone.trim() || undefined,
         birthDate: form.birthDate,
+        gender: form.gender as "feminino" | "masculino",
         position: form.position as string,
         availableSaturdays: form.availableSaturdays === "sim",
         currentTeam: form.currentTeam === "sim",
@@ -472,15 +476,30 @@ export function InscricaoPage() {
             <div className="mt-6 space-y-6">
               <RadioGroup
                 disabled={isSubmitting}
-                label={`Disponível aos sábados das ${OFFICIAL_TRAINING.time}?`}
-                onChange={(v) => set("availableSaturdays", v)}
+                label="Qual a categoria deseja se inscrever?"
+                onChange={(v) => set("gender", v)}
                 options={[
-                  { label: "Sim", value: "sim" },
-                  { label: "Não", value: "nao" },
+                  { label: "Feminino", value: "feminino" },
+                  { label: "Masculino", value: "masculino" },
                 ]}
                 required
-                value={form.availableSaturdays}
+                value={form.gender}
               />
+              {form.gender && (
+                <RadioGroup
+                  disabled={isSubmitting}
+                  label={`Você tem disponibilidade para treinar aos sábados, das ${
+                    form.gender === "feminino" ? OFFICIAL_TRAINING.timeFemale : OFFICIAL_TRAINING.timeMale
+                  }?`}
+                  onChange={(v) => set("availableSaturdays", v)}
+                  options={[
+                    { label: "Sim", value: "sim" },
+                    { label: "Não", value: "nao" },
+                  ]}
+                  required
+                  value={form.availableSaturdays}
+                />
+              )}
               <RadioGroup
                 disabled={isSubmitting}
                 label="Disposto a participar de campeonatos?"

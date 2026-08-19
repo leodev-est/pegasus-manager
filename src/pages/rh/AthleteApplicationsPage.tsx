@@ -32,6 +32,7 @@ type ApplicationForm = {
   email: string;
   phone: string;
   category: string;
+  gender: "" | "feminino" | "masculino";
   position: string;
   experienceTime: string;
   level: string;
@@ -49,6 +50,7 @@ const emptyApplication: ApplicationForm = {
   email: "",
   phone: "",
   category: "",
+  gender: "",
   position: "",
   experienceTime: "",
   level: "",
@@ -67,6 +69,12 @@ const statusOptions = [
   { label: "Em análise", value: "em_analise" },
   { label: "Aprovado", value: "aprovado" },
   { label: "Recusado", value: "recusado" },
+];
+
+const genderOptions = [
+  { label: "Selecione a turma", value: "" },
+  { label: "Feminino", value: "feminino" },
+  { label: "Masculino", value: "masculino" },
 ];
 
 const positionOptions = [
@@ -114,6 +122,7 @@ function applicationToForm(application: AthleteApplication): ApplicationForm {
     email: application.email ?? "",
     phone: application.phone ?? "",
     category: application.category ?? "",
+    gender: application.gender ?? "",
     position: application.position ?? "",
     experienceTime: application.experienceTime ?? "",
     level: application.level ?? "",
@@ -133,6 +142,7 @@ function buildPayload(form: ApplicationForm): AthleteApplicationPayload {
     email: form.email,
     phone: form.phone,
     category: form.category,
+    gender: form.gender || undefined,
     position: form.position,
     experienceTime: form.experienceTime,
     level: form.level,
@@ -250,12 +260,22 @@ function ApplicationDetailModal({
         <DetailField label="Data de Nascimento" value={formatBirthDate(application.birthDate)} />
         <DetailField label="Telefone" value={application.phone} />
         <DetailField label="E-mail" value={application.email} />
+        <DetailField label="Turma" value={application.gender === "feminino" ? "Feminino" : application.gender === "masculino" ? "Masculino" : null} />
         <DetailField label="Posição" value={application.position} />
         <DetailField label="Segunda Posição" value={application.secondPosition} />
         <DetailField label="Disposto a Treinar em" value={application.willingPositions?.replace(/,/g, ", ")} />
         <DetailField label="Nível" value={application.level} />
         <DetailField label="Tempo de Experiência" value={application.experienceTime} />
-        <DetailField label={`Disponível aos Sábados (${OFFICIAL_TRAINING.time})`} value={boolLabel(application.availableSaturdays)} />
+        <DetailField
+          label={`Disponível aos Sábados (${
+            application.gender === "feminino"
+              ? OFFICIAL_TRAINING.timeFemale
+              : application.gender === "masculino"
+                ? OFFICIAL_TRAINING.timeMale
+                : `Fem. ${OFFICIAL_TRAINING.timeFemale} · Masc. ${OFFICIAL_TRAINING.timeMale}`
+          })`}
+          value={boolLabel(application.availableSaturdays)}
+        />
         <DetailField label="Joga em Time Atualmente" value={boolLabel(application.currentTeam)} />
         <DetailField label="Time Atual" value={application.currentTeamName} />
         <DetailField label="Disposto a Campeonatos" value={boolLabel(application.willingToCompete)} />
@@ -796,6 +816,13 @@ export function AthleteApplicationsPage() {
             <Input disabled={isSaving} label="Nome *" onChange={(e) => setForm({ ...form, name: e.target.value })} required value={form.name} />
             <Input disabled={isSaving} label="E-mail" onChange={(e) => setForm({ ...form, email: e.target.value })} type="email" value={form.email} />
             <Input disabled={isSaving} label="Telefone / WhatsApp" onChange={(e) => setForm({ ...form, phone: e.target.value })} value={form.phone} />
+            <Select
+              disabled={isSaving}
+              label="Turma"
+              onChange={(e) => setForm({ ...form, gender: e.target.value as ApplicationForm["gender"] })}
+              options={genderOptions}
+              value={form.gender}
+            />
             <Select
               disabled={isSaving}
               label="Posição"

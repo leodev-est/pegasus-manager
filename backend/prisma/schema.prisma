@@ -105,6 +105,7 @@ model AthleteApplication {
   phone              String?
   birthDate          DateTime?
   category           String?
+  gender             String?
   position           String?
   availableSaturdays Boolean?
   currentTeam        Boolean?
