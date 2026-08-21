@@ -2,8 +2,6 @@ import { api } from "./api";
 
 export type AttendanceStatus = "presente" | "falta" | "justificada" | "programado";
 
-export type TrainingGender = "feminino" | "masculino";
-
 export type AttendanceTraining = {
   id: string;
   title: string;
@@ -59,6 +57,8 @@ export type AthleteFrequency = Omit<MyFrequency, "athlete"> & {
     category: string | null;
     position: string | null;
     gender: string | null;
+    turmaId: string | null;
+    turmaName: string | null;
   };
 };
 
@@ -95,11 +95,12 @@ export type MonthlyAttendanceStat = {
 export type Chamada = {
   available: boolean;
   date: string;
-  gender: TrainingGender | null;
+  turmaId: string | null;
+  availableTurmas: Array<{ id: string; name: string }>;
   training: AttendanceTraining | null;
   athletes: ChamadaAthlete[];
-  athletesWithoutGender: Array<{ id: string; name: string }>;
-  reason?: "cancelado" | "sem_treino";
+  athletesWithoutTurma: Array<{ id: string; name: string }>;
+  reason?: "cancelado" | "sem_treino" | "select_turma";
 };
 
 export const attendanceService = {
@@ -132,17 +133,17 @@ export const attendanceService = {
     return data;
   },
 
-  async getChamada(date: string, gender?: TrainingGender) {
-    const { data } = await api.get<Chamada>("/attendance/chamada", { params: { date, gender } });
+  async getChamada(date: string, turmaId?: string) {
+    const { data } = await api.get<Chamada>("/attendance/chamada", { params: { date, turmaId } });
     return data;
   },
 
   async markChamadaBulk(
     date: string,
     entries: Array<{ athleteId: string; status: ChamadaAttendanceStatus }>,
-    gender?: TrainingGender,
+    turmaId?: string,
   ) {
-    const { data } = await api.post("/attendance/chamada/bulk", { date, entries, gender });
+    const { data } = await api.post("/attendance/chamada/bulk", { date, entries, turmaId });
     return data;
   },
 

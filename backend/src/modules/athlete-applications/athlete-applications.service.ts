@@ -20,7 +20,7 @@ export type AthleteApplicationPayload = {
   phone?: string | null;
   birthDate?: string | null;
   category?: string | null;
-  gender?: string | null;
+  turmaId?: string | null;
   position?: string | null;
   availableSaturdays?: boolean | null;
   currentTeam?: boolean | null;
@@ -103,12 +103,7 @@ function buildData(payload: AthleteApplicationPayload, requireName: boolean) {
     data.birthDate = payload.birthDate ? new Date(payload.birthDate) : null;
   }
   if (payload.category !== undefined) data.category = normalizeOptional(payload.category);
-  if (payload.gender !== undefined) {
-    if (payload.gender && payload.gender !== "feminino" && payload.gender !== "masculino") {
-      throw new AppError('Turma deve ser "feminino" ou "masculino"', 400);
-    }
-    data.gender = normalizeOptional(payload.gender);
-  }
+  if (payload.turmaId !== undefined) data.turmaId = normalizeOptional(payload.turmaId);
   if (payload.position !== undefined) data.position = normalizeOptional(payload.position);
   if (payload.availableSaturdays !== undefined) data.availableSaturdays = payload.availableSaturdays;
   if (payload.currentTeam !== undefined) data.currentTeam = payload.currentTeam;
@@ -201,7 +196,7 @@ export const athleteApplicationsService = {
             email: application.email,
             phone: application.phone,
             category: application.category,
-            gender: application.gender,
+            turmaId: application.turmaId,
             position: application.position,
             notes: application.contribution
               ? `${application.contribution}${application.notes ? `\n\n${application.notes}` : ""}`

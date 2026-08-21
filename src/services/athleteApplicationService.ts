@@ -3,8 +3,6 @@ import type { Athlete } from "./athleteService";
 
 export type AthleteApplicationStatus = "pendente" | "em_analise" | "aprovado" | "recusado";
 
-export type ApplicationGender = "feminino" | "masculino";
-
 export type AthleteApplication = {
   id: string;
   name: string;
@@ -12,7 +10,7 @@ export type AthleteApplication = {
   phone: string | null;
   birthDate: string | null;
   category: string | null;
-  gender: ApplicationGender | null;
+  turmaId: string | null;
   position: string | null;
   availableSaturdays: boolean | null;
   currentTeam: boolean | null;
@@ -46,7 +44,7 @@ export type AthleteApplicationPayload = {
   phone?: string;
   birthDate?: string;
   category?: string;
-  gender?: ApplicationGender;
+  turmaId?: string;
   position?: string;
   availableSaturdays?: boolean;
   currentTeam?: boolean;
@@ -70,7 +68,7 @@ export type PublicApplicationPayload = {
   name: string;
   phone?: string;
   birthDate: string;
-  gender: ApplicationGender;
+  turmaId: string;
   position: string;
   availableSaturdays: boolean;
   currentTeam: boolean;

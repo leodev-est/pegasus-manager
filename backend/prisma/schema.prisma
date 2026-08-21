@@ -78,6 +78,7 @@ model Athlete {
   category             String?
   position             String?
   gender               String?
+  turmaId              String?
   status               String    @default("teste")
   activatedAt          DateTime?
   monthlyPaymentStatus String    @default("pendente")
@@ -96,6 +97,29 @@ model Athlete {
   gameConvocations     GameConvocation[]
   injuries             Injury[]
   trainingPlans        TrainingPlan[]
+  turma                Turma?    @relation(fields: [turmaId], references: [id], onDelete: SetNull)
+
+  @@index([turmaId])
+}
+
+model Turma {
+  id           String   @id @default(uuid())
+  name         String
+  daysOfWeek   String[] @default([])
+  time         String
+  location     String
+  dependency   String?
+  color        String   @default("#0D47A1")
+  active       Boolean  @default(true)
+  order        Int      @default(0)
+  // Treinos oficiais dessa turma só passam a ser gerados a partir desta data
+  // (permite anunciar uma turma nova sem afetar o histórico já existente).
+  startDate    String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  athletes     Athlete[]
+  applications AthleteApplication[]
+  trainings    Training[]
 }
 
 model AthleteApplication {
@@ -105,7 +129,7 @@ model AthleteApplication {
   phone              String?
   birthDate          DateTime?
   category           String?
-  gender             String?
+  turmaId            String?
   position           String?
   availableSaturdays Boolean?
   currentTeam        Boolean?
@@ -126,6 +150,9 @@ model AthleteApplication {
   createdAt          DateTime  @default(now())
   updatedAt          DateTime  @updatedAt
   athlete            Athlete?  @relation(fields: [athleteId], references: [id], onDelete: SetNull)
+  turma              Turma?    @relation(fields: [turmaId], references: [id], onDelete: SetNull)
+
+  @@index([turmaId])
 }
 
 model Payment {
@@ -185,9 +212,8 @@ model TrainingSetting {
   id                       String   @id @default("singleton")
   blockedDates             String[]
   blockedDateEventIds      Json     @default("{}")
+  // Turma única "legada" — só se aplica em datas/dias que nenhuma Turma cobre.
   trainingTime             String   @default("17:30 às 19:00")
-  trainingTimeFemale       String   @default("16:00 às 17:30")
-  trainingTimeMale         String   @default("17:30 às 19:00")
   trainingLocation         String   @default("Jerusalém")
   trainingDependency       String   @default("Quadra - CREC")
   trainingDaysOfWeek       String[] @default([])
@@ -226,9 +252,9 @@ model Training {
   date           DateTime
   title          String
   category       String?
-  // "feminino" | "masculino" | null. Treinos oficiais criados a partir de
-  // 22/08/2026 são divididos por turma; antes disso, fica null (turma única).
-  gender         String?
+  // null = treino no formato "legado" (turma única, config global). Quando
+  // preenchido, é o treino oficial de uma Turma específica.
+  turmaId        String?
   objective      String?
   warmup         String?
   fundamentals   String?
@@ -242,6 +268,9 @@ model Training {
   updatedAt      DateTime @updatedAt
   attendances    TrainingAttendance[]
   feedbacks      TrainingFeedback[]
+  turma          Turma?   @relation(fields: [turmaId], references: [id], onDelete: SetNull)
+
+  @@index([turmaId])
 }
 
 model TrainingAttendance {

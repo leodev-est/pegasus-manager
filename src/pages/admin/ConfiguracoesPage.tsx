@@ -30,8 +30,6 @@ import { ORG_NAME } from "../../config/org";
 
 const defaultConfig: TrainingConfig = {
   trainingTime: "17:30 às 19:00",
-  trainingTimeFemale: "16:00 às 17:30",
-  trainingTimeMale: "17:30 às 19:00",
   trainingLocation: "Jerusalém",
   trainingDependency: "Quadra - CREC",
   trainingDaysOfWeek: ["saturday"],
@@ -208,12 +206,16 @@ export function ConfiguracoesPage() {
           {/* TREINOS */}
           {activeTab === "treinos" && (
             <section className="panel p-6 space-y-5">
-              <h2 className="font-bold text-pegasus-navy">Parâmetros de Treino</h2>
+              <div>
+                <h2 className="font-bold text-pegasus-navy">Parâmetros de Treino</h2>
+                <p className="mt-1 text-sm text-slate-500">
+                  Horário e dias de cada turma agora ficam em <strong>Turmas</strong> (menu Treinos). Os campos abaixo só
+                  valem como fallback pra dias em que nenhuma turma está configurada.
+                </p>
+              </div>
               <div className="grid gap-5 md:grid-cols-2">
-                <Input label="Horário — Feminino (a partir de 22/08)" value={form.trainingTimeFemale} onChange={(e) => setForm({ ...form, trainingTimeFemale: e.target.value })} disabled={isSaving} placeholder="Ex: 16:00 às 17:30" />
-                <Input label="Horário — Masculino (a partir de 22/08)" value={form.trainingTimeMale} onChange={(e) => setForm({ ...form, trainingTimeMale: e.target.value })} disabled={isSaving} placeholder="Ex: 17:30 às 19:00" />
-                <Input label="Horário — turma única (antes de 22/08)" value={form.trainingTime} onChange={(e) => setForm({ ...form, trainingTime: e.target.value })} disabled={isSaving} placeholder="Ex: 17:30 às 19:00" />
-                <Input label="Local" value={form.trainingLocation} onChange={(e) => setForm({ ...form, trainingLocation: e.target.value })} disabled={isSaving} placeholder="Ex: Jerusalém" />
+                <Input label="Horário (fallback)" value={form.trainingTime} onChange={(e) => setForm({ ...form, trainingTime: e.target.value })} disabled={isSaving} placeholder="Ex: 17:30 às 19:00" />
+                <Input label="Local (fallback)" value={form.trainingLocation} onChange={(e) => setForm({ ...form, trainingLocation: e.target.value })} disabled={isSaving} placeholder="Ex: Jerusalém" />
                 <Input label="Dependência" value={form.trainingDependency} onChange={(e) => setForm({ ...form, trainingDependency: e.target.value })} disabled={isSaving} placeholder="Ex: Quadra - CREC" />
                 <Input label="Duração (min)" type="number" min="30" value={form.trainingDuration} onChange={(e) => setForm({ ...form, trainingDuration: Number(e.target.value) })} disabled={isSaving} />
                 <Input label="Categoria padrão" value={form.defaultTrainingCategory} onChange={(e) => setForm({ ...form, defaultTrainingCategory: e.target.value })} disabled={isSaving} />

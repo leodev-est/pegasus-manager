@@ -20,6 +20,7 @@ import { getApiErrorMessage } from "../../services/api";
 import { exportToCSV } from "../../utils/exportUtils";
 import { attendanceService } from "../../services/attendanceService";
 import { athleteApplicationService, type AthleteApplication } from "../../services/athleteApplicationService";
+import { turmaService, type Turma } from "../../services/turmaService";
 import {
   athleteService,
   type Athlete,
@@ -75,7 +76,7 @@ function frequencyTone(pct: number | null | undefined): string {
   return "text-rose-600 font-bold";
 }
 
-type AthleteForm = Required<Omit<AthletePayload, "gender">> & { gender: AthleteGender | "" };
+type AthleteForm = Required<Omit<AthletePayload, "gender" | "turmaId">> & { gender: AthleteGender | ""; turmaId: string };
 
 const emptyAthlete: AthleteForm = {
   name: "",
@@ -84,6 +85,7 @@ const emptyAthlete: AthleteForm = {
   category: "",
   position: "",
   gender: "",
+  turmaId: "",
   status: "ativo",
   monthlyPaymentStatus: "pendente",
   notes: "",
@@ -158,6 +160,7 @@ function buildPayload(form: AthleteForm): AthletePayload {
     category: form.category || undefined,
     position: form.position,
     gender: form.gender || null,
+    turmaId: form.turmaId || null,
     status: form.status,
     monthlyPaymentStatus: form.monthlyPaymentStatus,
     notes: form.notes,
@@ -172,6 +175,7 @@ function athleteToForm(athlete: Athlete): AthleteForm {
     category: athlete.category ?? "",
     position: athlete.position ?? "",
     gender: athlete.gender ?? "",
+    turmaId: athlete.turmaId ?? "",
     status: athlete.status,
     monthlyPaymentStatus: athlete.monthlyPaymentStatus,
     notes: athlete.notes ?? "",
@@ -204,6 +208,11 @@ export function AthletesPage() {
   const [isLoadingInfo, setIsLoadingInfo] = useState(false);
   const [genderSuggestion, setGenderSuggestion] = useState<{ gender: AthleteGender; probability: number } | null>(null);
   const [genderFilter, setGenderFilter] = useState<"todos" | "masculino" | "feminino">("todos");
+  const [turmas, setTurmas] = useState<Turma[]>([]);
+
+  useEffect(() => {
+    turmaService.getAll().then(setTurmas).catch(() => {});
+  }, []);
 
   const filters = useMemo(
     () => ({ search, status: status as AthleteStatus | "todos" }),
@@ -554,6 +563,11 @@ export function AthletesPage() {
                       <td className="px-6 py-4">
                         <p className="font-bold text-pegasus-navy">{athlete.name}</p>
                         <p className="text-xs text-slate-500">{athlete.email ?? "-"}</p>
+                        {athlete.turmaId && (
+                          <p className="text-xs text-pegasus-primary">
+                            {turmas.find((t) => t.id === athlete.turmaId)?.name ?? "Turma"}
+                          </p>
+                        )}
                       </td>
                       <td className="px-6 py-4 text-slate-600">{athlete.position ?? "-"}</td>
                       <td className="px-6 py-4">
@@ -731,6 +745,12 @@ export function AthletesPage() {
                 </button>
               )}
             </div>
+            <Select
+              label="Turma"
+              onChange={(event) => setForm({ ...form, turmaId: event.target.value })}
+              options={[{ label: "Sem turma", value: "" }, ...turmas.map((t) => ({ label: t.name, value: t.id }))]}
+              value={form.turmaId}
+            />
             <Select
               label="Status"
               onChange={(event) =>

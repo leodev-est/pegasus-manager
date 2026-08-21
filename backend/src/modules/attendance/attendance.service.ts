@@ -9,19 +9,19 @@ import {
   getBrazilDateKey,
   getOfficialTrainingDatesForMonth,
   isBlockedTrainingDate,
-  isGenderSplitDate,
   isOfficialTrainingDate,
   loadBlockedDates,
   loadTrainingSchedule,
   parseMonthYear,
-  resolveTrainingTime,
+  resolveTrainingMeta,
   toTrainingDateKey,
-  trainingGenderLabel,
-  type TrainingGender,
+  turmasForDate,
+  type Turma,
   type TrainingSchedule,
 } from "../../utils/trainingDates";
 
 const allowedAttendanceStatuses = ["presente", "falta", "justificada"] as const;
+const LEGACY_KEY = "legacy";
 
 type AttendanceStatus = (typeof allowedAttendanceStatuses)[number];
 
@@ -45,14 +45,14 @@ function monthRange(year: number, month: number) {
   return { start, end };
 }
 
-function getTrainingMeta(dateKey: string, gender: TrainingGender | null, schedule: TrainingSchedule) {
-  const effectiveGender = isGenderSplitDate(dateKey) ? gender : null;
+function getTrainingMeta(dateKey: string, turma: Turma | null, schedule: TrainingSchedule) {
+  const meta = resolveTrainingMeta(dateKey, turma, schedule);
   return {
     date: dateKey,
-    horario: resolveTrainingTime(dateKey, gender, schedule),
-    local: schedule.trainingLocation,
+    horario: meta.time,
+    local: meta.location,
     modalidade: OFFICIAL_TRAINING_MODALITY,
-    turma: trainingGenderLabel(effectiveGender),
+    turma: meta.label,
   };
 }
 
@@ -98,16 +98,13 @@ async function getAthleteForUser(userId: string, requireActive = false) {
   return athlete;
 }
 
-async function findTrainingByDate(dateKey: string, gender: TrainingGender | null) {
+async function findTrainingByDate(dateKey: string, turmaId: string | null) {
   const { start, end } = dayRange(dateKey);
 
   return prisma.training.findFirst({
     where: {
-      date: {
-        gte: start,
-        lt: end,
-      },
-      gender,
+      date: { gte: start, lt: end },
+      turmaId,
     },
     orderBy: { date: "asc" },
   });
@@ -115,41 +112,33 @@ async function findTrainingByDate(dateKey: string, gender: TrainingGender | null
 
 async function ensureOfficialTrainingForDate(
   dateKey: string,
-  gender: TrainingGender | null,
+  turma: Turma | null,
   blockedDates: string[],
-  trainingDaysOfWeek: string[],
+  legacyDaysOfWeek: string[],
   schedule: TrainingSchedule,
 ) {
-  if (!isOfficialTrainingDate(dateKey, blockedDates, trainingDaysOfWeek)) {
+  if (!isOfficialTrainingDate(dateKey, blockedDates, legacyDaysOfWeek, schedule.turmas)) {
     return null;
   }
 
-  // Antes da data de corte a turma é sempre única (gender null), independente
-  // do que for passado — preserva o comportamento anterior ao split.
-  const effectiveGender = isGenderSplitDate(dateKey) ? gender : null;
-
-  const existing = await findTrainingByDate(dateKey, effectiveGender);
-
-  if (existing) {
-    return existing;
-  }
+  const existing = await findTrainingByDate(dateKey, turma?.id ?? null);
+  if (existing) return existing;
 
   const settings = await prisma.trainingSetting.findUnique({
     where: { id: "singleton" },
     select: { systemName: true },
   });
   const orgName = settings?.systemName ?? "Pegasus Manager";
-  const time = resolveTrainingTime(dateKey, gender, schedule);
-  const label = trainingGenderLabel(effectiveGender);
-  const suffix = label ? ` — ${label}` : "";
+  const meta = resolveTrainingMeta(dateKey, turma, schedule);
+  const suffix = meta.label ? ` — ${meta.label}` : "";
 
   return prisma.training.create({
     data: {
       category: OFFICIAL_TRAINING_MODALITY,
       createdBy: orgName,
       date: dateKeyToDate(dateKey),
-      gender: effectiveGender,
-      notes: `Treino oficial ${orgName}${suffix}. Local: ${schedule.trainingLocation}. Horario: ${time}.`,
+      turmaId: turma?.id ?? null,
+      notes: `Treino oficial ${orgName}${suffix}. Local: ${meta.location}. Horario: ${meta.time}.`,
       objective: `Treino oficial semanal do Projeto ${orgName}${suffix}.`,
       title: `Treino oficial ${orgName}${suffix}`,
     },
@@ -157,19 +146,16 @@ async function ensureOfficialTrainingForDate(
 }
 
 async function getTrainingDatesForMonth(year: number, month: number) {
-  const { blockedDates, trainingDaysOfWeek } = await loadTrainingSchedule();
+  const { blockedDates, legacyDaysOfWeek, turmas } = await loadTrainingSchedule();
   const { start, end } = monthRange(year, month);
   const trainings = await prisma.training.findMany({
     where: {
-      date: {
-        gte: start,
-        lt: end,
-      },
+      date: { gte: start, lt: end },
     },
     orderBy: { date: "asc" },
   });
 
-  const dateKeys = new Set(getOfficialTrainingDatesForMonth(year, month, blockedDates, trainingDaysOfWeek));
+  const dateKeys = new Set(getOfficialTrainingDatesForMonth(year, month, blockedDates, legacyDaysOfWeek, turmas));
 
   for (const training of trainings) {
     const dateKey = toTrainingDateKey(training.date);
@@ -189,7 +175,7 @@ function summarizeDetails(
     checkedInAt: Date;
     training: { date: Date };
   }>,
-  gender: TrainingGender | null,
+  turma: Turma | null,
   schedule: TrainingSchedule,
 ) {
   const todayKey = getBrazilDateKey();
@@ -204,7 +190,7 @@ function summarizeDetails(
     return {
       attendanceId: attendance?.id ?? null,
       checkedInAt: attendance?.checkedInAt ?? null,
-      ...getTrainingMeta(dateKey, gender, schedule),
+      ...getTrainingMeta(dateKey, turma, schedule),
       status,
     };
   });
@@ -244,24 +230,35 @@ export const attendanceService = {
     const schedule = await loadTrainingSchedule();
     const user = await prisma.user.findUnique({
       where: { id: userId },
-      include: { athlete: true },
+      include: { athlete: { include: { turma: true } } },
     });
 
-    if (isGenderSplitDate(todayKey) && user?.athlete && !user.athlete.gender) {
-      return {
-        available: false,
-        checkedIn: false,
-        message: "Seu cadastro está sem turma (feminino/masculino) definida. Fale com o RH para liberar o check-in.",
-        training: null,
-      };
+    const applicableTurmas = turmasForDate(todayKey, schedule.turmas);
+
+    if (applicableTurmas.length > 0 && user?.athlete) {
+      const athleteTurma = user.athlete.turmaId
+        ? applicableTurmas.find((t) => t.id === user.athlete!.turmaId)
+        : undefined;
+
+      if (!athleteTurma) {
+        return {
+          available: false,
+          checkedIn: false,
+          message: "Seu cadastro está sem turma definida (ou sua turma não treina hoje). Fale com o RH.",
+          training: null,
+        };
+      }
     }
 
-    const gender = (user?.athlete?.gender ?? null) as TrainingGender | null;
+    const turma = user?.athlete?.turmaId
+      ? applicableTurmas.find((t) => t.id === user.athlete!.turmaId) ?? null
+      : null;
+
     const training = await ensureOfficialTrainingForDate(
       todayKey,
-      gender,
+      turma,
       schedule.blockedDates,
-      schedule.trainingDaysOfWeek,
+      schedule.legacyDaysOfWeek,
       schedule,
     );
 
@@ -284,8 +281,9 @@ export const attendanceService = {
     }
 
     if (user?.athlete) {
+      const meta = resolveTrainingMeta(todayKey, turma, schedule);
       await notificationsService.createOnceTodayForUser(user.id, {
-        message: `Hoje tem treino às ${resolveTrainingTime(todayKey, gender, schedule)}.`,
+        message: `Hoje tem treino às ${meta.time}.`,
         title: "Treino hoje",
         type: "treino",
       });
@@ -312,7 +310,7 @@ export const attendanceService = {
       training: {
         id: training.id,
         title: training.title,
-        ...getTrainingMeta(toTrainingDateKey(training.date), gender, schedule),
+        ...getTrainingMeta(toTrainingDateKey(training.date), turma, schedule),
       },
     };
   },
@@ -372,9 +370,9 @@ export const attendanceService = {
 
   async getMyFrequency(userId: string, filters: FrequencyFilters) {
     const athlete = await getAthleteForUser(userId);
-    const gender = (athlete.gender ?? null) as TrainingGender | null;
     const { month, year } = parseMonthYear(filters.month, filters.year);
     const schedule = await loadTrainingSchedule();
+    const turma = athlete.turmaId ? schedule.turmas.find((t) => t.id === athlete.turmaId) ?? null : null;
     const dateKeys = await getTrainingDatesForMonth(year, month);
     const athleteDateKeys = getAthleteTrainingDates(dateKeys, athlete);
     const { start, end } = monthRange(year, month);
@@ -398,7 +396,7 @@ export const attendanceService = {
       .filter((key) => dateKeys.includes(key));
     const mergedDateKeys = Array.from(new Set([...athleteDateKeys, ...attendanceDateKeys])).sort();
 
-    const summary = summarizeDetails(mergedDateKeys, attendances, gender, schedule);
+    const summary = summarizeDetails(mergedDateKeys, attendances, turma, schedule);
 
     return {
       athlete: {
@@ -413,9 +411,9 @@ export const attendanceService = {
 
   async getMyTotalFrequency(userId: string) {
     const athlete = await getAthleteForUser(userId);
-    const gender = (athlete.gender ?? null) as TrainingGender | null;
     const todayKey = getBrazilDateKey();
     const schedule = await loadTrainingSchedule();
+    const turma = athlete.turmaId ? schedule.turmas.find((t) => t.id === athlete.turmaId) ?? null : null;
 
     const [startYear, startMonthNum] = OFFICIAL_TRAINING_START_DATE.split("-").map(Number);
     const now = new Date();
@@ -449,7 +447,7 @@ export const attendanceService = {
       .filter((key) => allDateKeys.includes(key));
     const mergedDateKeys = Array.from(new Set([...athleteDateKeys, ...attendanceDateKeys])).sort();
 
-    return summarizeDetails(mergedDateKeys, attendances, gender, schedule);
+    return summarizeDetails(mergedDateKeys, attendances, turma, schedule);
   },
 
   async getFrequency(filters: FrequencyFilters) {
@@ -466,39 +464,43 @@ export const attendanceService = {
     const todayKey = getBrazilDateKey();
     const countedDateKeys = dateKeys.filter((dateKey) => dateKey <= todayKey);
     const schedule = await loadTrainingSchedule();
-    const trainingsByDate = new Map<string, Partial<Record<"legacy" | TrainingGender, string>>>();
+    const trainingsByDate = new Map<string, Record<string, string>>();
 
     for (const dateKey of countedDateKeys) {
-      if (!isGenderSplitDate(dateKey)) {
-        const training = await ensureOfficialTrainingForDate(dateKey, null, schedule.blockedDates, schedule.trainingDaysOfWeek, schedule);
-        if (training) trainingsByDate.set(dateKey, { legacy: training.id });
+      const applicableTurmas = turmasForDate(dateKey, schedule.turmas);
+
+      if (applicableTurmas.length === 0) {
+        const training = await ensureOfficialTrainingForDate(dateKey, null, schedule.blockedDates, schedule.legacyDaysOfWeek, schedule);
+        if (training) trainingsByDate.set(dateKey, { [LEGACY_KEY]: training.id });
         continue;
       }
 
-      const [female, male] = await Promise.all([
-        ensureOfficialTrainingForDate(dateKey, "feminino", schedule.blockedDates, schedule.trainingDaysOfWeek, schedule),
-        ensureOfficialTrainingForDate(dateKey, "masculino", schedule.blockedDates, schedule.trainingDaysOfWeek, schedule),
-      ]);
-      trainingsByDate.set(dateKey, {
-        ...(female ? { feminino: female.id } : {}),
-        ...(male ? { masculino: male.id } : {}),
+      const created = await Promise.all(
+        applicableTurmas.map((turma) => ensureOfficialTrainingForDate(dateKey, turma, schedule.blockedDates, schedule.legacyDaysOfWeek, schedule)),
+      );
+      const entry: Record<string, string> = {};
+      created.forEach((training, i) => {
+        if (training) entry[applicableTurmas[i].id] = training.id;
       });
+      trainingsByDate.set(dateKey, entry);
     }
 
     if (athletes.length > 0 && trainingsByDate.size > 0) {
       await prisma.trainingAttendance.createMany({
-        data: athletes.flatMap((athlete) => {
-          const gender = (athlete.gender ?? null) as TrainingGender | null;
-          return getAthleteTrainingDates(countedDateKeys, athlete).flatMap((dateKey) => {
+        data: athletes.flatMap((athlete) =>
+          getAthleteTrainingDates(countedDateKeys, athlete).flatMap((dateKey) => {
             const entry = trainingsByDate.get(dateKey);
             if (!entry) return [];
-            const trainingId = isGenderSplitDate(dateKey)
-              ? (gender ? entry[gender] : undefined)
-              : entry.legacy;
+            const isLegacyDate = Object.prototype.hasOwnProperty.call(entry, LEGACY_KEY);
+            const trainingId = isLegacyDate
+              ? entry[LEGACY_KEY]
+              : athlete.turmaId
+                ? entry[athlete.turmaId]
+                : undefined;
             if (!trainingId) return [];
             return [{ athleteId: athlete.id, status: "falta", trainingId }];
-          });
-        }),
+          }),
+        ),
         skipDuplicates: true,
       });
     }
@@ -530,7 +532,7 @@ export const attendanceService = {
     }
 
     return athletes.map((athlete) => {
-      const gender = (athlete.gender ?? null) as TrainingGender | null;
+      const turma = athlete.turmaId ? schedule.turmas.find((t) => t.id === athlete.turmaId) ?? null : null;
       const athleteDateKeys = getAthleteTrainingDates(dateKeys, athlete);
       const athleteAttendances = attendancesByAthlete.get(athlete.id) ?? [];
 
@@ -545,35 +547,53 @@ export const attendanceService = {
           id: athlete.id,
           category: athlete.category,
           gender: athlete.gender,
+          turmaId: athlete.turmaId,
+          turmaName: turma?.name ?? null,
           name: athlete.name,
           position: athlete.position,
         },
         month,
         year,
-        ...summarizeDetails(mergedDateKeys, athleteAttendances, gender, schedule),
+        ...summarizeDetails(mergedDateKeys, athleteAttendances, turma, schedule),
       };
     });
   },
 
-  async getChamada(dateKey: string, requestedGender?: TrainingGender) {
-    const split = isGenderSplitDate(dateKey);
-    if (split && !requestedGender) {
-      throw new AppError("Selecione a turma (feminino ou masculino) para ver a chamada.", 400);
-    }
-    const gender = split ? requestedGender! : null;
-
+  async getChamada(dateKey: string, requestedTurmaId?: string) {
     const schedule = await loadTrainingSchedule();
     const isBlocked = isBlockedTrainingDate(dateKey, schedule.blockedDates);
-    const training = await ensureOfficialTrainingForDate(dateKey, gender, schedule.blockedDates, schedule.trainingDaysOfWeek, schedule);
+    const applicableTurmas = turmasForDate(dateKey, schedule.turmas);
+    const availableTurmas = applicableTurmas.map((t) => ({ id: t.id, name: t.name }));
+
+    if (applicableTurmas.length > 0 && !requestedTurmaId) {
+      return {
+        available: false,
+        date: dateKey,
+        turmaId: null,
+        availableTurmas,
+        training: null,
+        athletes: [],
+        athletesWithoutTurma: [],
+        reason: "select_turma" as const,
+      };
+    }
+
+    const turma = requestedTurmaId ? applicableTurmas.find((t) => t.id === requestedTurmaId) ?? null : null;
+    if (applicableTurmas.length > 0 && !turma) {
+      throw new AppError("Essa turma não treina nesta data.", 400);
+    }
+
+    const training = await ensureOfficialTrainingForDate(dateKey, turma, schedule.blockedDates, schedule.legacyDaysOfWeek, schedule);
 
     if (!training) {
       return {
         available: false,
         date: dateKey,
-        gender,
+        turmaId: turma?.id ?? null,
+        availableTurmas,
         training: null,
         athletes: [],
-        athletesWithoutGender: [],
+        athletesWithoutTurma: [],
         reason: isBlocked ? "cancelado" : "sem_treino",
       };
     }
@@ -588,9 +608,9 @@ export const attendanceService = {
       ],
     };
 
-    const [athletes, athletesWithoutGender] = await Promise.all([
+    const [athletes, athletesWithoutTurma] = await Promise.all([
       prisma.athlete.findMany({
-        where: split ? { ...activeAthleteWhere, gender } : activeAthleteWhere,
+        where: turma ? { ...activeAthleteWhere, turmaId: turma.id } : activeAthleteWhere,
         orderBy: { name: "asc" },
         include: {
           attendances: {
@@ -598,9 +618,9 @@ export const attendanceService = {
           },
         },
       }),
-      split
+      applicableTurmas.length > 0
         ? prisma.athlete.findMany({
-            where: { ...activeAthleteWhere, gender: null },
+            where: { ...activeAthleteWhere, turmaId: null },
             select: { id: true, name: true },
             orderBy: { name: "asc" },
           })
@@ -616,11 +636,12 @@ export const attendanceService = {
     return {
       available: true,
       date: dateKey,
-      gender,
+      turmaId: turma?.id ?? null,
+      availableTurmas,
       training: {
         id: training.id,
         title: training.title,
-        ...getTrainingMeta(dateKey, gender, schedule),
+        ...getTrainingMeta(dateKey, turma, schedule),
       },
       athletes: athletes.map((athlete) => ({
         id: athlete.id,
@@ -631,23 +652,28 @@ export const attendanceService = {
         frequencyPercent: frequencyMap[athlete.id] ?? null,
         injured: injuredSet.has(athlete.id),
       })),
-      athletesWithoutGender: athletesWithoutGender.map((a) => ({ id: a.id, name: a.name })),
+      athletesWithoutTurma: athletesWithoutTurma.map((a) => ({ id: a.id, name: a.name })),
     };
   },
 
   async markChamadaBulk(
     dateKey: string,
     entries: Array<{ athleteId: string; status: string }>,
-    requestedGender?: TrainingGender,
+    requestedTurmaId?: string,
   ) {
-    const split = isGenderSplitDate(dateKey);
-    if (split && !requestedGender) {
-      throw new AppError("Selecione a turma (feminino ou masculino) para marcar a chamada.", 400);
-    }
-    const gender = split ? requestedGender! : null;
-
     const schedule = await loadTrainingSchedule();
-    const training = await ensureOfficialTrainingForDate(dateKey, gender, schedule.blockedDates, schedule.trainingDaysOfWeek, schedule);
+    const applicableTurmas = turmasForDate(dateKey, schedule.turmas);
+
+    if (applicableTurmas.length > 0 && !requestedTurmaId) {
+      throw new AppError("Selecione a turma para marcar a chamada.", 400);
+    }
+
+    const turma = requestedTurmaId ? applicableTurmas.find((t) => t.id === requestedTurmaId) ?? null : null;
+    if (applicableTurmas.length > 0 && !turma) {
+      throw new AppError("Essa turma não treina nesta data.", 400);
+    }
+
+    const training = await ensureOfficialTrainingForDate(dateKey, turma, schedule.blockedDates, schedule.legacyDaysOfWeek, schedule);
 
     if (!training) {
       throw new AppError("Não há treino oficial para esta data", 404);

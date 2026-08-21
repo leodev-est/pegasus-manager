@@ -4,18 +4,17 @@ export const OFFICIAL_TRAINING_START_DATE = "2026-04-25";
 export const OFFICIAL_TRAINING_END_DATE = "2026-12-31";
 export const OFFICIAL_TRAINING_MODALITY = "Voleibol";
 
-// A partir desta data os treinos oficiais de sábado passam a ser divididos em
-// duas turmas (feminino/masculino), cada uma com seu próprio horário. Antes
-// dela, o comportamento é o de turma única (gender null), como sempre foi.
-export const GENDER_SPLIT_START_DATE = "2026-08-22";
-
-export type TrainingGender = "feminino" | "masculino";
-
 const WEEKDAY_KEYS = ["sunday", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday"] as const;
 
-export function isGenderSplitDate(date: Date | string): boolean {
-  return toDateKey(date) >= GENDER_SPLIT_START_DATE;
-}
+export type Turma = {
+  id: string;
+  name: string;
+  daysOfWeek: string[];
+  time: string;
+  location: string;
+  dependency: string | null;
+  startDate: string | null;
+};
 
 export async function loadBlockedDates(): Promise<string[]> {
   const setting = await prisma.trainingSetting.findUnique({
@@ -25,44 +24,42 @@ export async function loadBlockedDates(): Promise<string[]> {
   return setting?.blockedDates ?? [];
 }
 
-export async function loadTrainingSchedule() {
-  const setting = await prisma.trainingSetting.findUnique({
-    where: { id: "singleton" },
-    select: {
-      blockedDates: true,
-      trainingDaysOfWeek: true,
-      trainingTime: true,
-      trainingTimeFemale: true,
-      trainingTimeMale: true,
-      trainingLocation: true,
-    },
+export async function loadActiveTurmas(): Promise<Turma[]> {
+  return prisma.turma.findMany({
+    where: { active: true },
+    orderBy: [{ order: "asc" }, { name: "asc" }],
+    select: { id: true, name: true, daysOfWeek: true, time: true, location: true, dependency: true, startDate: true },
   });
+}
+
+export async function loadTrainingSchedule() {
+  const [setting, turmas] = await Promise.all([
+    prisma.trainingSetting.findUnique({
+      where: { id: "singleton" },
+      select: {
+        blockedDates: true,
+        trainingDaysOfWeek: true,
+        trainingTime: true,
+        trainingLocation: true,
+        trainingDependency: true,
+      },
+    }),
+    loadActiveTurmas(),
+  ]);
+
   return {
     blockedDates: setting?.blockedDates ?? [],
-    trainingDaysOfWeek: setting?.trainingDaysOfWeek?.length ? setting.trainingDaysOfWeek : ["saturday"],
-    trainingTime: setting?.trainingTime ?? "17:30 às 19:00",
-    trainingTimeFemale: setting?.trainingTimeFemale ?? "16:00 às 17:30",
-    trainingTimeMale: setting?.trainingTimeMale ?? "17:30 às 19:00",
-    trainingLocation: setting?.trainingLocation ?? "Jerusalém",
+    // Configuração "legada": só vale pra datas em que nenhuma Turma se aplica
+    // (comportamento de turma única, como sempre foi antes de existir Turma).
+    legacyDaysOfWeek: setting?.trainingDaysOfWeek?.length ? setting.trainingDaysOfWeek : ["saturday"],
+    legacyTime: setting?.trainingTime ?? "17:30 às 19:00",
+    legacyLocation: setting?.trainingLocation ?? "Jerusalém",
+    legacyDependency: setting?.trainingDependency ?? null,
+    turmas,
   };
 }
 
 export type TrainingSchedule = Awaited<ReturnType<typeof loadTrainingSchedule>>;
-
-/** Horário aplicável para uma data/turma: legado antes do split, por gênero depois. */
-export function resolveTrainingTime(
-  dateKey: string,
-  gender: TrainingGender | null,
-  schedule: Pick<TrainingSchedule, "trainingTime" | "trainingTimeFemale" | "trainingTimeMale">,
-): string {
-  if (!isGenderSplitDate(dateKey) || !gender) return schedule.trainingTime;
-  return gender === "feminino" ? schedule.trainingTimeFemale : schedule.trainingTimeMale;
-}
-
-export function trainingGenderLabel(gender: TrainingGender | null): string | null {
-  if (!gender) return null;
-  return gender === "feminino" ? "Feminino" : "Masculino";
-}
 
 function toDateKey(date: Date | string) {
   if (date instanceof Date) {
@@ -101,9 +98,24 @@ export function dateKeyToDate(dateKey: string) {
   return new Date(`${dateKey}T20:30:00.000Z`);
 }
 
-export function isOfficialTrainingDate(date: Date | string, blockedDates: string[], trainingDaysOfWeek: string[]) {
-  const dateKey = toDateKey(date);
+function weekdayOf(dateKey: string): string {
+  return WEEKDAY_KEYS[dateKeyToDate(dateKey).getUTCDay()];
+}
 
+/** Turmas cujo dia da semana e data de início cobrem essa data. */
+export function turmasForDate(dateKey: string, turmas: Turma[]): Turma[] {
+  const weekday = weekdayOf(dateKey);
+  return turmas.filter(
+    (turma) => turma.daysOfWeek.includes(weekday) && (!turma.startDate || dateKey >= turma.startDate),
+  );
+}
+
+export function isOfficialTrainingDate(
+  dateKey: string,
+  blockedDates: string[],
+  legacyDaysOfWeek: string[],
+  turmas: Turma[],
+): boolean {
   if (
     dateKey < OFFICIAL_TRAINING_START_DATE ||
     dateKey > OFFICIAL_TRAINING_END_DATE ||
@@ -112,17 +124,17 @@ export function isOfficialTrainingDate(date: Date | string, blockedDates: string
     return false;
   }
 
-  const d = dateKeyToDate(dateKey);
-  const weekday = WEEKDAY_KEYS[d.getUTCDay()];
+  if (turmasForDate(dateKey, turmas).length > 0) return true;
 
-  return trainingDaysOfWeek.includes(weekday);
+  return legacyDaysOfWeek.includes(weekdayOf(dateKey));
 }
 
 export function getOfficialTrainingDatesForMonth(
   year: number,
   month: number,
   blockedDates: string[],
-  trainingDaysOfWeek: string[],
+  legacyDaysOfWeek: string[],
+  turmas: Turma[],
 ) {
   const dates: string[] = [];
   const cursor = new Date(Date.UTC(year, month - 1, 1, 12));
@@ -130,7 +142,7 @@ export function getOfficialTrainingDatesForMonth(
   while (cursor.getUTCMonth() === month - 1) {
     const dateKey = toDateKey(cursor);
 
-    if (isOfficialTrainingDate(dateKey, blockedDates, trainingDaysOfWeek)) {
+    if (isOfficialTrainingDate(dateKey, blockedDates, legacyDaysOfWeek, turmas)) {
       dates.push(dateKey);
     }
 
@@ -138,6 +150,20 @@ export function getOfficialTrainingDatesForMonth(
   }
 
   return dates;
+}
+
+type TrainingMeta = { time: string; location: string; dependency: string | null; label: string | null };
+
+/** Horário/local aplicáveis: da Turma se ela cobre a data, senão o legado. */
+export function resolveTrainingMeta(
+  dateKey: string,
+  turma: Turma | null,
+  schedule: Pick<TrainingSchedule, "legacyTime" | "legacyLocation" | "legacyDependency">,
+): TrainingMeta {
+  if (turma) {
+    return { time: turma.time, location: turma.location, dependency: turma.dependency, label: turma.name };
+  }
+  return { time: schedule.legacyTime, location: schedule.legacyLocation, dependency: schedule.legacyDependency, label: null };
 }
 
 export function parseMonthYear(month?: string, year?: string) {

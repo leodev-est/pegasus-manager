@@ -2,12 +2,10 @@ import cron from "node-cron";
 import { prisma } from "../../config/prisma";
 import { emailService } from "../email/email.service";
 import {
-  isGenderSplitDate,
   loadTrainingSchedule,
-  resolveTrainingTime,
+  resolveTrainingMeta,
   toTrainingDateKey,
-  trainingGenderLabel,
-  type TrainingGender,
+  turmasForDate,
 } from "../../utils/trainingDates";
 import { whatsAppService } from "./whatsapp.service";
 
@@ -40,24 +38,24 @@ async function sendTrainingReminders(): Promise<void> {
 
   const athletes = await prisma.athlete.findMany({
     where: { status: "ativo" },
-    select: { name: true, phone: true, email: true, gender: true },
+    select: { name: true, phone: true, email: true, turmaId: true },
   });
 
   const dateLabel = fmtDate(tomorrow);
   const isWaConnected = whatsAppService.getStatus() === "connected";
   const schedule = await loadTrainingSchedule();
-  const split = isGenderSplitDate(tomorrowKey);
+  const applicableTurmas = turmasForDate(tomorrowKey, schedule.turmas);
 
   let processed = 0;
   for (const a of athletes) {
-    const gender = (a.gender ?? null) as TrainingGender | null;
-    // A partir do split, atleta sem turma definida não recebe lembrete automático
-    // (evita mandar um horário errado até o cadastro ser corrigido pelo RH).
-    if (split && !gender) continue;
+    const turma = a.turmaId ? applicableTurmas.find((t) => t.id === a.turmaId) ?? null : null;
+    // Se existem turmas nessa data, atleta sem turma que treine nesse dia não
+    // recebe lembrete automático (evita mandar um horário errado).
+    if (applicableTurmas.length > 0 && !turma) continue;
 
-    const time = resolveTrainingTime(tomorrowKey, gender, schedule);
-    const turma = split ? ` (${trainingGenderLabel(gender)})` : "";
-    const text = `Olá ${first(a.name)}! Lembrete: treino amanhã, ${dateLabel}${turma}, das ${time} em ${schedule.trainingLocation}. Não falte!`;
+    const meta = resolveTrainingMeta(tomorrowKey, turma, schedule);
+    const turmaLabel = meta.label ? ` (${meta.label})` : "";
+    const text = `Olá ${first(a.name)}! Lembrete: treino amanhã, ${dateLabel}${turmaLabel}, das ${meta.time} em ${meta.location}. Não falte!`;
     let sent = false;
     if (isWaConnected && a.phone) {
       try {
@@ -134,27 +132,27 @@ async function sendTrainingDayConfirmationRequest(): Promise<void> {
 
   const athletes = await prisma.athlete.findMany({
     where: { status: "ativo" },
-    select: { name: true, phone: true, email: true, gender: true },
+    select: { name: true, phone: true, email: true, turmaId: true },
   });
 
   const isWaConnected = whatsAppService.getStatus() === "connected";
   const schedule = await loadTrainingSchedule();
-  const split = isGenderSplitDate(todayKey);
+  const applicableTurmas = turmasForDate(todayKey, schedule.turmas);
 
   let processed = 0;
   for (const a of athletes) {
-    const gender = (a.gender ?? null) as TrainingGender | null;
-    if (split && !gender) continue;
+    const turma = a.turmaId ? applicableTurmas.find((t) => t.id === a.turmaId) ?? null : null;
+    if (applicableTurmas.length > 0 && !turma) continue;
 
-    const time = resolveTrainingTime(todayKey, gender, schedule);
-    const turma = split ? ` (${trainingGenderLabel(gender)})` : "";
-    const text = `Olá ${first(a.name)}! Tem treino hoje${turma} às ${time} em ${schedule.trainingLocation}. Você vai comparecer?`;
+    const meta = resolveTrainingMeta(todayKey, turma, schedule);
+    const turmaLabel = meta.label ? ` (${meta.label})` : "";
+    const text = `Olá ${first(a.name)}! Tem treino hoje${turmaLabel} às ${meta.time} em ${meta.location}. Você vai comparecer?`;
     let sent = false;
     if (isWaConnected && a.phone) {
       try {
         await whatsAppService.sendMessage(
           a.phone,
-          `🏐 Olá ${first(a.name)}! Tem treino hoje${turma} às *${time}* em ${schedule.trainingLocation}.\n\nVocê vai comparecer? Responda *SIM* para confirmar sua presença ou *NÃO* caso não possa ir.`,
+          `🏐 Olá ${first(a.name)}! Tem treino hoje${turmaLabel} às *${meta.time}* em ${meta.location}.\n\nVocê vai comparecer? Responda *SIM* para confirmar sua presença ou *NÃO* caso não possa ir.`,
         );
         sent = true;
       } catch { /* fallthrough */ }

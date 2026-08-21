@@ -40,6 +40,7 @@ type AthletePayload = {
   category?: string | null;
   position?: string | null;
   gender?: Gender | null;
+  turmaId?: string | null;
   status?: AthleteStatus;
   monthlyPaymentStatus?: MonthlyPaymentStatus;
   notes?: string | null;
@@ -130,6 +131,7 @@ function buildData(payload: AthletePayload, requireName: boolean) {
     }
     data.gender = payload.gender ?? null;
   }
+  if (payload.turmaId !== undefined) data.turmaId = payload.turmaId || null;
   if (payload.status !== undefined) data.status = payload.status;
   if (payload.status === "ativo") data.activatedAt = new Date();
   if (payload.status && payload.status !== "ativo") data.activatedAt = null;

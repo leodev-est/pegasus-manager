@@ -31,8 +31,6 @@ export const calendarController = {
     const config = await calendarService.getTrainingConfig();
     res.json({
       trainingTime: config.trainingTime,
-      trainingTimeFemale: config.trainingTimeFemale,
-      trainingTimeMale: config.trainingTimeMale,
       trainingLocation: config.trainingLocation,
       trainingDependency: config.trainingDependency,
       trainingDaysOfWeek: config.trainingDaysOfWeek,
@@ -66,7 +64,7 @@ export const calendarController = {
   updateTrainingConfig: (async (req, res) => {
     const body = req.body as Record<string, unknown>;
     const allowed = [
-      "trainingTime", "trainingTimeFemale", "trainingTimeMale", "trainingLocation", "trainingDependency", "trainingDaysOfWeek",
+      "trainingTime", "trainingLocation", "trainingDependency", "trainingDaysOfWeek",
       "trainingDuration", "defaultTrainingCategory", "monthlyFeeAmount", "overduePaymentDays",
       "maxAbsencesPercentage", "minAttendanceToEvaluate", "notifyOnApproval", "notifyOnOverdue",
       "notifyOnTraining", "systemName", "timezone", "pixKey", "pixProvider", "pixApiKey",
@@ -81,8 +79,6 @@ export const calendarController = {
     const config = await calendarService.updateTrainingConfig(update as Parameters<typeof calendarService.updateTrainingConfig>[0]);
     res.json({
       trainingTime: config.trainingTime,
-      trainingTimeFemale: config.trainingTimeFemale,
-      trainingTimeMale: config.trainingTimeMale,
       trainingLocation: config.trainingLocation,
       trainingDependency: config.trainingDependency,
       trainingDaysOfWeek: config.trainingDaysOfWeek,

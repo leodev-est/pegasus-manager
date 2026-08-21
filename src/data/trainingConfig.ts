@@ -1,9 +1,9 @@
+// Fallback "legado" — só usado em telas que ainda não buscam a Turma real
+// (ex: perfil do atleta antes do primeiro carregamento). O horário/local reais
+// de cada turma ficam em Turmas (backend/frontend), configuráveis pelo admin.
 export const OFFICIAL_TRAINING = {
   time: "17:30 às 19:00",
-  // A partir de 22/08/2026 o treino de sábado é dividido em duas turmas.
-  timeFemale: "16:00 às 17:30",
-  timeMale: "17:30 às 19:00",
-  location: "Jerusalém",
+  location: "Rua Lazara de Oliveira Leite, 200 - Jerusalém",
   dependency: "Quadra - CREC",
   modality: "Voleibol",
 } as const;

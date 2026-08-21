@@ -6,7 +6,6 @@ import {
   Lock,
   LockOpen,
   MapPin,
-  type LucideIcon,
 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useAuth } from "../../auth/AuthContext";
@@ -18,6 +17,7 @@ import { useToast } from "../../components/ui/Toast";
 import { getApiErrorMessage } from "../../services/api";
 import { calendarService } from "../../services/calendarService";
 import { settingsService, type TrainingConfig } from "../../services/settingsService";
+import { turmaService, type Turma } from "../../services/turmaService";
 import { MANUAL_BLOCKED_DATES, OFFICIAL_TRAINING } from "../../data/trainingConfig";
 import { ORG_NAME } from "../../config/org";
 
@@ -79,13 +79,20 @@ function buildStaticBlockedDates(): Set<string> {
 
 const STATIC_BLOCKED_DATES = buildStaticBlockedDates();
 
-// Mesma data de corte usada no backend (utils/trainingDates.ts).
-const GENDER_SPLIT_START_DATE = "2026-08-22";
-
+const WEEKDAY_KEYS = ["sunday", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday"];
 const WEEK_DAYS = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
 
 function toDateKey(date: Date) {
   return date.toISOString().slice(0, 10);
+}
+
+/** Turmas ativas cujo dia da semana e data de início cobrem essa data. */
+function turmasForDate(date: Date, turmas: Turma[]): Turma[] {
+  const dateKey = toDateKey(date);
+  const weekday = WEEKDAY_KEYS[date.getUTCDay()];
+  return turmas.filter(
+    (t) => t.active && t.daysOfWeek.includes(weekday) && (!t.startDate || dateKey >= t.startDate),
+  );
 }
 
 function formatMonth(date: Date) {
@@ -129,14 +136,14 @@ const TOUR_STEPS = [
   {
     popover: {
       title: "📅 Calendário de Treinos",
-      description: `Veja todos os treinos oficiais ${ORG_NAME} no calendário. A gestão pode bloquear sábados e ajustar configurações.`,
+      description: `Veja todos os treinos oficiais ${ORG_NAME} no calendário. A gestão pode bloquear ou desbloquear qualquer data.`,
     },
   },
   {
     element: "[data-tour='cal-info']",
     popover: {
-      title: "Informações fixas",
-      description: "Horário, local e modalidade dos treinos oficiais. Editável pelas configurações da gestão.",
+      title: "Turmas",
+      description: "Horário e local de cada turma ativa. Editável na tela Turmas.",
       side: "bottom" as const,
     },
   },
@@ -144,7 +151,7 @@ const TOUR_STEPS = [
     element: "[data-tour='cal-calendar']",
     popover: {
       title: "Calendário interativo",
-      description: "Sábados em azul são treinos ativos. Em vermelho, bloqueados. A gestão pode clicar para bloquear ou desbloquear.",
+      description: "Dias coloridos são treinos ativos (uma cor por turma). Em vermelho, bloqueados. A gestão pode clicar para bloquear ou desbloquear.",
       side: "top" as const,
     },
   },
@@ -163,23 +170,15 @@ export function TrainingCalendarPage() {
   const [dynamicBlockedDates, setDynamicBlockedDates] = useState<Set<string>>(new Set());
   const [isLoadingDates, setIsLoadingDates] = useState(false);
   const [isTogglingDate, setIsTogglingDate] = useState(false);
+  const [turmas, setTurmas] = useState<Turma[]>([]);
   const [trainingConfig, setTrainingConfig] = useState<
-    Pick<TrainingConfig, "trainingTime" | "trainingTimeFemale" | "trainingTimeMale" | "trainingLocation" | "trainingDependency">
+    Pick<TrainingConfig, "trainingTime" | "trainingLocation" | "trainingDependency" | "trainingDaysOfWeek">
   >({
     trainingTime: OFFICIAL_TRAINING.time,
-    trainingTimeFemale: "16:00 às 17:30",
-    trainingTimeMale: OFFICIAL_TRAINING.time,
     trainingLocation: OFFICIAL_TRAINING.location,
     trainingDependency: OFFICIAL_TRAINING.dependency,
+    trainingDaysOfWeek: [],
   });
-
-  const infoCards: Array<{ label: string; value: string; icon: LucideIcon }> = [
-    { label: "Horário — Feminino (a partir de 22/08)", value: trainingConfig.trainingTimeFemale, icon: Clock },
-    { label: "Horário — Masculino (a partir de 22/08)", value: trainingConfig.trainingTimeMale, icon: Clock },
-    { label: "Local", value: trainingConfig.trainingLocation, icon: MapPin },
-    { label: "Dependência", value: trainingConfig.trainingDependency, icon: CalendarDays },
-    { label: "Modalidade", value: OFFICIAL_TRAINING.modality, icon: CalendarDays },
-  ];
 
   const allBlockedDates = useMemo(
     () => new Set([...STATIC_BLOCKED_DATES, ...dynamicBlockedDates]),
@@ -189,9 +188,14 @@ export function TrainingCalendarPage() {
   const isOfficialTrainingDate = useCallback(
     (date: Date) => {
       const dateKey = toDateKey(date);
-      return date.getUTCDay() === 6 && dateKey <= "2026-12-31" && !allBlockedDates.has(dateKey);
+      if (dateKey > "2026-12-31" || allBlockedDates.has(dateKey)) return false;
+
+      if (turmasForDate(date, turmas).length > 0) return true;
+
+      const weekday = WEEKDAY_KEYS[date.getUTCDay()];
+      return trainingConfig.trainingDaysOfWeek.includes(weekday);
     },
-    [allBlockedDates],
+    [allBlockedDates, turmas, trainingConfig.trainingDaysOfWeek],
   );
 
   const isBlockedDate = useCallback(
@@ -219,12 +223,14 @@ export function TrainingCalendarPage() {
   useEffect(() => {
     loadDynamicDates();
     settingsService.getTrainingConfig().then(setTrainingConfig).catch(() => {});
+    turmaService.getAll().then(setTurmas).catch(() => {});
   }, [loadDynamicDates]);
 
   useTour("calendario:v1", isLoadingDates ? [] : TOUR_STEPS);
 
   const days = useMemo(() => getMonthDays(month), [month]);
   const officialDays = days.filter((day): day is Date => Boolean(day && isOfficialTrainingDate(day)));
+  const activeTurmas = useMemo(() => turmas.filter((t) => t.active).sort((a, b) => a.order - b.order), [turmas]);
 
   function changeMonth(direction: -1 | 1) {
     setMonth((current) => new Date(Date.UTC(current.getUTCFullYear(), current.getUTCMonth() + direction, 1)));
@@ -233,9 +239,6 @@ export function TrainingCalendarPage() {
   async function handleToggleBlock(date: Date) {
     if (!canEditCalendar) return;
     const dateKey = toDateKey(date);
-
-    // Can only toggle saturdays
-    if (date.getUTCDay() !== 6) return;
 
     setIsTogglingDate(true);
     try {
@@ -260,23 +263,35 @@ export function TrainingCalendarPage() {
     <div className="space-y-8">
       <PageHeader
         title="Calendário de Treinos"
-        description={`Agenda oficial dos treinos ${ORG_NAME} aos sábados, com bloqueios e informações fixas do local.`}
+        description={`Agenda oficial dos treinos ${ORG_NAME}, com bloqueios e horário/local de cada turma.`}
       />
 
       <section data-tour="cal-info" className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-        {infoCards.map(({ label, value, icon: Icon }) => (
-          <article className="panel p-5" key={label}>
+        {activeTurmas.map((turma) => (
+          <article className="panel p-5" key={turma.id}>
             <div className="flex items-center gap-3">
-              <span className="rounded-2xl bg-pegasus-ice p-3 text-pegasus-primary">
-                <Icon size={20} />
+              <span className="rounded-2xl p-3 text-white" style={{ backgroundColor: turma.color }}>
+                <Clock size={20} />
               </span>
-              <div>
-                <p className="text-sm font-semibold text-slate-500">{label}</p>
-                <strong className="text-pegasus-navy">{value}</strong>
+              <div className="min-w-0">
+                <p className="text-sm font-semibold text-slate-500">{turma.name}</p>
+                <strong className="text-pegasus-navy">{turma.time}</strong>
+                <p className="truncate text-xs text-slate-500">{turma.location}</p>
               </div>
             </div>
           </article>
         ))}
+        <article className="panel p-5">
+          <div className="flex items-center gap-3">
+            <span className="rounded-2xl bg-pegasus-ice p-3 text-pegasus-primary">
+              <MapPin size={20} />
+            </span>
+            <div>
+              <p className="text-sm font-semibold text-slate-500">Modalidade</p>
+              <strong className="text-pegasus-navy">{OFFICIAL_TRAINING.modality}</strong>
+            </div>
+          </div>
+        </article>
       </section>
 
       {canEditCalendar && (
@@ -284,7 +299,7 @@ export function TrainingCalendarPage() {
           <div className="flex items-center gap-2">
             <Lock className="text-amber-600" size={16} />
             <p className="text-sm font-bold text-amber-800">
-              Modo Gestão: clique em qualquer sábado para bloquear ou desbloquear o treino.
+              Modo Gestão: clique em qualquer dia de treino para bloquear ou desbloquear.
             </p>
           </div>
         </section>
@@ -327,9 +342,8 @@ export function TrainingCalendarPage() {
             const official = isOfficialTrainingDate(day);
             const blocked = isBlockedDate(day);
             const isDynBlocked = isDynamicallyBlocked(day);
-            const isSaturday = day.getUTCDay() === 6;
-            const isEditableDay = canEditCalendar && isSaturday;
-            const isSplit = official && toDateKey(day) >= GENDER_SPLIT_START_DATE;
+            const isEditableDay = canEditCalendar && official;
+            const dayTurmas = turmasForDate(day, turmas);
 
             return (
               <button
@@ -348,10 +362,17 @@ export function TrainingCalendarPage() {
                 type="button"
               >
                 <span className="text-sm font-black text-pegasus-navy">{day.getUTCDate()}</span>
-                {official && isSplit ? (
+                {official && dayTurmas.length > 0 ? (
                   <span className="mt-2 flex flex-wrap gap-1">
-                    <span className="rounded-lg bg-pink-500 px-1.5 py-0.5 text-[10px] font-bold text-white">Fem</span>
-                    <span className="rounded-lg bg-blue-500 px-1.5 py-0.5 text-[10px] font-bold text-white">Masc</span>
+                    {dayTurmas.map((turma) => (
+                      <span
+                        key={turma.id}
+                        className="rounded-lg px-1.5 py-0.5 text-[10px] font-bold text-white"
+                        style={{ backgroundColor: turma.color }}
+                      >
+                        {turma.name}
+                      </span>
+                    ))}
                   </span>
                 ) : official ? (
                   <span className="mt-2 block rounded-xl bg-pegasus-primary px-2 py-1 text-xs font-bold text-white">
@@ -402,23 +423,36 @@ export function TrainingCalendarPage() {
         {selectedDate ? (
           <div className="space-y-4 text-sm leading-6 text-slate-600">
             <p><strong className="text-pegasus-navy">Data:</strong> {formatDate(selectedDate)}</p>
-            {toDateKey(selectedDate) >= GENDER_SPLIT_START_DATE ? (
-              <p>
-                <strong className="text-pegasus-navy">Horário:</strong>{" "}
-                <span className="rounded-full bg-pink-100 px-2 py-0.5 text-xs font-bold text-pink-700">
-                  Feminino {trainingConfig.trainingTimeFemale}
-                </span>{" "}
-                <span className="rounded-full bg-blue-100 px-2 py-0.5 text-xs font-bold text-blue-700">
-                  Masculino {trainingConfig.trainingTimeMale}
-                </span>
-              </p>
-            ) : (
-              <p><strong className="text-pegasus-navy">Horário:</strong> {trainingConfig.trainingTime}</p>
-            )}
-            <p><strong className="text-pegasus-navy">Local:</strong> {trainingConfig.trainingLocation}</p>
-            <p><strong className="text-pegasus-navy">Dependência:</strong> {trainingConfig.trainingDependency}</p>
+            {(() => {
+              const dayTurmas = turmasForDate(selectedDate, turmas);
+              if (dayTurmas.length > 0) {
+                return (
+                  <div className="space-y-2">
+                    <strong className="text-pegasus-navy">Turmas:</strong>
+                    {dayTurmas.map((turma) => (
+                      <p key={turma.id}>
+                        <span
+                          className="rounded-full px-2 py-0.5 text-xs font-bold text-white"
+                          style={{ backgroundColor: turma.color }}
+                        >
+                          {turma.name}
+                        </span>{" "}
+                        {turma.time} · {turma.location}{turma.dependency ? ` (${turma.dependency})` : ""}
+                      </p>
+                    ))}
+                  </div>
+                );
+              }
+              return (
+                <>
+                  <p><strong className="text-pegasus-navy">Horário:</strong> {trainingConfig.trainingTime}</p>
+                  <p><strong className="text-pegasus-navy">Local:</strong> {trainingConfig.trainingLocation}</p>
+                  <p><strong className="text-pegasus-navy">Dependência:</strong> {trainingConfig.trainingDependency}</p>
+                </>
+              );
+            })()}
             <p><strong className="text-pegasus-navy">Modalidade:</strong> {OFFICIAL_TRAINING.modality}</p>
-            <p><strong className="text-pegasus-navy">Observações:</strong> Treino oficial {ORG_NAME} aos sábados. Verifique comunicados internos em caso de feriados ou ajustes operacionais.</p>
+            <p><strong className="text-pegasus-navy">Observações:</strong> Treino oficial {ORG_NAME}. Verifique comunicados internos em caso de feriados ou ajustes operacionais.</p>
           </div>
         ) : null}
       </Modal>

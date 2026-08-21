@@ -6,6 +6,7 @@ import { AppLayout } from "../components/layout/AppLayout";
 const AccessControlPage = lazy(() => import("../pages/admin/AccessControlPage").then((m) => ({ default: m.AccessControlPage })));
 const AuditLogPage = lazy(() => import("../pages/admin/AuditLogPage").then((m) => ({ default: m.AuditLogPage })));
 const ConfiguracoesPage = lazy(() => import("../pages/admin/ConfiguracoesPage").then((m) => ({ default: m.ConfiguracoesPage })));
+const TurmasPage = lazy(() => import("../pages/admin/TurmasPage").then((m) => ({ default: m.TurmasPage })));
 const WhatsAppPage = lazy(() => import("../pages/admin/WhatsAppPage").then((m) => ({ default: m.WhatsAppPage })));
 const AttendanceAdminPage = lazy(() => import("../pages/attendance/AttendanceAdminPage").then((m) => ({ default: m.AttendanceAdminPage })));
 const ChamadaPage = lazy(() => import("../pages/attendance/ChamadaPage").then((m) => ({ default: m.ChamadaPage })));
@@ -304,6 +305,14 @@ export function AppRoutes() {
             element={
               <ProtectedRoute permissions={["admin"]}>
                 <ConfiguracoesPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="admin/turmas"
+            element={
+              <ProtectedRoute permissions={["treinos", "admin"]}>
+                <TurmasPage />
               </ProtectedRoute>
             }
           />

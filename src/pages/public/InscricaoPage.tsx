@@ -1,6 +1,5 @@
 import { ArrowLeft, ArrowRight, CheckCircle2, Loader2, LogIn, Trophy } from "lucide-react";
-import { OFFICIAL_TRAINING } from "../../data/trainingConfig";
-import { FormEvent, useRef, useState } from "react";
+import { FormEvent, useEffect, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import logoFull from "../../assets/logo/logo-full.png";
 import { ORG_NAME, ORG_LOGO_URL } from "../../config/org";
@@ -8,6 +7,7 @@ import {
   athleteApplicationService,
   type PublicApplicationPayload,
 } from "../../services/athleteApplicationService";
+import { turmaService, type PublicTurma } from "../../services/turmaService";
 
 // ── Tipos internos ─────────────────────────────────────────────────────────────
 
@@ -15,7 +15,7 @@ type FormData = {
   name: string;
   phone: string;
   birthDate: string;
-  gender: "" | "feminino" | "masculino";
+  turmaId: string;
   availableSaturdays: "" | "sim" | "nao";
   position: "" | "Levantador" | "Central" | "Líbero" | "Ponteiro" | "Oposto";
   secondPosition: "" | "Levantador" | "Central" | "Líbero" | "Ponteiro" | "Oposto";
@@ -35,7 +35,7 @@ const EMPTY: FormData = {
   name: "",
   phone: "",
   birthDate: "",
-  gender: "",
+  turmaId: "",
   availableSaturdays: "",
   position: "",
   secondPosition: "",
@@ -238,7 +238,7 @@ function SectionTitle({ step, title, description }: { step: number; title: strin
 function validate(form: FormData): string | null {
   if (!form.name.trim()) return "Por favor, informe seu nome.";
   if (!form.birthDate) return "Por favor, informe sua data de nascimento.";
-  if (!form.gender) return "Selecione a turma que deseja se inscrever.";
+  if (!form.turmaId) return "Selecione a turma que deseja se inscrever.";
   if (!form.availableSaturdays) return "Informe sua disponibilidade aos sábados.";
   if (!form.position) return "Selecione sua posição de jogo.";
   if (!form.currentTeam) return "Informe se joga em algum time atualmente.";
@@ -305,11 +305,18 @@ export function InscricaoPage() {
   const [form, setForm] = useState<FormData>(loadDraft);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [turmas, setTurmas] = useState<PublicTurma[]>([]);
   const [hasDraft] = useState(() => {
     const draft = loadDraft();
     return draft.name.trim().length > 0;
   });
   const submitErrorRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    turmaService.getPublicActive().then(setTurmas).catch(() => {});
+  }, []);
+
+  const selectedTurma = turmas.find((t) => t.id === form.turmaId) ?? null;
 
   function set<K extends keyof FormData>(key: K, value: FormData[K]) {
     setForm((prev) => {
@@ -337,7 +344,7 @@ export function InscricaoPage() {
         name: form.name.trim(),
         phone: form.phone.trim() || undefined,
         birthDate: form.birthDate,
-        gender: form.gender as "feminino" | "masculino",
+        turmaId: form.turmaId,
         position: form.position as string,
         availableSaturdays: form.availableSaturdays === "sim",
         currentTeam: form.currentTeam === "sim",
@@ -475,21 +482,20 @@ export function InscricaoPage() {
             />
             <div className="mt-6 space-y-6">
               <RadioGroup
-                disabled={isSubmitting}
+                disabled={isSubmitting || turmas.length === 0}
                 label="Qual a categoria deseja se inscrever?"
-                onChange={(v) => set("gender", v)}
-                options={[
-                  { label: "Feminino", value: "feminino" },
-                  { label: "Masculino", value: "masculino" },
-                ]}
+                onChange={(v) => set("turmaId", v)}
+                options={turmas.map((t) => ({ label: t.name, value: t.id }))}
                 required
-                value={form.gender}
+                value={form.turmaId}
               />
-              {form.gender && (
+              {selectedTurma && (
                 <RadioGroup
                   disabled={isSubmitting}
-                  label={`Você tem disponibilidade para treinar aos sábados, das ${
-                    form.gender === "feminino" ? OFFICIAL_TRAINING.timeFemale : OFFICIAL_TRAINING.timeMale
+                  label={`Você tem disponibilidade para treinar${
+                    selectedTurma.daysOfWeek.length > 0 ? "" : " aos sábados"
+                  }, das ${selectedTurma.time}, em ${selectedTurma.location}${
+                    selectedTurma.dependency ? ` (${selectedTurma.dependency})` : ""
                   }?`}
                   onChange={(v) => set("availableSaturdays", v)}
                   options={[

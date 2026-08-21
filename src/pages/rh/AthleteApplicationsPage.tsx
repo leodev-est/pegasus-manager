@@ -17,7 +17,6 @@ import { Table } from "../../components/ui/Table";
 import { Textarea } from "../../components/ui/Textarea";
 import { useToast } from "../../components/ui/Toast";
 import { getApiErrorMessage } from "../../services/api";
-import { OFFICIAL_TRAINING } from "../../data/trainingConfig";
 import {
   athleteApplicationService,
   type AthleteApplication,
@@ -25,6 +24,7 @@ import {
   type AthleteApplicationPayload,
   type AthleteApplicationStatus,
 } from "../../services/athleteApplicationService";
+import { turmaService, type Turma } from "../../services/turmaService";
 import { ORG_NAME } from "../../config/org";
 
 type ApplicationForm = {
@@ -32,7 +32,7 @@ type ApplicationForm = {
   email: string;
   phone: string;
   category: string;
-  gender: "" | "feminino" | "masculino";
+  turmaId: string;
   position: string;
   experienceTime: string;
   level: string;
@@ -50,7 +50,7 @@ const emptyApplication: ApplicationForm = {
   email: "",
   phone: "",
   category: "",
-  gender: "",
+  turmaId: "",
   position: "",
   experienceTime: "",
   level: "",
@@ -69,12 +69,6 @@ const statusOptions = [
   { label: "Em análise", value: "em_analise" },
   { label: "Aprovado", value: "aprovado" },
   { label: "Recusado", value: "recusado" },
-];
-
-const genderOptions = [
-  { label: "Selecione a turma", value: "" },
-  { label: "Feminino", value: "feminino" },
-  { label: "Masculino", value: "masculino" },
 ];
 
 const positionOptions = [
@@ -122,7 +116,7 @@ function applicationToForm(application: AthleteApplication): ApplicationForm {
     email: application.email ?? "",
     phone: application.phone ?? "",
     category: application.category ?? "",
-    gender: application.gender ?? "",
+    turmaId: application.turmaId ?? "",
     position: application.position ?? "",
     experienceTime: application.experienceTime ?? "",
     level: application.level ?? "",
@@ -142,7 +136,7 @@ function buildPayload(form: ApplicationForm): AthleteApplicationPayload {
     email: form.email,
     phone: form.phone,
     category: form.category,
-    gender: form.gender || undefined,
+    turmaId: form.turmaId || undefined,
     position: form.position,
     experienceTime: form.experienceTime,
     level: form.level,
@@ -221,9 +215,11 @@ function DetailField({ label: fieldLabel, value }: { label: string; value: React
 
 function ApplicationDetailModal({
   application,
+  turmas,
   onClose,
 }: {
   application: AthleteApplication | null;
+  turmas: Turma[];
   onClose: () => void;
 }) {
   const { showToast } = useToast();
@@ -260,20 +256,17 @@ function ApplicationDetailModal({
         <DetailField label="Data de Nascimento" value={formatBirthDate(application.birthDate)} />
         <DetailField label="Telefone" value={application.phone} />
         <DetailField label="E-mail" value={application.email} />
-        <DetailField label="Turma" value={application.gender === "feminino" ? "Feminino" : application.gender === "masculino" ? "Masculino" : null} />
+        <DetailField label="Turma" value={turmas.find((t) => t.id === application.turmaId)?.name ?? null} />
         <DetailField label="Posição" value={application.position} />
         <DetailField label="Segunda Posição" value={application.secondPosition} />
         <DetailField label="Disposto a Treinar em" value={application.willingPositions?.replace(/,/g, ", ")} />
         <DetailField label="Nível" value={application.level} />
         <DetailField label="Tempo de Experiência" value={application.experienceTime} />
         <DetailField
-          label={`Disponível aos Sábados (${
-            application.gender === "feminino"
-              ? OFFICIAL_TRAINING.timeFemale
-              : application.gender === "masculino"
-                ? OFFICIAL_TRAINING.timeMale
-                : `Fem. ${OFFICIAL_TRAINING.timeFemale} · Masc. ${OFFICIAL_TRAINING.timeMale}`
-          })`}
+          label={(() => {
+            const turma = turmas.find((t) => t.id === application.turmaId);
+            return turma ? `Disponível (${turma.time})` : "Disponível";
+          })()}
           value={boolLabel(application.availableSaturdays)}
         />
         <DetailField label="Joga em Time Atualmente" value={boolLabel(application.currentTeam)} />
@@ -337,6 +330,7 @@ export function AthleteApplicationsPage() {
   const canUpdate = hasPermission(["rh", "athletes:update"]);
   const canDelete = hasPermission(["rh", "athletes:delete"]);
   const [applications, setApplications] = useState<AthleteApplication[]>([]);
+  const [turmas, setTurmas] = useState<Turma[]>([]);
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState("pendente");
   const [position, setPosition] = useState("todos");
@@ -385,6 +379,7 @@ export function AthleteApplicationsPage() {
   }, [position, search, showToast, status]);
 
   useEffect(() => { loadApplications(); }, [loadApplications]);
+  useEffect(() => { turmaService.getAll().then(setTurmas).catch(() => {}); }, []);
 
   function openCreateModal() {
     setEditingApplication(null);
@@ -819,9 +814,9 @@ export function AthleteApplicationsPage() {
             <Select
               disabled={isSaving}
               label="Turma"
-              onChange={(e) => setForm({ ...form, gender: e.target.value as ApplicationForm["gender"] })}
-              options={genderOptions}
-              value={form.gender}
+              onChange={(e) => setForm({ ...form, turmaId: e.target.value })}
+              options={[{ label: "Selecione a turma", value: "" }, ...turmas.map((t) => ({ label: t.name, value: t.id }))]}
+              value={form.turmaId}
             />
             <Select
               disabled={isSaving}
@@ -865,7 +860,7 @@ export function AthleteApplicationsPage() {
       </Modal>
 
       {/* Modal de detalhes */}
-      <ApplicationDetailModal application={detailApplication} onClose={() => setDetailApplication(null)} />
+      <ApplicationDetailModal application={detailApplication} turmas={turmas} onClose={() => setDetailApplication(null)} />
 
       <ConfirmDialog
         confirmLabel={isSaving ? "Enviando..." : "Mandar para Testes"}

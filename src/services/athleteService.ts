@@ -12,6 +12,7 @@ export type Athlete = {
   category: string | null;
   position: string | null;
   gender: AthleteGender | null;
+  turmaId: string | null;
   status: AthleteStatus;
   monthlyPaymentStatus: MonthlyPaymentStatus;
   notes: string | null;
@@ -36,6 +37,7 @@ export type AthletePayload = {
   category?: string;
   position?: string;
   gender?: AthleteGender | null;
+  turmaId?: string | null;
   status?: AthleteStatus;
   monthlyPaymentStatus?: MonthlyPaymentStatus;
   notes?: string;

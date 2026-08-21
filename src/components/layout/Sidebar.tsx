@@ -114,6 +114,12 @@ export const menuGroups: MenuGroup[] = [
       },
       { label: "Treinos", path: "/app/treinos", icon: ClipboardList, permissions: ["treinos"] },
       {
+        label: "Turmas",
+        path: "/app/admin/turmas",
+        icon: Users,
+        permissions: ["trainings:update"],
+      },
+      {
         label: "Quadra Tática",
         path: "/app/quadra-tatica",
         icon: Volleyball,

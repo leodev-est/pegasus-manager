@@ -1,9 +1,8 @@
 import { api } from "./api";
 
 export type TrainingConfig = {
+  // Turma única "legada" — só se aplica em dias que nenhuma Turma cobre.
   trainingTime: string;
-  trainingTimeFemale: string;
-  trainingTimeMale: string;
   trainingLocation: string;
   trainingDependency: string;
   trainingDaysOfWeek: string[];
