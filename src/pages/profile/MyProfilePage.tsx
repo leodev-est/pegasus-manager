@@ -66,6 +66,12 @@ function statusLabel(value?: string | null) {
   return value ? labels[value] ?? value : "-";
 }
 
+function genderLabel(value?: string | null) {
+  if (value === "masculino") return "Masculino";
+  if (value === "feminino") return "Feminino";
+  return null;
+}
+
 const TOUR_STEPS = [
   {
     popover: {
@@ -298,7 +304,7 @@ export function MyProfilePage() {
               <StatusBadge label={statusLabel(athlete?.status)} tone={statusTone(athlete?.status)} />
             </div>
             <p className="mt-1 truncate text-sm font-semibold text-stone-400">
-              @{profile.user.username} · {athlete?.category ?? "Sem categoria"} · {athlete?.position ?? "Sem posição"}
+              @{profile.user.username} · {athlete?.category || genderLabel(athlete?.gender) || "Sem categoria"} · {athlete?.position ?? "Sem posição"}
             </p>
           </div>
         </div>
