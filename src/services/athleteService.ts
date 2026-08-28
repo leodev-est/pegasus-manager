@@ -87,7 +87,18 @@ export type BirthdaysResult = {
   week: BirthdayAthlete[];
 };
 
+export type MonthlyBirthday = {
+  id: string;
+  name: string;
+  day: number;
+  isToday: boolean;
+};
+
 export const athleteService = {
+  async getBirthdaysThisMonth() {
+    const { data } = await api.get<MonthlyBirthday[]>("/athletes/birthdays/month");
+    return data;
+  },
   async getBirthdays() {
     const { data } = await api.get<BirthdaysResult>("/athletes/birthdays");
     return data;

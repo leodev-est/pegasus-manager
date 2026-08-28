@@ -199,6 +199,31 @@ export const athletesService = {
     return { today: todayBirthdays, week: weekBirthdays };
   },
 
+  /** Aniversariantes do mês atual, visível para qualquer usuário autenticado. */
+  async findBirthdaysThisMonth() {
+    const today = new Date();
+    const currentMonth = today.getMonth() + 1;
+
+    const athletes = await prisma.athlete.findMany({
+      where: {
+        birthDate: { not: null },
+        status: { in: ["ativo", "teste"] },
+      },
+      select: { id: true, name: true, birthDate: true },
+      orderBy: { name: "asc" },
+    });
+
+    return athletes
+      .filter((a) => a.birthDate!.getMonth() + 1 === currentMonth)
+      .map((a) => ({
+        id: a.id,
+        name: a.name,
+        day: a.birthDate!.getDate(),
+        isToday: a.birthDate!.getDate() === today.getDate(),
+      }))
+      .sort((a, b) => a.day - b.day);
+  },
+
   async findById(id: string) {
     const athlete = await prisma.athlete.findUnique({
       where: { id },

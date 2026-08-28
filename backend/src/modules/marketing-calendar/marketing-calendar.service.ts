@@ -30,12 +30,36 @@ export const marketingCalendarService = {
       orderBy: [{ date: "asc" }, { time: "asc" }],
     });
 
-    return events.map((e) => ({
+    const mapped = events.map((e) => ({
       ...e,
       date: toDateKey(e.date),
       athleteName: null as string | null,
       isReadOnly: false,
     }));
+
+    const athletes = await prisma.athlete.findMany({
+      where: { birthDate: { not: null }, status: { in: ["ativo", "teste"] } },
+      select: { id: true, name: true, birthDate: true },
+    });
+
+    const birthdayEvents = athletes
+      .filter((a) => a.birthDate!.getUTCMonth() + 1 === month)
+      .map((a) => ({
+        id: `aniversario-${a.id}-${year}-${month}`,
+        title: `Aniversário de ${a.name}`,
+        description: `${a.name} faz aniversário hoje!`,
+        date: toDateKey(new Date(Date.UTC(year, month - 1, a.birthDate!.getUTCDate()))),
+        time: null,
+        type: "aniversario",
+        athleteId: a.id,
+        createdBy: null,
+        createdAt: null,
+        updatedAt: null,
+        athleteName: a.name,
+        isReadOnly: true,
+      }));
+
+    return [...mapped, ...birthdayEvents].sort((a, b) => a.date.localeCompare(b.date));
   },
 
   async createEvent(payload: MarketingEventPayload) {

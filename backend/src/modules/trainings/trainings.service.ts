@@ -1,8 +1,88 @@
 ﻿import { Prisma } from "@prisma/client";
 import { prisma } from "../../config/prisma";
 import { AppError } from "../../middlewares/error.middleware";
-import { isBlockedTrainingDate, loadBlockedDates } from "../../utils/trainingDates";
+import {
+  dateKeyToDate,
+  getBrazilDateKey,
+  isBlockedTrainingDate,
+  isOfficialTrainingDate,
+  loadBlockedDates,
+  loadTrainingSchedule,
+  resolveTrainingMeta,
+  toTrainingDateKey,
+  turmasForDate,
+} from "../../utils/trainingDates";
 import { googleCalendarService } from "../google-calendar/google-calendar.service";
+
+const UPCOMING_WINDOW_DAYS = 21;
+let lastAutoCreateRun: number | null = null;
+const AUTO_CREATE_THROTTLE_MS = 5 * 60 * 1000;
+
+function addDaysToKey(dateKey: string, days: number): string {
+  const d = dateKeyToDate(dateKey);
+  d.setUTCDate(d.getUTCDate() + days);
+  return toTrainingDateKey(d);
+}
+
+/**
+ * Garante que exista um registro de Training (mesmo que vazio, sem plano
+ * ainda) para cada data oficial de cada turma nas próximas semanas — sem
+ * isso, "Próximos Treinos" no dashboard nunca tem o que mostrar até um
+ * técnico preencher um plano manualmente.
+ */
+async function ensureUpcomingTrainings() {
+  const now = Date.now();
+  if (lastAutoCreateRun && now - lastAutoCreateRun < AUTO_CREATE_THROTTLE_MS) return;
+  lastAutoCreateRun = now;
+
+  const schedule = await loadTrainingSchedule();
+  const todayKey = getBrazilDateKey();
+
+  const wanted: Array<{ dateKey: string; turmaId: string | null; title: string; category: string | null }> = [];
+
+  for (let i = 0; i <= UPCOMING_WINDOW_DAYS; i++) {
+    const dateKey = addDaysToKey(todayKey, i);
+    if (!isOfficialTrainingDate(dateKey, schedule.blockedDates, schedule.legacyDaysOfWeek, schedule.turmas)) {
+      continue;
+    }
+
+    const turmasToday = turmasForDate(dateKey, schedule.turmas);
+
+    if (turmasToday.length === 0) {
+      const meta = resolveTrainingMeta(dateKey, null, schedule);
+      wanted.push({ dateKey, turmaId: null, title: "Treino Oficial", category: meta.label });
+      continue;
+    }
+
+    for (const turma of turmasToday) {
+      wanted.push({ dateKey, turmaId: turma.id, title: `Treino Oficial — ${turma.name}`, category: turma.name });
+    }
+  }
+
+  if (wanted.length === 0) return;
+
+  const minDate = dateKeyToDate(wanted[0].dateKey);
+  const maxDate = dateKeyToDate(wanted[wanted.length - 1].dateKey);
+
+  const existing = await prisma.training.findMany({
+    where: { date: { gte: minDate, lte: maxDate } },
+    select: { date: true, turmaId: true },
+  });
+  const existingKeys = new Set(existing.map((t) => `${toTrainingDateKey(t.date)}|${t.turmaId ?? ""}`));
+
+  const toCreate = wanted.filter((w) => !existingKeys.has(`${w.dateKey}|${w.turmaId ?? ""}`));
+  if (toCreate.length === 0) return;
+
+  await prisma.training.createMany({
+    data: toCreate.map((w) => ({
+      date: dateKeyToDate(w.dateKey),
+      title: w.title,
+      category: w.category,
+      turmaId: w.turmaId,
+      createdBy: "Sistema",
+    })),
+  });
+}
 
 type TrainingFilters = {
   category?: string;
@@ -145,6 +225,10 @@ function buildData(payload: TrainingPayload, requireBaseFields: boolean, blocked
 
 export const trainingsService = {
   async findAll(filters: TrainingFilters) {
+    await ensureUpcomingTrainings().catch(() => {
+      // Não deixa a listagem quebrar se a auto-criação falhar por algum motivo.
+    });
+
     return prisma.training.findMany({
       where: buildWhere(filters),
       orderBy: { date: "asc" },

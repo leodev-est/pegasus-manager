@@ -1,16 +1,15 @@
 import {
-  ArrowRight,
   CalendarDays,
   Cake,
   ClipboardList,
+  CreditCard,
   Loader2,
-  Megaphone,
   MessageSquare,
-  School,
   Star,
   TrendingUp,
   Trophy,
   UserCheck,
+  UserPlus,
   Users,
   WalletCards,
   type LucideIcon,
@@ -25,7 +24,7 @@ import { Skeleton } from "../../components/ui/Skeleton";
 import { useToast } from "../../components/ui/Toast";
 import { athleteApplicationService, type AthleteApplication } from "../../services/athleteApplicationService";
 import { muralService, type MuralPost } from "../../services/muralService";
-import { athleteService, type BirthdaysResult } from "../../services/athleteService";
+import { athleteService, type MonthlyBirthday } from "../../services/athleteService";
 import { useAthletes } from "../../hooks/useAthletes";
 import { getApiErrorMessage } from "../../services/api";
 import { attendanceService, type MonthlyAttendanceStat, type TotalFrequency } from "../../services/attendanceService";
@@ -35,7 +34,6 @@ import { gameConvocationService, type MyConvocation } from "../../services/gameC
 import { gamesService, type Game } from "../../services/gamesService";
 import { kanbanService, type ManagementTask } from "../../services/kanbanService";
 import { marketingService, type MarketingTask } from "../../services/marketingService";
-import { operationalService, type SchoolContact } from "../../services/operationalService";
 import { trainingService, type Training } from "../../services/trainingService";
 
 type DashboardData = {
@@ -44,7 +42,6 @@ type DashboardData = {
   financeSummary: FinanceSummary | null;
   managementTasks: ManagementTask[];
   marketingTasks: MarketingTask[];
-  schools: SchoolContact[];
   upcomingGames: Game[];
 };
 
@@ -62,7 +59,6 @@ const emptyDashboardData: DashboardData = {
   financeSummary: null,
   managementTasks: [],
   marketingTasks: [],
-  schools: [],
   upcomingGames: [],
 };
 
@@ -152,7 +148,7 @@ export function DashboardPage() {
   const { showToast } = useToast();
   const [data, setData] = useState<DashboardData>(emptyDashboardData);
   const [isLoading, setIsLoading] = useState(true);
-  const [birthdays, setBirthdays] = useState<BirthdaysResult>({ today: [], week: [] });
+  const [monthlyBirthdays, setMonthlyBirthdays] = useState<MonthlyBirthday[]>([]);
   const [myFrequency, setMyFrequency] = useState<TotalFrequency | null>(null);
   const [monthlyStats, setMonthlyStats] = useState<MonthlyAttendanceStat[]>([]);
   const [myEvaluation, setMyEvaluation] = useState<AthleteEvaluation | null>(null);
@@ -165,7 +161,6 @@ export function DashboardPage() {
   const canSeeManagement = hasPermission(["gestao"]);
   const canSeeMarketing = hasPermission(["marketing"]);
   const canSeeTrainings = hasPermission(["treinos"]);
-  const canSeeOperational = hasPermission(["operacional"]);
   const isAthlete =
     hasPermission(["atleta"]) &&
     !hasPermission(["rh"]) &&
@@ -193,7 +188,6 @@ export function DashboardPage() {
         financeSummaryRes,
         managementTasksRes,
         marketingTasksRes,
-        schoolsRes,
         gamesThisMonthRes,
         gamesNextMonthRes,
       ] = await Promise.allSettled([
@@ -202,7 +196,6 @@ export function DashboardPage() {
         canSeeFinance ? financeService.getSummary() : Promise.resolve(null),
         canSeeManagement ? kanbanService.getTasks({ area: "management" }) : Promise.resolve([]),
         canSeeMarketing ? marketingService.getTasks() : Promise.resolve([]),
-        canSeeOperational ? operationalService.getSchoolContacts() : Promise.resolve([]),
         gamesService.getAll(currentMonth),
         gamesService.getAll(nextMonth),
       ]);
@@ -221,13 +214,10 @@ export function DashboardPage() {
         financeSummary: ok(financeSummaryRes, null),
         managementTasks: ok(managementTasksRes, []),
         marketingTasks: ok(marketingTasksRes, []),
-        schools: ok(schoolsRes, []),
         upcomingGames,
       });
 
-      if (canSeeRh) {
-        athleteService.getBirthdays().then(setBirthdays).catch(() => {});
-      }
+      athleteService.getBirthdaysThisMonth().then(setMonthlyBirthdays).catch(() => {});
 
       if (canSeeTrainings) {
         attendanceService.getMonthlyStats().then(setMonthlyStats).catch(() => {});
@@ -248,7 +238,6 @@ export function DashboardPage() {
     canSeeFinance,
     canSeeManagement,
     canSeeMarketing,
-    canSeeOperational,
     canSeeRh,
     canSeeTrainings,
     isAthlete,
@@ -271,7 +260,6 @@ export function DashboardPage() {
     ...data.managementTasks.filter((task) => task.status !== "done"),
     ...data.marketingTasks.filter((task) => task.status !== "published"),
   ];
-  const openSchools = data.schools.filter((school) => !school.sent).length;
 
   const stats = [
     canSeeRh
@@ -319,13 +307,25 @@ export function DashboardPage() {
           value: String(activeTasks.length),
         }
       : null,
-    canSeeOperational
+    canSeeRh
       ? {
-          helper: `${openSchools} escola(s) sem envio`,
-          href: "/app/operacional",
-          icon: School,
-          label: "Escolas cadastradas",
-          value: String(data.schools.length),
+          helper: "Aguardando análise",
+          href: "/app/rh/inscricoes",
+          icon: UserPlus,
+          label: "Inscrições pendentes",
+          value: String(pendingApplications),
+        }
+      : null,
+    canSeeFinance
+      ? {
+          helper: `${data.financeSummary?.overdueMonthlyPayments ?? 0} em atraso`,
+          href: "/app/financeiro",
+          icon: CreditCard,
+          label: "Mensalidades em aberto",
+          value: String(
+            (data.financeSummary?.pendingMonthlyPayments ?? 0) +
+              (data.financeSummary?.overdueMonthlyPayments ?? 0),
+          ),
         }
       : null,
   ].filter(isDashboardStat);
@@ -585,47 +585,88 @@ export function DashboardPage() {
             </section>
           )}
 
-          {/* Mural de Avisos */}
-          {muralPosts.length > 0 && (
-            <article data-tour="dash-mural" className="panel p-5">
-              <div className="mb-4 flex items-center justify-between gap-3">
-                <div className="flex items-center gap-3">
-                  <span className="rounded-lg bg-pegasus-ice p-3 text-pegasus-primary">
-                    <MessageSquare size={20} />
-                  </span>
-                  <div>
-                    <h2 className="text-xl font-bold text-pegasus-navy">Avisos do clube</h2>
-                    <p className="text-sm text-slate-500">Comunicados recentes</p>
-                  </div>
-                </div>
-                <Link
-                  to="/app/comunicados"
-                  className="text-sm font-semibold text-pegasus-primary hover:underline"
+          {/* Mural de Avisos + Aniversários do mês */}
+          {(muralPosts.length > 0 || monthlyBirthdays.length > 0) && (
+            <section className="grid gap-4 lg:grid-cols-2">
+              {muralPosts.length > 0 && (
+                <article
+                  data-tour="dash-mural"
+                  className={`panel p-5 ${monthlyBirthdays.length === 0 ? "lg:col-span-2" : ""}`}
                 >
-                  Ver todos
-                </Link>
-              </div>
-              <div className="space-y-3">
-                {muralPosts.map((post) => (
-                  <div key={post.id} className="rounded-lg bg-pegasus-surface p-4">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <span className={`rounded-full px-2.5 py-0.5 text-xs font-bold ${
-                        post.category === "urgente" ? "bg-rose-100 text-rose-700" :
-                        post.category === "evento" ? "bg-violet-100 text-violet-700" :
-                        "bg-stone-100 text-stone-600"
-                      }`}>
-                        {post.category === "urgente" ? "Urgente" : post.category === "evento" ? "Evento" : "Info"}
+                  <div className="mb-4 flex items-center justify-between gap-3">
+                    <div className="flex items-center gap-3">
+                      <span className="rounded-lg bg-pegasus-ice p-3 text-pegasus-primary">
+                        <MessageSquare size={20} />
                       </span>
-                      <span className="text-xs text-slate-400">
-                        {new Intl.DateTimeFormat("pt-BR", { day: "2-digit", month: "short" }).format(new Date(post.createdAt))}
-                      </span>
+                      <div>
+                        <h2 className="text-xl font-bold text-pegasus-navy">Avisos do clube</h2>
+                        <p className="text-sm text-slate-500">Comunicados recentes</p>
+                      </div>
                     </div>
-                    <p className="mt-1.5 font-bold text-pegasus-navy">{post.title}</p>
-                    <p className="mt-1 line-clamp-2 text-sm text-slate-500">{post.body}</p>
+                    <Link
+                      to="/app/comunicados"
+                      className="text-sm font-semibold text-pegasus-primary hover:underline"
+                    >
+                      Ver todos
+                    </Link>
                   </div>
-                ))}
-              </div>
-            </article>
+                  <div className="space-y-3">
+                    {muralPosts.map((post) => (
+                      <div key={post.id} className="rounded-lg bg-pegasus-surface p-4">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span className={`rounded-full px-2.5 py-0.5 text-xs font-bold ${
+                            post.category === "urgente" ? "bg-rose-100 text-rose-700" :
+                            post.category === "evento" ? "bg-violet-100 text-violet-700" :
+                            "bg-stone-100 text-stone-600"
+                          }`}>
+                            {post.category === "urgente" ? "Urgente" : post.category === "evento" ? "Evento" : "Info"}
+                          </span>
+                          <span className="text-xs text-slate-400">
+                            {new Intl.DateTimeFormat("pt-BR", { day: "2-digit", month: "short" }).format(new Date(post.createdAt))}
+                          </span>
+                        </div>
+                        <p className="mt-1.5 font-bold text-pegasus-navy">{post.title}</p>
+                        <p className="mt-1 line-clamp-2 text-sm text-slate-500">{post.body}</p>
+                      </div>
+                    ))}
+                  </div>
+                </article>
+              )}
+
+              {monthlyBirthdays.length > 0 && (
+                <article className={`panel p-5 ${muralPosts.length === 0 ? "lg:col-span-2" : ""}`}>
+                  <div className="mb-4 flex items-center gap-3">
+                    <span className="rounded-lg bg-pink-50 p-3 text-pink-600">
+                      <Cake size={20} />
+                    </span>
+                    <div>
+                      <h2 className="text-xl font-bold text-pegasus-navy">Aniversariantes do mês</h2>
+                      <p className="text-sm text-slate-500">
+                        {monthlyBirthdays.length} atleta{monthlyBirthdays.length !== 1 ? "s" : ""} fazendo aniversário
+                      </p>
+                    </div>
+                  </div>
+                  <div className="grid gap-2.5 sm:grid-cols-2">
+                    {monthlyBirthdays.map((a) => (
+                      <div
+                        key={a.id}
+                        className={`flex items-center gap-3 rounded-lg p-3 ${a.isToday ? "bg-pink-50" : "bg-pegasus-surface"}`}
+                      >
+                        <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-pink-100 text-xs font-bold text-pink-700">
+                          {a.day}
+                        </span>
+                        <div className="min-w-0">
+                          <p className="truncate font-bold text-pegasus-navy">{a.name}</p>
+                          <p className={`text-xs font-semibold ${a.isToday ? "text-pink-600" : "text-slate-500"}`}>
+                            {a.isToday ? "Hoje!" : `Dia ${a.day}`}
+                          </p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </article>
+              )}
+            </section>
           )}
 
           {/* Gráfico de frequência mensal */}
@@ -657,7 +698,7 @@ export function DashboardPage() {
             </section>
           )}
 
-          <section className="grid gap-4 xl:grid-cols-[1.2fr_0.8fr]">
+          <section className="grid gap-4">
             {canSeeTrainings ? (
               <article className="panel p-5">
                 <div className="flex items-center gap-3">
@@ -697,64 +738,6 @@ export function DashboardPage() {
               </article>
             ) : null}
 
-            {(canSeeRh || canSeeFinance || canSeeOperational) && (
-            <article className="panel p-5">
-              <div className="flex items-center gap-3">
-                <span className="rounded-lg bg-pegasus-ice p-3 text-pegasus-primary">
-                  <Megaphone size={22} />
-                </span>
-                <h2 className="text-xl font-bold text-pegasus-navy">Alertas Operacionais</h2>
-              </div>
-              <div className="mt-4 grid gap-2.5">
-                {canSeeRh ? (
-                  <Link
-                    to="/app/rh/inscricoes"
-                    className={`group flex items-center justify-between rounded-lg p-4 transition hover:-translate-y-0.5 hover:shadow-md hover:brightness-95 ${pendingApplications > 0 ? "bg-amber-50" : "bg-pegasus-surface"}`}
-                  >
-                    <div>
-                      <p className="text-sm font-semibold text-slate-600">Inscrições pendentes</p>
-                      <strong className={`mt-1 block text-2xl ${pendingApplications > 0 ? "text-amber-700" : "text-pegasus-navy"}`}>
-                        {pendingApplications}
-                      </strong>
-                    </div>
-                    <ArrowRight size={16} className="text-slate-400 group-hover:text-pegasus-primary transition-transform group-hover:translate-x-0.5" />
-                  </Link>
-                ) : null}
-                {canSeeFinance ? (
-                  <Link
-                    to="/app/financeiro"
-                    className={`group flex items-center justify-between rounded-lg p-4 transition hover:-translate-y-0.5 hover:shadow-md hover:brightness-95 ${(data.financeSummary?.overdueMonthlyPayments ?? 0) > 0 ? "bg-rose-50" : "bg-pegasus-surface"}`}
-                  >
-                    <div>
-                      <p className="text-sm font-semibold text-slate-600">Mensalidades em aberto</p>
-                      <strong className={`mt-1 block text-2xl ${(data.financeSummary?.overdueMonthlyPayments ?? 0) > 0 ? "text-rose-700" : "text-pegasus-navy"}`}>
-                        {(data.financeSummary?.pendingMonthlyPayments ?? 0) +
-                          (data.financeSummary?.overdueMonthlyPayments ?? 0)}
-                      </strong>
-                      {(data.financeSummary?.overdueMonthlyPayments ?? 0) > 0 && (
-                        <p className="mt-0.5 text-xs font-semibold text-rose-600">
-                          {data.financeSummary?.overdueMonthlyPayments} em atraso
-                        </p>
-                      )}
-                    </div>
-                    <ArrowRight size={16} className="text-slate-400 group-hover:text-pegasus-primary transition-transform group-hover:translate-x-0.5" />
-                  </Link>
-                ) : null}
-                {canSeeOperational ? (
-                  <Link
-                    to="/app/operacional"
-                    className="group flex items-center justify-between rounded-lg bg-pegasus-surface p-4 transition hover:-translate-y-0.5 hover:shadow-md hover:brightness-95"
-                  >
-                    <div>
-                      <p className="text-sm font-semibold text-slate-600">Escolas sem envio</p>
-                      <strong className="mt-1 block text-2xl text-pegasus-navy">{openSchools}</strong>
-                    </div>
-                    <ArrowRight size={16} className="text-slate-400 group-hover:text-pegasus-primary transition-transform group-hover:translate-x-0.5" />
-                  </Link>
-                ) : null}
-              </div>
-            </article>
-            )}
           </section>
 
           {data.upcomingGames.length > 0 ? (
@@ -779,48 +762,6 @@ export function DashboardPage() {
                     </p>
                   </div>
                 ))}
-              </div>
-            </article>
-          ) : null}
-
-          {canSeeRh && (birthdays.today.length > 0 || birthdays.week.length > 0) ? (
-            <article className="panel p-5">
-              <div className="flex items-center gap-3">
-                <span className="rounded-lg bg-pink-50 p-3 text-pink-600">
-                  <Cake size={22} />
-                </span>
-                <div>
-                  <h2 className="text-xl font-bold text-pegasus-navy">Aniversários</h2>
-                  <p className="text-sm text-slate-500">
-                    {birthdays.today.length > 0
-                      ? `${birthdays.today.length} aniversário(s) hoje`
-                      : `${birthdays.week.length} aniversário(s) esta semana`}
-                  </p>
-                </div>
-              </div>
-              <div className="mt-4 grid gap-2.5 sm:grid-cols-2">
-                {birthdays.today.map((a) => (
-                  <div key={a.id} className="flex items-center gap-3 rounded-lg bg-pink-50 p-4">
-                    <span className="text-2xl">🎂</span>
-                    <div>
-                      <p className="font-bold text-pegasus-navy">{a.name}</p>
-                      <p className="text-xs font-semibold text-pink-600">Hoje!</p>
-                    </div>
-                  </div>
-                ))}
-                {birthdays.week.map((a) => {
-                  const d = new Date(a.birthDate);
-                  const day = d.toLocaleDateString("pt-BR", { weekday: "short", day: "2-digit", month: "short" });
-                  return (
-                    <div key={a.id} className="flex items-center gap-3 rounded-lg bg-pegasus-surface p-4">
-                      <span className="text-2xl">🎁</span>
-                      <div>
-                        <p className="font-bold text-pegasus-navy">{a.name}</p>
-                        <p className="text-xs text-slate-500 capitalize">{day}</p>
-                      </div>
-                    </div>
-                  );
-                })}
               </div>
             </article>
           ) : null}
