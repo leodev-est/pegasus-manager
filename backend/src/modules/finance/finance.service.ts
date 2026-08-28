@@ -270,27 +270,37 @@ export const financeService = {
         WHERE "athleteId" IS NOT NULL AND status = 'atrasado'
       `,
       prisma.$queryRaw<AggRow[]>`
-        SELECT COALESCE(SUM(amount), 0) AS value FROM "Payment"
-        WHERE "referenceMonth" = ${month} AND LOWER(category) = 'mensalidade' AND status = 'pago'
+        SELECT COALESCE(SUM(p.amount), 0) AS value FROM "Payment" p
+        JOIN "Athlete" a ON a.id = p."athleteId"
+        WHERE p."referenceMonth" = ${month} AND LOWER(p.category) = 'mensalidade' AND p.status = 'pago'
+          AND a.status = 'ativo' AND a."monthlyPaymentStatus" != 'isento'
       `,
       prisma.$queryRaw<AggRow[]>`
-        SELECT COALESCE(SUM(amount), 0) AS value FROM "Payment"
-        WHERE "referenceMonth" = ${month} AND LOWER(category) = 'mensalidade'
-          AND status IN ('pendente', 'atrasado')
+        SELECT COALESCE(SUM(p.amount), 0) AS value FROM "Payment" p
+        JOIN "Athlete" a ON a.id = p."athleteId"
+        WHERE p."referenceMonth" = ${month} AND LOWER(p.category) = 'mensalidade'
+          AND p.status IN ('pendente', 'atrasado')
+          AND a.status = 'ativo' AND a."monthlyPaymentStatus" != 'isento'
       `,
       prisma.$queryRaw<AggRow[]>`
-        SELECT COALESCE(SUM(amount), 0) AS value FROM "Payment"
-        WHERE "referenceMonth" = ${month} AND LOWER(category) = 'mensalidade'
-          AND status != 'isento'
+        SELECT COALESCE(SUM(p.amount), 0) AS value FROM "Payment" p
+        JOIN "Athlete" a ON a.id = p."athleteId"
+        WHERE p."referenceMonth" = ${month} AND LOWER(p.category) = 'mensalidade'
+          AND p.status != 'isento'
+          AND a.status = 'ativo' AND a."monthlyPaymentStatus" != 'isento'
       `,
       prisma.$queryRaw<CountRow[]>`
-        SELECT COUNT(*) AS count FROM "Payment"
-        WHERE "referenceMonth" = ${month} AND LOWER(category) = 'mensalidade' AND status = 'pago'
+        SELECT COUNT(*) AS count FROM "Payment" p
+        JOIN "Athlete" a ON a.id = p."athleteId"
+        WHERE p."referenceMonth" = ${month} AND LOWER(p.category) = 'mensalidade' AND p.status = 'pago'
+          AND a.status = 'ativo' AND a."monthlyPaymentStatus" != 'isento'
       `,
       prisma.$queryRaw<CountRow[]>`
-        SELECT COUNT(*) AS count FROM "Payment"
-        WHERE "referenceMonth" = ${month} AND LOWER(category) = 'mensalidade'
-          AND status != 'isento'
+        SELECT COUNT(*) AS count FROM "Payment" p
+        JOIN "Athlete" a ON a.id = p."athleteId"
+        WHERE p."referenceMonth" = ${month} AND LOWER(p.category) = 'mensalidade'
+          AND p.status != 'isento'
+          AND a.status = 'ativo' AND a."monthlyPaymentStatus" != 'isento'
       `,
     ]);
 
