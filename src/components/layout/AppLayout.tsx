@@ -11,7 +11,8 @@ const SIDEBAR_COLLAPSED_KEY = "pegasus-manager:sidebar-collapsed";
 export function AppLayout() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isDesktopCollapsed, setIsDesktopCollapsed] = useState(
-    () => localStorage.getItem(SIDEBAR_COLLAPSED_KEY) === "1",
+    // Hidden (rail) by default — only stays expanded if the user explicitly chose that before.
+    () => localStorage.getItem(SIDEBAR_COLLAPSED_KEY) !== "0",
   );
   const { user } = useAuth();
   const location = useLocation();
@@ -68,7 +69,7 @@ export function AppLayout() {
           isDesktopCollapsed ? "lg:pl-[76px]" : "lg:pl-72"
         }`}
       >
-        <Topbar onMenuClick={toggleSidebar} />
+        <Topbar isSidebarCollapsed={isDesktopCollapsed} onMenuClick={toggleSidebar} />
         <main className="w-full min-w-0 max-w-full px-4 py-5 sm:px-5 md:px-8 md:py-8">
           <div key={location.pathname} className="page-enter">
             <Outlet />

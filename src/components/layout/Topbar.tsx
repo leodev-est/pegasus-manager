@@ -1,4 +1,4 @@
-import { Bell, Check, LogOut, Menu, Moon, Search, ShieldCheck, Sun, X } from "lucide-react";
+import { Bell, Check, LogOut, Moon, PanelLeftClose, PanelLeftOpen, Search, ShieldCheck, Sun, X } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
@@ -110,6 +110,7 @@ function notificationHref(type: Notification["type"], isAthlete: boolean): strin
 
 type TopbarProps = {
   onMenuClick: () => void;
+  isSidebarCollapsed?: boolean;
 };
 
 const ROLE_HIERARCHY: Array<{ role: string; label: string }> = [
@@ -138,7 +139,7 @@ function getHighestRole(roleLabels?: string[], roles?: string[]): string {
   return "Perfil";
 }
 
-export function Topbar({ onMenuClick }: TopbarProps) {
+export function Topbar({ onMenuClick, isSidebarCollapsed = false }: TopbarProps) {
   const { logout, user } = useAuth();
   const { theme, toggleTheme } = useTheme();
   const navigate = useNavigate();
@@ -242,12 +243,15 @@ export function Topbar({ onMenuClick }: TopbarProps) {
       <div className="flex min-w-0 items-center justify-between gap-3">
         <div className="flex min-w-0 items-center gap-3">
           <button
-            aria-label="Abrir ou recolher menu"
-            className="focus-ring grid h-11 w-11 shrink-0 place-items-center rounded-full border border-stone-200 bg-white text-stone-600 shadow-sm transition hover:bg-stone-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300"
+            aria-expanded={!isSidebarCollapsed}
+            aria-label={isSidebarCollapsed ? "Abrir menu lateral" : "Recolher menu lateral"}
+            title={isSidebarCollapsed ? "Abrir menu" : "Recolher menu"}
+            className="focus-ring flex h-11 shrink-0 items-center gap-2 rounded-full border border-stone-200 bg-white px-3.5 text-stone-600 shadow-sm transition hover:border-stone-300 hover:bg-stone-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300"
             onClick={onMenuClick}
             type="button"
           >
-            <Menu size={20} />
+            {isSidebarCollapsed ? <PanelLeftOpen size={19} /> : <PanelLeftClose size={19} />}
+            <span className="hidden text-sm font-semibold sm:inline">Menu</span>
           </button>
           <img
             alt={ORG_NAME}
