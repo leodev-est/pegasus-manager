@@ -103,7 +103,7 @@ export function SchoolsPage() {
   useTour("escolas:v1", isLoading ? [] : TOUR_STEPS);
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-6">
       <PageHeader
         title="Operacional / Contato com Escolas"
         description="Leitura direta da planilha de contatos escolares."
@@ -157,7 +157,7 @@ export function SchoolsPage() {
       </FilterBar>
 
       <section data-tour="escolas-lista" className="panel overflow-hidden">
-        <div className="flex items-center gap-3 border-b border-blue-100 p-6">
+        <div className="flex items-center gap-3 border-b border-stone-200 p-6">
           <FileSpreadsheet className="text-pegasus-primary" size={22} />
           <div>
             <h2 className="text-xl font-bold text-pegasus-navy">Contatos da planilha</h2>
@@ -174,7 +174,7 @@ export function SchoolsPage() {
           <>
             <div className="grid gap-3 p-4 md:hidden">
               {filteredContacts.map((contact) => (
-                <article key={contact.id} className="rounded-2xl border border-blue-100 bg-white p-4 shadow-sm">
+                <article key={contact.id} className="rounded-2xl border border-stone-200 bg-white p-4 shadow-sm">
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0">
                       <h3 className="font-bold text-pegasus-navy">{contact.name}</h3>

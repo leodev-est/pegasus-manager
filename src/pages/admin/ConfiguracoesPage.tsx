@@ -179,7 +179,7 @@ export function ConfiguracoesPage() {
   }
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-6">
       <PageHeader
         title="Configurações"
         description={`Parâmetros gerais do sistema ${ORG_NAME}.`}
@@ -253,7 +253,7 @@ export function ConfiguracoesPage() {
 
           {/* NOTIFICAÇÕES */}
           {activeTab === "notificacoes" && (
-            <section className="panel p-6">
+            <section className="panel p-5">
               <h2 className="mb-4 font-bold text-pegasus-navy">Notificações</h2>
               <div className="divide-y divide-slate-100">
                 <ToggleRow label="Notificar ao aprovar atleta" description="Envia notificação ao atleta e à equipe ao mudar status de teste para ativo." checked={form.notifyOnApproval} onChange={(v) => setForm({ ...form, notifyOnApproval: v })} />
@@ -277,7 +277,7 @@ export function ConfiguracoesPage() {
           {/* CANAIS DE COMUNICAÇÃO */}
           {activeTab === "canais" && (
             <div className="space-y-6">
-              <section className="panel p-6">
+              <section className="panel p-5">
                 <h2 className="mb-4 font-bold text-pegasus-navy">Canais de Comunicação</h2>
                 <div className="divide-y divide-slate-100">
                   <ToggleRow label="Email habilitado" description="Ativa o envio de emails pelo sistema." checked={form.emailEnabled} onChange={(v) => setForm({ ...form, emailEnabled: v })} />
@@ -312,7 +312,7 @@ export function ConfiguracoesPage() {
                 </div>
               </section>
 
-              <section className="panel p-6">
+              <section className="panel p-5">
                 <h2 className="mb-4 font-bold text-pegasus-navy">Google Calendar — Equipe</h2>
                 <p className="mb-4 text-xs text-slate-500">Sincroniza treinos e datas bloqueadas com o calendário oficial da equipe.</p>
                 {!teamCalendar ? (

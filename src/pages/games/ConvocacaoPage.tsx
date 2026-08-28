@@ -108,7 +108,7 @@ function CreateGameModal({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 backdrop-blur-sm">
       <div className="panel w-full max-w-sm">
-        <div className="flex items-center justify-between border-b border-blue-100 p-4 dark:border-slate-700">
+        <div className="flex items-center justify-between border-b border-stone-200 p-4 dark:border-slate-700">
           <h2 className="font-bold text-pegasus-navy">Criar Jogo</h2>
           <button
             type="button"
@@ -250,7 +250,7 @@ function UpcomingGameCard({ game, onSaved }: { game: Game; onSaved: () => void }
   return (
     <div className="panel overflow-hidden">
       {/* Header */}
-      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-blue-100 p-4 dark:border-slate-700">
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-stone-200 p-4 dark:border-slate-700">
         <div className="flex items-center gap-3">
           <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-pegasus-primary/10">
             <Trophy className="text-pegasus-primary" size={18} />
@@ -265,14 +265,14 @@ function UpcomingGameCard({ game, onSaved }: { game: Game; onSaved: () => void }
           </div>
         </div>
         <div className="flex items-center gap-2">
-          <span className="rounded-full bg-blue-100 px-3 py-1 text-sm font-bold text-blue-700 dark:bg-blue-900/30 dark:text-blue-400">
+          <span className="rounded-full bg-emerald-100 px-3 py-1 text-sm font-bold text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-400">
             {selected.size} convocado(s)
           </span>
         </div>
       </div>
 
       {/* Filtro de gênero */}
-      <div className="flex items-center gap-1 border-b border-blue-50 px-4 py-2 dark:border-slate-700/50">
+      <div className="flex items-center gap-1 border-b border-stone-100 px-4 py-2 dark:border-slate-700/50">
         <Users size={14} className="mr-1 text-slate-400" />
         {(["misto", "masculino", "feminino"] as GenderFilter[]).map((g) => (
           <button
@@ -312,7 +312,7 @@ function UpcomingGameCard({ game, onSaved }: { game: Game; onSaved: () => void }
               >
                 <span className="truncate text-sm font-bold">{athlete.name}</span>
                 {(athlete.position || athlete.category) && (
-                  <span className={`mt-0.5 truncate text-xs ${isSelected ? "text-blue-100" : "text-slate-400"}`}>
+                  <span className={`mt-0.5 truncate text-xs ${isSelected ? "text-stone-300" : "text-slate-400"}`}>
                     {[athlete.position, athlete.category].filter(Boolean).join(" · ")}
                   </span>
                 )}
@@ -323,7 +323,7 @@ function UpcomingGameCard({ game, onSaved }: { game: Game; onSaved: () => void }
       )}
 
       {/* Rodapé com botão salvar */}
-      <div className="flex items-center justify-between border-t border-blue-100 px-4 py-3 dark:border-slate-700">
+      <div className="flex items-center justify-between border-t border-stone-200 px-4 py-3 dark:border-slate-700">
         <button
           type="button"
           onClick={() => setSelected(new Set())}
@@ -388,7 +388,7 @@ function PastGameCard({ game }: { game: Game }) {
       </button>
 
       {expanded && (
-        <div className="border-t border-blue-50 px-4 py-3 dark:border-slate-700/50">
+        <div className="border-t border-stone-100 px-4 py-3 dark:border-slate-700/50">
           {convData === null ? (
             <p className="text-xs text-slate-400">Carregando...</p>
           ) : convocados.length === 0 ? (

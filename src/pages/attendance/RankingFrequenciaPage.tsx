@@ -90,7 +90,7 @@ export function RankingFrequenciaPage() {
   const noData = ranking.filter((r) => r.total === 0);
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-6">
       <PageHeader
         title="Ranking de Frequência"
         description="Atletas ativos ordenados por percentual de presença geral."
@@ -130,7 +130,7 @@ export function RankingFrequenciaPage() {
 
           {/* Full table */}
           <div data-tour="ranking-lista" className="panel overflow-hidden">
-            <div className="flex items-center gap-3 border-b border-blue-100 p-5 dark:border-slate-700">
+            <div className="flex items-center gap-3 border-b border-stone-200 p-5 dark:border-slate-700">
               <TrendingUp className="text-pegasus-primary" size={20} />
               <div>
                 <h2 className="font-bold text-pegasus-navy">Tabela completa</h2>
@@ -138,7 +138,7 @@ export function RankingFrequenciaPage() {
               </div>
             </div>
 
-            <div className="divide-y divide-blue-50 dark:divide-slate-700">
+            <div className="divide-y divide-stone-100 dark:divide-slate-700">
               {withData.map((entry, i) => (
                 <div
                   key={entry.athlete.id}

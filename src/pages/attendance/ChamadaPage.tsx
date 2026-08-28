@@ -34,6 +34,16 @@ const TOUR_STEPS = [
   },
 ];
 
+function initials(name: string): string {
+  return name
+    .split(" ")
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0])
+    .join("")
+    .toUpperCase();
+}
+
 function getBrazilTodayKey(): string {
   return new Intl.DateTimeFormat("en-CA", {
     timeZone: "America/Sao_Paulo",
@@ -158,11 +168,11 @@ export function ChamadaPage() {
         <p className="text-sm text-pegasus-medium">Registre a presença dos atletas no treino</p>
       </div>
 
-      <div data-tour="chamada-data" className="flex items-center gap-3 rounded-2xl border border-blue-100 bg-white px-5 py-4 shadow-soft">
+      <div data-tour="chamada-data" className="flex items-center gap-3 rounded-2xl border border-stone-200 bg-white px-5 py-4 shadow-soft">
         <button
           type="button"
           onClick={() => changeDate(-7)}
-          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-blue-100 text-pegasus-medium transition hover:bg-pegasus-surface"
+          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-stone-200 text-pegasus-medium transition hover:bg-pegasus-surface"
         >
           <ChevronLeft size={18} />
         </button>
@@ -183,7 +193,7 @@ export function ChamadaPage() {
         <button
           type="button"
           onClick={() => changeDate(7)}
-          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-blue-100 text-pegasus-medium transition hover:bg-pegasus-surface"
+          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-stone-200 text-pegasus-medium transition hover:bg-pegasus-surface"
         >
           <ChevronRight size={18} />
         </button>
@@ -199,7 +209,7 @@ export function ChamadaPage() {
               className={`flex-1 rounded-xl px-4 py-2.5 text-sm font-bold transition ${
                 turmaId === turma.id
                   ? "bg-pegasus-primary text-white shadow-sm"
-                  : "border border-blue-100 text-pegasus-medium hover:bg-pegasus-surface"
+                  : "border border-stone-200 text-pegasus-medium hover:bg-pegasus-surface"
               }`}
             >
               {turma.name}
@@ -238,14 +248,14 @@ export function ChamadaPage() {
           </button>
         </div>
       ) : chamada?.reason === "select_turma" ? (
-        <div className="flex flex-col items-center justify-center gap-3 rounded-2xl border border-blue-100 bg-white py-16 text-center shadow-soft">
-          <Users className="text-blue-200" size={40} />
+        <div className="flex flex-col items-center justify-center gap-3 rounded-2xl border border-stone-200 bg-white py-16 text-center shadow-soft">
+          <Users className="text-stone-300" size={40} />
           <p className="font-bold text-pegasus-navy">Selecione uma turma</p>
           <p className="text-sm text-pegasus-medium">Escolha uma das turmas acima para ver a chamada.</p>
         </div>
       ) : !chamada?.available ? (
-        <div className="flex flex-col items-center justify-center gap-3 rounded-2xl border border-blue-100 bg-white py-16 text-center shadow-soft">
-          <ClipboardList className={chamada?.reason === "cancelado" ? "text-red-300" : "text-blue-200"} size={40} />
+        <div className="flex flex-col items-center justify-center gap-3 rounded-2xl border border-stone-200 bg-white py-16 text-center shadow-soft">
+          <ClipboardList className={chamada?.reason === "cancelado" ? "text-red-300" : "text-stone-300"} size={40} />
           <p className="font-bold text-pegasus-navy">
             {chamada?.reason === "cancelado" ? "Treino cancelado nesta data" : "Sem treino nesta data"}
           </p>
@@ -270,33 +280,38 @@ export function ChamadaPage() {
               <p className="text-2xl font-black text-amber-700">{justificadas}</p>
               <p className="text-xs font-semibold text-amber-600">Justificadas</p>
             </div>
-            <div className="rounded-2xl border border-blue-100 bg-pegasus-surface px-4 py-3 text-center">
+            <div className="rounded-2xl border border-stone-200 bg-pegasus-surface px-4 py-3 text-center">
               <p className="text-2xl font-black text-pegasus-navy">{naoMarcados}</p>
               <p className="text-xs font-semibold text-pegasus-medium">Não marcados</p>
             </div>
           </div>
 
-          <div data-tour="chamada-lista" className="overflow-hidden rounded-2xl border border-blue-100 bg-white shadow-soft">
-            <div className="flex items-center gap-2 border-b border-blue-50 px-5 py-3">
+          <div data-tour="chamada-lista" className="overflow-hidden rounded-2xl border border-stone-200 bg-white shadow-soft">
+            <div className="flex items-center gap-2 border-b border-stone-100 px-5 py-3">
               <Users size={16} className="text-pegasus-medium" />
               <p className="text-sm font-semibold text-pegasus-navy">{athletes.length} atleta{athletes.length !== 1 ? "s" : ""}</p>
             </div>
-            <div className="divide-y divide-blue-50">
+            <div className="divide-y divide-stone-100">
               {athletes.map((athlete) => (
                 <div
                   key={athlete.id}
                   className="flex flex-col gap-2 px-5 py-3.5 sm:flex-row sm:items-center sm:justify-between"
                 >
                   <div className="flex min-w-0 items-center gap-3">
-                    {savingId === athlete.id ? (
-                      <Loader2 className="h-3 w-3 shrink-0 animate-spin text-pegasus-primary" />
-                    ) : (
-                      <span
-                        className={`h-2.5 w-2.5 shrink-0 rounded-full ${
-                          athlete.status ? STATUS_DOT[athlete.status] : "bg-slate-200"
-                        }`}
-                      />
-                    )}
+                    <div className="relative shrink-0">
+                      <span className="grid h-8 w-8 place-items-center rounded-full bg-stone-100 text-[10px] font-bold text-stone-600">
+                        {initials(athlete.name)}
+                      </span>
+                      {savingId === athlete.id ? (
+                        <Loader2 className="absolute -bottom-0.5 -right-0.5 h-3.5 w-3.5 animate-spin rounded-full bg-white text-pegasus-primary" />
+                      ) : (
+                        <span
+                          className={`absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full ring-2 ring-white ${
+                            athlete.status ? STATUS_DOT[athlete.status] : "bg-slate-300"
+                          }`}
+                        />
+                      )}
+                    </div>
                     <div className="min-w-0">
                       <p className="truncate text-sm font-semibold text-pegasus-navy">{athlete.name}</p>
                       <div className="flex items-center gap-2">
@@ -326,7 +341,7 @@ export function ChamadaPage() {
                         type="button"
                         onClick={() => handleStatusClick(athlete, s)}
                         disabled={savingId === athlete.id}
-                        className={`rounded-xl px-3 py-1.5 text-xs font-bold transition disabled:opacity-50 ${
+                        className={`focus-ring rounded-xl px-3 py-1.5 text-xs font-bold transition disabled:opacity-50 ${
                           athlete.status === s ? STATUS_CONFIG[s].active : STATUS_CONFIG[s].idle
                         }`}
                       >

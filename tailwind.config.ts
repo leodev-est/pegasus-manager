@@ -8,17 +8,33 @@ const config: Config = {
     extend: {
       colors: {
         pegasus: {
-          navy: "#0B2E59",
-          primary: "#0D47A1",
-          medium: "#1565C0",
-          sky: "#42A5F5",
-          ice: "#E3F2FD",
-          surface: "#F5F7FA",
+          navy: "#18181B",
+          primary: "#18181B",
+          medium: "#3F3F46",
+          sky: "#22C55E",
+          ice: "#F0FDF4",
+          surface: "#FAFAF9",
+          gold: "#A16207",
+        },
+        // Neutral (no blue undertone) graphite scale — replaces Tailwind's default
+        // blue-tinted slate everywhere `slate-*` is used, in both themes.
+        slate: {
+          50: "#FAFAFA",
+          100: "#F4F4F5",
+          200: "#E4E4E7",
+          300: "#D4D4D8",
+          400: "#A1A1AA",
+          500: "#71717A",
+          600: "#52525B",
+          700: "#3F3F46",
+          800: "#1F1F23",
+          900: "#18181B",
+          950: "#0A0A0B",
         },
       },
       boxShadow: {
-        soft: "0 18px 45px rgba(11, 46, 89, 0.10)",
-        glow: "0 0 0 3px rgba(66, 165, 245, 0.25)",
+        soft: "0 12px 32px rgba(24, 24, 27, 0.06)",
+        glow: "0 0 0 3px rgba(34, 197, 94, 0.25)",
       },
       borderRadius: {
         "4xl": "2rem",

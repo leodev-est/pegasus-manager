@@ -90,6 +90,7 @@ export function TurmasPage() {
   const [editingTurma, setEditingTurma] = useState<Turma | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<Turma | null>(null);
   const [form, setForm] = useState<TurmaForm>(emptyForm);
+  const [formErrors, setFormErrors] = useState<Partial<Record<"name" | "time" | "location" | "daysOfWeek", string>>>({});
 
   const loadTurmas = useCallback(async () => {
     setIsLoading(true);
@@ -109,12 +110,14 @@ export function TurmasPage() {
   function openCreateModal() {
     setEditingTurma(null);
     setForm(emptyForm);
+    setFormErrors({});
     setIsModalOpen(true);
   }
 
   function openEditModal(turma: Turma) {
     setEditingTurma(turma);
     setForm(turmaToForm(turma));
+    setFormErrors({});
     setIsModalOpen(true);
   }
 
@@ -127,6 +130,15 @@ export function TurmasPage() {
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+
+    const errors: typeof formErrors = {};
+    if (!form.name.trim()) errors.name = "Informe o nome da turma.";
+    if (!form.time.trim()) errors.time = "Informe o horário.";
+    if (!form.location.trim()) errors.location = "Informe o local do treino.";
+    if (form.daysOfWeek.length === 0) errors.daysOfWeek = "Selecione ao menos um dia de treino.";
+    setFormErrors(errors);
+    if (Object.keys(errors).length > 0) return;
+
     setIsSaving(true);
 
     try {
@@ -162,7 +174,7 @@ export function TurmasPage() {
   }
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-6">
       <PageHeader
         title="Turmas"
         description="Cada turma tem seus próprios dias, horário e local — usados na chamada, no formulário de inscrição e nos lembretes."
@@ -175,7 +187,7 @@ export function TurmasPage() {
       />
 
       <section className="panel overflow-hidden">
-        <div className="flex items-center gap-3 border-b border-blue-100 p-6">
+        <div className="flex items-center gap-3 border-b border-stone-200 p-6">
           <Users className="text-pegasus-primary" size={22} />
           <div>
             <h2 className="text-xl font-bold text-pegasus-navy">Turmas cadastradas</h2>
@@ -191,7 +203,7 @@ export function TurmasPage() {
         ) : turmas.length > 0 ? (
           <div className="grid gap-3 p-4 sm:p-6 lg:grid-cols-2">
             {turmas.map((turma) => (
-              <article key={turma.id} className="rounded-2xl border border-blue-100 bg-white p-4 shadow-sm">
+              <article key={turma.id} className="rounded-2xl border border-stone-200 bg-white p-4 shadow-sm">
                 <div className="flex items-start gap-3">
                   <span className="mt-1 h-4 w-4 shrink-0 rounded-full" style={{ backgroundColor: turma.color }} />
                   <div className="min-w-0 flex-1">
@@ -210,7 +222,7 @@ export function TurmasPage() {
                     )}
                   </div>
                 </div>
-                <div className="mt-4 border-t border-blue-50 pt-3">
+                <div className="mt-4 border-t border-stone-100 pt-3">
                   <ActionButtons canDelete canEdit onDelete={() => setDeleteTarget(turma)} onEdit={() => openEditModal(turma)} />
                 </div>
               </article>
@@ -219,6 +231,12 @@ export function TurmasPage() {
         ) : (
           <div className="p-6">
             <EmptyState
+              action={
+                <Button onClick={openCreateModal}>
+                  <Plus size={17} />
+                  Nova turma
+                </Button>
+              }
               description="Cadastre a primeira turma pra começar a usar chamada, inscrição e lembretes por turma."
               icon={Users}
               title="Nenhuma turma cadastrada"
@@ -229,7 +247,7 @@ export function TurmasPage() {
 
       <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title={editingTurma ? "Editar turma" : "Nova turma"}>
         <form className="grid gap-4" onSubmit={handleSubmit}>
-          <Input disabled={isSaving} label="Nome" onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="Ex: Feminino, Masculino, Feminino Sub-18" required value={form.name} />
+          <Input disabled={isSaving} error={formErrors.name} label="Nome" onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="Ex: Feminino, Masculino, Feminino Sub-18" required value={form.name} />
 
           <div>
             <p className="mb-2 text-sm font-medium text-slate-700">Dias de treino</p>
@@ -243,21 +261,24 @@ export function TurmasPage() {
                   className={`rounded-full border px-3 py-1.5 text-xs font-bold transition ${
                     form.daysOfWeek.includes(d.value)
                       ? "border-pegasus-primary bg-pegasus-primary text-white"
-                      : "border-blue-100 text-slate-600 hover:bg-pegasus-surface"
+                      : "border-stone-200 text-slate-600 hover:bg-pegasus-surface"
                   }`}
                 >
                   {d.label}
                 </button>
               ))}
             </div>
+            {formErrors.daysOfWeek ? (
+              <p role="alert" className="mt-1.5 text-xs font-semibold text-rose-600">{formErrors.daysOfWeek}</p>
+            ) : null}
           </div>
 
           <div className="grid gap-4 md:grid-cols-2">
-            <Input disabled={isSaving} label="Horário" onChange={(e) => setForm({ ...form, time: e.target.value })} placeholder="Ex: 16:00 às 17:30" required value={form.time} />
+            <Input disabled={isSaving} error={formErrors.time} label="Horário" onChange={(e) => setForm({ ...form, time: e.target.value })} placeholder="Ex: 16:00 às 17:30" required value={form.time} />
             <Input disabled={isSaving} label="Data de início (opcional)" onChange={(e) => setForm({ ...form, startDate: e.target.value })} type="date" value={form.startDate} />
           </div>
 
-          <Input disabled={isSaving} label="Local" onChange={(e) => setForm({ ...form, location: e.target.value })} placeholder="Endereço completo" required value={form.location} />
+          <Input disabled={isSaving} error={formErrors.location} label="Local" onChange={(e) => setForm({ ...form, location: e.target.value })} placeholder="Endereço completo" required value={form.location} />
           <Input disabled={isSaving} label="Dependência (opcional)" onChange={(e) => setForm({ ...form, dependency: e.target.value })} placeholder="Ex: Quadra - CREC" value={form.dependency} />
 
           <div>

@@ -79,7 +79,7 @@ export function MinhasAvaliacoesPage() {
   }));
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-6">
       <PageHeader
         title="Minhas Avaliações"
         description="Evolução das suas notas ao longo do tempo."
@@ -123,7 +123,7 @@ export function MinhasAvaliacoesPage() {
           )}
 
           {history.length > 1 && (
-            <section data-tour="avaliacoes-grafico" className="panel p-6">
+            <section data-tour="avaliacoes-grafico" className="panel p-5">
               <div className="mb-6 flex items-center gap-3">
                 <Star className="text-pegasus-primary" size={20} />
                 <div>
@@ -148,10 +148,10 @@ export function MinhasAvaliacoesPage() {
           )}
 
           <section data-tour="avaliacoes-historico" className="panel overflow-hidden">
-            <div className="border-b border-blue-100 p-5">
+            <div className="border-b border-stone-200 p-5">
               <h2 className="font-black text-pegasus-navy">Histórico ({history.length} avaliação{history.length !== 1 ? "ões" : ""})</h2>
             </div>
-            <div className="divide-y divide-blue-50">
+            <div className="divide-y divide-stone-100">
               {[...history].reverse().map((e) => (
                 <div key={e.id} className="px-5 py-4">
                   <p className="mb-2 text-xs font-semibold text-slate-400">{formatDate(e.createdAt)}</p>

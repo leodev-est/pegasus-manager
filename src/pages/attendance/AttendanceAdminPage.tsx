@@ -118,7 +118,7 @@ export function AttendanceAdminPage() {
   }
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-6">
       <PageHeader title="Frequência" description="Acompanhamento mensal de presença nos treinos." />
 
       <div data-tour="freq-admin-filtros">
@@ -134,7 +134,7 @@ export function AttendanceAdminPage() {
       </div>
 
       <section data-tour="freq-admin-lista" className="panel overflow-hidden">
-        <div className="flex items-center gap-3 border-b border-blue-100 p-5">
+        <div className="flex items-center gap-3 border-b border-stone-200 p-5">
           <UserCheck className="text-pegasus-primary" size={22} />
           <div>
             <h2 className="text-xl font-black text-pegasus-navy">Resumo por atleta</h2>
@@ -150,7 +150,7 @@ export function AttendanceAdminPage() {
         ) : filteredData.length ? (
           <div className="grid gap-4 p-4 lg:grid-cols-2">
             {filteredData.map((item) => (
-              <article className="rounded-2xl border border-blue-100 bg-white p-4 shadow-sm" key={item.athlete.id}>
+              <article className="rounded-2xl border border-stone-200 bg-white p-4 shadow-sm" key={item.athlete.id}>
                 <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                   <div>
                     <div className="flex items-center gap-2">
@@ -213,7 +213,7 @@ export function AttendanceAdminPage() {
         {selectedAthlete ? (
           <div className="space-y-3">
             {selectedAthlete.details.map((detail) => (
-              <article className="rounded-2xl border border-blue-100 bg-white p-4" key={detail.date}>
+              <article className="rounded-2xl border border-stone-200 bg-white p-4" key={detail.date}>
                 <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                   <div>
                     <p className="font-black text-pegasus-navy">{formatDate(detail.date)}</p>

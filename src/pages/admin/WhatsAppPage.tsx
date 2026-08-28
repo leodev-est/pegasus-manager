@@ -133,13 +133,13 @@ export function WhatsAppPage() {
   }
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-6">
       <PageHeader
         title="WhatsApp"
         description={`Conecte o número de WhatsApp do ${ORG_NAME} para enviar notificações automáticas aos atletas.`}
       />
 
-      <section data-tour="whats-status" className="panel p-6">
+      <section data-tour="whats-status" className="panel p-5">
         <div className="flex flex-wrap items-center justify-between gap-4">
           <div className="flex items-center gap-4">
             <div className="grid h-14 w-14 place-items-center rounded-2xl bg-pegasus-ice text-pegasus-primary">
@@ -192,13 +192,13 @@ export function WhatsAppPage() {
 
         {/* QR code (if available) */}
         {state.status === "connecting" && state.qrDataUrl && (
-          <div className="mt-6 flex flex-col items-center gap-4 rounded-2xl border border-blue-100 bg-pegasus-surface p-6">
+          <div className="mt-6 flex flex-col items-center gap-4 rounded-2xl border border-stone-200 bg-pegasus-surface p-6">
             <p className="text-sm font-bold text-pegasus-navy">
               Abra o WhatsApp → Dispositivos conectados → Conectar dispositivo → Escaneie o QR
             </p>
             <img
               alt="QR Code WhatsApp"
-              className="h-56 w-56 rounded-xl border border-blue-100 bg-white p-2 shadow-sm"
+              className="h-56 w-56 rounded-xl border border-stone-200 bg-white p-2 shadow-sm"
               src={state.qrDataUrl}
             />
           </div>
@@ -206,7 +206,7 @@ export function WhatsAppPage() {
 
         {/* Pairing code flow (primary method when QR not available) */}
         {state.status === "connecting" && !state.qrDataUrl && (
-          <div className="mt-5 space-y-4 rounded-2xl border border-blue-100 bg-pegasus-surface p-5">
+          <div className="mt-5 space-y-4 rounded-2xl border border-stone-200 bg-pegasus-surface p-5">
             <div>
               <p className="font-bold text-pegasus-navy">Vincular com código de telefone</p>
               <p className="mt-1 text-sm text-slate-500">
@@ -277,14 +277,14 @@ export function WhatsAppPage() {
         )}
       </section>
 
-      <section data-tour="whats-features" className="panel p-6">
+      <section data-tour="whats-features" className="panel p-5">
         <h2 className="text-lg font-black text-pegasus-navy">Notificações automáticas</h2>
         <p className="mt-1 text-sm text-slate-500">
           Disparadas automaticamente quando conectado. Requerem telefone cadastrado no perfil do atleta.
         </p>
         <div className="mt-5 grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
           {FEATURES.map((f) => (
-            <div className="rounded-2xl border border-blue-100 bg-white p-4" key={f.title}>
+            <div className="rounded-2xl border border-stone-200 bg-white p-4" key={f.title}>
               <p className="text-2xl">{f.emoji}</p>
               <p className="mt-2 font-black text-pegasus-navy">{f.title}</p>
               <p className="mt-1 text-sm leading-5 text-slate-600">{f.description}</p>

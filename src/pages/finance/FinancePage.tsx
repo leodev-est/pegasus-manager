@@ -1,5 +1,6 @@
 ﻿import { Banknote, BarChart2, Clipboard, FileDown, FileText, Loader2, Plus, WalletCards } from "lucide-react";
 import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import { useAthletes } from "../../hooks/useAthletes";
 import { useTour } from "../../tours/useTour";
 import { Bar, BarChart, CartesianGrid, Legend, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
@@ -44,6 +45,10 @@ type DeleteTarget =
 
 const currentMonth = new Date().toISOString().slice(0, 7);
 type FinanceTab = "resumo" | "mensalidades" | "caixa" | "relatorios" | "graficos";
+const FINANCE_TAB_VALUES: FinanceTab[] = ["resumo", "mensalidades", "caixa", "relatorios", "graficos"];
+function isFinanceTab(value: string | null): value is FinanceTab {
+  return FINANCE_TAB_VALUES.includes(value as FinanceTab);
+}
 
 const TOUR_STEPS = [
   {
@@ -233,7 +238,16 @@ export function FinancePage() {
   const [type, setType] = useState("todos");
   const [status, setStatus] = useState("todos");
   const [month, setMonth] = useState(currentMonth);
-  const [activeTab, setActiveTab] = useState<FinanceTab>("resumo");
+  const [searchParams, setSearchParams] = useSearchParams();
+  const tabParam = searchParams.get("tab");
+  const activeTab: FinanceTab = isFinanceTab(tabParam) ? tabParam : "resumo";
+  function setActiveTab(tab: FinanceTab) {
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev);
+      next.set("tab", tab);
+      return next;
+    });
+  }
   const [chartData, setChartData] = useState<ChartDataPoint[]>([]);
   const [isLoadingChart, setIsLoadingChart] = useState(false);
   const [mensalidades, setMensalidades] = useState<MensalidadeEntry[]>([]);
@@ -524,7 +538,7 @@ export function FinancePage() {
   }
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-6">
       <PageHeader
         title="Financeiro"
         description="Controle de receitas, despesas, mensalidades e caixa do projeto."
@@ -544,7 +558,7 @@ export function FinancePage() {
         }
       />
 
-      <div data-tour="finance-tabs" className="flex flex-wrap gap-2 rounded-2xl border border-blue-100 bg-white p-2 shadow-sm">
+      <div data-tour="finance-tabs" className="flex flex-wrap gap-2 rounded-2xl border border-stone-200 bg-white p-2 shadow-sm">
         {financeTabs.map((tab) => (
           <button
             className={`rounded-xl px-4 py-2 text-sm font-bold transition ${
@@ -565,36 +579,29 @@ export function FinancePage() {
       </div>
 
       {activeTab === "resumo" ? (
-      <section data-tour="finance-resumo" className="grid gap-5 md:grid-cols-2 xl:grid-cols-5">
+      <section data-tour="finance-resumo" className="panel flex flex-wrap divide-x divide-stone-100 overflow-hidden dark:divide-slate-700">
         {[
-          ["Caixa atual", summary.currentCash],
-          ["Receitas do mês", summary.monthlyRevenue],
-          ["Despesas do mês", summary.monthlyExpenses],
-          ["Saldo do mês", summary.monthlyBalance],
-        ].map(([labelText, value]) => (
-          <article key={labelText} className="panel p-5">
-            <div className="flex items-center justify-between gap-4">
-              <div>
-                <p className="text-sm font-semibold text-slate-500">{labelText}</p>
-                <strong className="mt-2 block text-2xl font-black text-pegasus-navy">
-                  {formatCurrency(Number(value))}
-                </strong>
-              </div>
-              <span className="rounded-2xl bg-pegasus-ice p-3 text-pegasus-primary">
-                <Banknote size={22} />
-              </span>
+          ["Caixa atual", formatCurrency(summary.currentCash)],
+          ["Receitas do mês", formatCurrency(summary.monthlyRevenue)],
+          ["Despesas do mês", formatCurrency(summary.monthlyExpenses)],
+          ["Saldo do mês", formatCurrency(summary.monthlyBalance)],
+          [
+            "Pendências",
+            String(summary.pendingMonthlyPayments + summary.overdueMonthlyPayments),
+            `${summary.pendingMonthlyPayments} pendente(s), ${summary.overdueMonthlyPayments} atrasada(s)`,
+          ],
+        ].map(([labelText, value, helper]) => (
+          <div key={labelText} className="flex min-w-[210px] flex-1 items-center gap-3.5 px-6 py-5">
+            <span className="grid h-10 w-10 shrink-0 place-items-center rounded-lg bg-emerald-50 text-emerald-600 dark:bg-emerald-500/10 dark:text-emerald-400">
+              <Banknote size={19} />
+            </span>
+            <div className="min-w-0">
+              <p className="truncate text-[11px] font-bold uppercase tracking-wide text-stone-400">{labelText}</p>
+              <p className="mt-0.5 text-xl font-black text-pegasus-navy tabular-nums">{value}</p>
+              {helper ? <p className="truncate text-[11px] text-stone-400">{helper}</p> : null}
             </div>
-          </article>
+          </div>
         ))}
-        <article className="panel p-5">
-          <p className="text-sm font-semibold text-slate-500">Pendências</p>
-          <strong className="mt-2 block text-2xl font-black text-pegasus-navy">
-            {summary.pendingMonthlyPayments + summary.overdueMonthlyPayments}
-          </strong>
-          <p className="mt-2 text-xs font-semibold text-slate-500">
-            {summary.pendingMonthlyPayments} pendente(s), {summary.overdueMonthlyPayments} atrasada(s)
-          </p>
-        </article>
       </section>
       ) : null}
 
@@ -607,7 +614,7 @@ export function FinancePage() {
       ) : null}
 
       {activeTab === "resumo" || activeTab === "relatorios" ? (
-      <section className="panel p-6">
+      <section className="panel p-5">
         <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
           <div>
             <h2 className="text-xl font-bold text-pegasus-navy">Demonstrativo do mês</h2>
@@ -621,15 +628,15 @@ export function FinancePage() {
           </Button>
         </div>
         <div className="mt-6 grid gap-4 md:grid-cols-3">
-          <div className="rounded-2xl border border-blue-100 bg-pegasus-surface p-4">
+          <div className="rounded-2xl border border-stone-200 bg-pegasus-surface p-4">
             <p className="text-sm font-semibold text-slate-500">Total de entradas</p>
             <strong className="mt-2 block text-xl text-pegasus-navy">{formatCurrency(summary.monthlyRevenue)}</strong>
           </div>
-          <div className="rounded-2xl border border-blue-100 bg-pegasus-surface p-4">
+          <div className="rounded-2xl border border-stone-200 bg-pegasus-surface p-4">
             <p className="text-sm font-semibold text-slate-500">Total de saídas</p>
             <strong className="mt-2 block text-xl text-pegasus-navy">{formatCurrency(summary.monthlyExpenses)}</strong>
           </div>
-          <div className="rounded-2xl border border-blue-100 bg-pegasus-surface p-4">
+          <div className="rounded-2xl border border-stone-200 bg-pegasus-surface p-4">
             <p className="text-sm font-semibold text-slate-500">Saldo final</p>
             <strong className="mt-2 block text-xl text-pegasus-navy">{formatCurrency(summary.monthlyBalance)}</strong>
           </div>
@@ -638,7 +645,7 @@ export function FinancePage() {
           <>
             <p className="mt-6 text-sm font-bold text-pegasus-navy">Mensalidades do mês</p>
             <div className="mt-3 grid gap-4 sm:grid-cols-2 md:grid-cols-4">
-              <div className="rounded-2xl border border-blue-100 bg-pegasus-surface p-4">
+              <div className="rounded-2xl border border-stone-200 bg-pegasus-surface p-4">
                 <p className="text-sm font-semibold text-slate-500">Total esperado</p>
                 <strong className="mt-2 block text-xl text-pegasus-navy">{formatCurrency(summary.mensalidadesTotalEsperado)}</strong>
               </div>
@@ -650,7 +657,7 @@ export function FinancePage() {
                 <p className="text-sm font-semibold text-amber-700">Total pendente</p>
                 <strong className="mt-2 block text-xl text-amber-800">{formatCurrency(summary.mensalidadesTotalPendente)}</strong>
               </div>
-              <div className="rounded-2xl border border-blue-100 bg-pegasus-surface p-4">
+              <div className="rounded-2xl border border-stone-200 bg-pegasus-surface p-4">
                 <p className="text-sm font-semibold text-slate-500">Taxa de adimplência</p>
                 <strong className={`mt-2 block text-xl ${summary.mensalidadesTaxaAdimplencia >= 80 ? "text-emerald-700" : summary.mensalidadesTaxaAdimplencia >= 50 ? "text-amber-700" : "text-rose-700"}`}>
                   {summary.mensalidadesTaxaAdimplencia}%
@@ -680,7 +687,7 @@ export function FinancePage() {
 
       {activeTab === "relatorios" ? (
       <section className="panel overflow-hidden">
-        <div className="flex items-center justify-between gap-3 border-b border-blue-100 p-6">
+        <div className="flex items-center justify-between gap-3 border-b border-stone-200 p-6">
           <div className="flex items-center gap-3">
             <FileText className="text-pegasus-primary" size={22} />
             <div>
@@ -703,7 +710,7 @@ export function FinancePage() {
             <EmptyState icon={FileText} title="Nenhum relatório gerado" description="Clique em 'Gerar agora' para criar o relatório do mês atual." />
           </div>
         ) : (
-          <div className="divide-y divide-blue-50">
+          <div className="divide-y divide-stone-100">
             {reports.map((r) => (
               <div key={r.id} className="flex items-center justify-between gap-4 px-6 py-4">
                 <div>
@@ -760,7 +767,7 @@ export function FinancePage() {
         </div>
 
         <div className="panel overflow-hidden">
-          <div className="flex items-center gap-3 border-b border-blue-100 p-6">
+          <div className="flex items-center gap-3 border-b border-stone-200 p-6">
             <FileText className="text-pegasus-primary" size={22} />
             <div>
               <h2 className="text-xl font-bold text-pegasus-navy">Mensalidades</h2>
@@ -799,7 +806,7 @@ export function FinancePage() {
             <>
               <div className="grid gap-3 p-4 md:hidden">
                 {mensalidades.map((m) => (
-                  <article key={m.id} className="rounded-2xl border border-blue-100 bg-white p-4 shadow-sm">
+                  <article key={m.id} className="rounded-2xl border border-stone-200 bg-white p-4 shadow-sm">
                     <div className="flex items-start justify-between gap-3">
                       <div>
                         <h3 className="font-bold text-pegasus-navy">{m.athleteName}</h3>
@@ -817,7 +824,7 @@ export function FinancePage() {
                         <StatusBadge label={label(m.status)} tone={badgeTone(m.status)} />
                       </div>
                     </div>
-                    <div className="mt-4 border-t border-blue-50 pt-3">
+                    <div className="mt-4 border-t border-stone-100 pt-3">
                       {m.status === "pago" ? (
                         <Button
                           className="h-8 px-3 text-xs"
@@ -906,7 +913,7 @@ export function FinancePage() {
 
       {activeTab === "caixa" ? (
       <section className="panel overflow-hidden">
-        <div className="flex items-center justify-between gap-3 border-b border-blue-100 p-6">
+        <div className="flex items-center justify-between gap-3 border-b border-stone-200 p-6">
           <div className="flex items-center gap-3">
             <FileText className="text-pegasus-primary" size={22} />
             <div>
@@ -946,7 +953,7 @@ export function FinancePage() {
           <>
             <div className="grid gap-3 p-4 md:hidden">
               {cashPayments.map((payment) => (
-                <article key={payment.id} className="rounded-2xl border border-blue-100 bg-white p-4 shadow-sm">
+                <article key={payment.id} className="rounded-2xl border border-stone-200 bg-white p-4 shadow-sm">
                   <div className="flex items-start justify-between gap-3">
                     <div>
                       <h3 className="font-bold text-pegasus-navy">{payment.description}</h3>
@@ -962,7 +969,7 @@ export function FinancePage() {
                     <p><strong className="text-pegasus-navy">Atleta:</strong> {payment.athleteName ?? "-"}</p>
                     <p><strong className="text-pegasus-navy">Categoria:</strong> {payment.category ?? "-"}</p>
                   </div>
-                  <div className="mt-4 border-t border-blue-50 pt-3">
+                  <div className="mt-4 border-t border-stone-100 pt-3">
                     <ActionButtons
                       canDelete={canDelete}
                       canEdit={canUpdate}
@@ -1018,7 +1025,7 @@ export function FinancePage() {
 
       {activeTab === "caixa" ? (
       <section className="panel overflow-hidden">
-        <div className="flex flex-col gap-4 border-b border-blue-100 p-6 md:flex-row md:items-center md:justify-between">
+        <div className="flex flex-col gap-4 border-b border-stone-200 p-6 md:flex-row md:items-center md:justify-between">
           <div className="flex items-center gap-3">
             <WalletCards className="text-pegasus-primary" size={22} />
             <div>
@@ -1065,7 +1072,7 @@ export function FinancePage() {
           <>
             <div className="grid gap-3 p-4 md:hidden">
               {movements.map((movement) => (
-                <article key={movement.id} className="rounded-2xl border border-blue-100 bg-white p-4 shadow-sm">
+                <article key={movement.id} className="rounded-2xl border border-stone-200 bg-white p-4 shadow-sm">
                   <div className="flex items-start justify-between gap-3">
                     <div>
                       <h3 className="font-bold text-pegasus-navy">{movement.description}</h3>
@@ -1078,7 +1085,7 @@ export function FinancePage() {
                     {movement.category ? <span className="rounded-full bg-pegasus-surface px-3 py-1 text-xs font-bold text-slate-600">{movement.category}</span> : null}
                   </div>
                   <p className="mt-4 text-sm text-slate-600"><strong className="text-pegasus-navy">Responsável:</strong> {movement.responsible ?? "-"}</p>
-                  <div className="mt-4 border-t border-blue-50 pt-3">
+                  <div className="mt-4 border-t border-stone-100 pt-3">
                     <ActionButtons
                       canDelete={canDelete}
                       canEdit={canUpdate}
@@ -1133,7 +1140,7 @@ export function FinancePage() {
             <EmptyState icon={BarChart2} title="Sem dados" description="Não há dados financeiros para exibir nos gráficos." />
           ) : (
             <>
-              <article className="panel p-6">
+              <article className="panel p-5">
                 <h3 className="mb-4 text-lg font-black text-pegasus-navy">Receita: Esperado vs Pago</h3>
                 <ResponsiveContainer height={280} width="100%">
                   <BarChart data={chartData}>
@@ -1143,12 +1150,12 @@ export function FinancePage() {
                     <Tooltip formatter={(value: number) => formatCurrency(value)} labelFormatter={formatChartMonth} />
                     <Legend />
                     <Bar dataKey="expected" fill="#94a3b8" name="Esperado" radius={[4, 4, 0, 0]} />
-                    <Bar dataKey="paid" fill="#1e3a5f" name="Pago" radius={[4, 4, 0, 0]} />
+                    <Bar dataKey="paid" fill="#059669" name="Pago" radius={[4, 4, 0, 0]} />
                   </BarChart>
                 </ResponsiveContainer>
               </article>
 
-              <article className="panel p-6">
+              <article className="panel p-5">
                 <h3 className="mb-4 text-lg font-black text-pegasus-navy">Inadimplência por mês (qtd)</h3>
                 <ResponsiveContainer height={240} width="100%">
                   <LineChart data={chartData}>
@@ -1161,7 +1168,7 @@ export function FinancePage() {
                 </ResponsiveContainer>
               </article>
 
-              <article className="panel p-6">
+              <article className="panel p-5">
                 <h3 className="mb-4 text-lg font-black text-pegasus-navy">Evolução de mensalidades</h3>
                 <ResponsiveContainer height={280} width="100%">
                   <BarChart data={chartData}>

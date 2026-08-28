@@ -55,7 +55,7 @@ function CountdownBadge({ dateStr }: { dateStr: string }) {
       </span>
     );
   return (
-    <span className="rounded-full bg-blue-100 px-2.5 py-0.5 text-xs font-bold text-blue-600 dark:bg-blue-900/30 dark:text-blue-400">
+    <span className="rounded-full bg-stone-100 px-2.5 py-0.5 text-xs font-bold text-stone-600 dark:bg-slate-700 dark:text-slate-300">
       Em {days} dias
     </span>
   );

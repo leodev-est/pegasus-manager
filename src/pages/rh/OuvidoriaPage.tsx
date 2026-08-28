@@ -134,7 +134,7 @@ export function OuvidoriaPage() {
   };
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-6">
       <PageHeader
         title="Ouvidoria"
         description="Sugestões, críticas e feedbacks enviados pelos atletas e membros."
@@ -179,7 +179,7 @@ export function OuvidoriaPage() {
                 className={`w-full rounded-2xl border p-5 text-left transition ${
                   selected?.id === s.id
                     ? "border-pegasus-primary bg-pegasus-ice dark:bg-slate-700"
-                    : "border-blue-100 bg-white hover:bg-pegasus-ice dark:border-slate-700 dark:bg-slate-800 dark:hover:bg-slate-700"
+                    : "border-stone-200 bg-white hover:bg-pegasus-ice dark:border-slate-700 dark:bg-slate-800 dark:hover:bg-slate-700"
                 }`}
                 key={s.id}
                 onClick={() => {
@@ -239,7 +239,7 @@ export function OuvidoriaPage() {
                 Resposta interna (opcional)
               </label>
               <textarea
-                className="w-full rounded-2xl border border-blue-100 bg-pegasus-surface px-4 py-3 text-sm outline-none transition focus:border-pegasus-primary focus:ring-2 focus:ring-pegasus-sky dark:border-slate-700 dark:bg-slate-900"
+                className="w-full rounded-2xl border border-stone-200 bg-pegasus-surface px-4 py-3 text-sm outline-none transition focus:border-pegasus-primary focus:ring-2 focus:ring-pegasus-sky dark:border-slate-700 dark:bg-slate-900"
                 id="response-text"
                 onChange={(e) => setResponse(e.target.value)}
                 placeholder="Adicione uma nota interna..."

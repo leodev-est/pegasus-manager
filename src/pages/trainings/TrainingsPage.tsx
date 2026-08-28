@@ -249,7 +249,7 @@ export function TrainingsPage() {
   }
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-6">
       <PageHeader
         title="Treinos"
         description="Planejamento técnico dos treinos, separado por data e blocos de atividade."
@@ -284,7 +284,7 @@ export function TrainingsPage() {
       </div>
 
       <section data-tour="treinos-lista" className="panel overflow-hidden">
-        <div className="flex items-center gap-3 border-b border-blue-100 p-6">
+        <div className="flex items-center gap-3 border-b border-stone-200 p-6">
           <CalendarDays className="text-pegasus-primary" size={22} />
           <div>
             <h2 className="text-xl font-bold text-pegasus-navy">Planejamento por data</h2>
@@ -306,7 +306,7 @@ export function TrainingsPage() {
                 </h3>
                 <div className="grid gap-3 lg:grid-cols-2">
                   {group.trainings.map((training) => (
-                    <article key={training.id} className="rounded-2xl border border-blue-100 bg-white p-4 shadow-sm">
+                    <article key={training.id} className="rounded-2xl border border-stone-200 bg-white p-4 shadow-sm">
                       <div className="flex items-start gap-3">
                         <span className="rounded-2xl bg-pegasus-ice p-3 text-pegasus-primary">
                           <Dumbbell size={18} />
@@ -323,7 +323,7 @@ export function TrainingsPage() {
                         <p><strong className="text-pegasus-navy">Jogo reduzido:</strong> {training.reducedGame ?? "-"}</p>
                         <p><strong className="text-pegasus-navy">Criado por:</strong> {training.createdBy}</p>
                       </div>
-                      <div className="mt-4 border-t border-blue-50 pt-3">
+                      <div className="mt-4 border-t border-stone-100 pt-3">
                         <ActionButtons
                           canDelete={canDelete}
                           canEdit={canUpdate}
@@ -393,13 +393,13 @@ export function TrainingsPage() {
               ["Finalização", viewTraining.finalPart],
               ["Observações", viewTraining.notes],
             ].map(([title, value]) => (
-              <section className="rounded-2xl border border-blue-100 bg-white p-4" key={title}>
+              <section className="rounded-2xl border border-stone-200 bg-white p-4" key={title}>
                 <h3 className="font-black text-pegasus-navy">{title}</h3>
                 <p className="mt-2 whitespace-pre-wrap">{value || "-"}</p>
               </section>
             ))}
 
-            <section className="rounded-2xl border border-blue-100 bg-white p-4">
+            <section className="rounded-2xl border border-stone-200 bg-white p-4">
               <div className="flex items-center justify-between">
                 <h3 className="font-black text-pegasus-navy">Avaliação dos atletas</h3>
                 {viewFeedback.length > 0 && (

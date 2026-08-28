@@ -51,7 +51,7 @@ export function MeuPlanoPage() {
   useTour("meu-plano:v1", isLoading || !plan ? [] : TOUR_STEPS);
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-6">
       <PageHeader
         title="Meu Plano de Treino"
         description="Seu plano de treino individual atual."
@@ -106,10 +106,10 @@ export function MeuPlanoPage() {
 
           {plan.exercises && plan.exercises.length > 0 && (
             <section data-tour="plano-exercicios" className="panel overflow-hidden">
-              <div className="border-b border-blue-100 p-5">
+              <div className="border-b border-stone-200 p-5">
                 <h3 className="font-black text-pegasus-navy">Exercícios ({plan.exercises.length})</h3>
               </div>
-              <div className="divide-y divide-blue-50">
+              <div className="divide-y divide-stone-100">
                 {plan.exercises.map((ex, idx) => (
                   <div key={idx} className="flex flex-col gap-1 px-5 py-4 sm:flex-row sm:items-start sm:gap-4">
                     <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-pegasus-primary text-xs font-black text-white">

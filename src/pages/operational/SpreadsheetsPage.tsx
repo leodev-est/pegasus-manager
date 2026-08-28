@@ -119,7 +119,7 @@ export function SpreadsheetsPage() {
   }
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-6">
       <PageHeader
         title="Operacional / Planilhas"
         description="Biblioteca de planilhas importadas para consulta recorrente."
@@ -134,7 +134,7 @@ export function SpreadsheetsPage() {
       />
 
       <section data-tour="planilhas-lista" className="panel overflow-hidden">
-        <div className="flex items-center gap-3 border-b border-blue-100 p-6">
+        <div className="flex items-center gap-3 border-b border-stone-200 p-6">
           <FileSpreadsheet className="text-pegasus-primary" size={22} />
           <div>
             <h2 className="text-xl font-bold text-pegasus-navy">Planilhas salvas</h2>
@@ -151,13 +151,13 @@ export function SpreadsheetsPage() {
           <>
             <div className="grid gap-3 p-4 md:hidden">
               {spreadsheets.map((spreadsheet) => (
-                <article key={spreadsheet.id} className="rounded-2xl border border-blue-100 bg-white p-4 shadow-sm">
+                <article key={spreadsheet.id} className="rounded-2xl border border-stone-200 bg-white p-4 shadow-sm">
                   <h3 className="font-bold text-pegasus-navy">{spreadsheet.name}</h3>
                   <p className="mt-2 text-sm text-slate-500">{spreadsheet.description ?? "Sem descricao"}</p>
                   <p className="mt-2 text-xs text-slate-400">Salva em {formatDate(spreadsheet.createdAt)}</p>
                   <div className="mt-4 flex flex-wrap gap-2">
                     <a
-                      className="focus-ring inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-blue-100 bg-white px-4 py-2.5 text-sm font-bold text-pegasus-primary shadow-sm transition hover:bg-pegasus-ice"
+                      className="focus-ring inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-stone-200 bg-white px-4 py-2.5 text-sm font-bold text-pegasus-primary shadow-sm transition hover:bg-pegasus-ice"
                       href={spreadsheet.url}
                       rel="noreferrer"
                       target="_blank"
@@ -185,7 +185,7 @@ export function SpreadsheetsPage() {
                     <td className="px-6 py-4">
                       <div className="flex flex-wrap gap-2">
                         <a
-                          className="focus-ring inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-blue-100 bg-white px-4 py-2.5 text-sm font-bold text-pegasus-primary shadow-sm transition hover:bg-pegasus-ice"
+                          className="focus-ring inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-stone-200 bg-white px-4 py-2.5 text-sm font-bold text-pegasus-primary shadow-sm transition hover:bg-pegasus-ice"
                           href={spreadsheet.url}
                           rel="noreferrer"
                           target="_blank"

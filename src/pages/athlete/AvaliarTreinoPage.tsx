@@ -153,14 +153,14 @@ export function AvaliarTreinoPage() {
     .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-6">
       <PageHeader
         title="Avaliar Treino"
         description="Dê sua nota e compartilhe sua opinião sobre os treinos que você participou."
       />
 
       <div className="grid gap-6 xl:grid-cols-[1fr_440px]">
-        <div data-tour="treino-lista" className="panel divide-y divide-blue-50 overflow-hidden dark:divide-slate-700">
+        <div data-tour="treino-lista" className="panel divide-y divide-stone-100 overflow-hidden dark:divide-slate-700">
           <div className="p-5">
             <h2 className="font-bold text-pegasus-navy">Treinos recentes</h2>
             <p className="text-sm text-slate-500">Selecione um treino para avaliar.</p>
@@ -170,7 +170,7 @@ export function AvaliarTreinoPage() {
           ) : trainings.length === 0 ? (
             <p className="p-6 text-sm text-slate-500">Nenhum treino passado encontrado.</p>
           ) : (
-            <div className="divide-y divide-blue-50 dark:divide-slate-700">
+            <div className="divide-y divide-stone-100 dark:divide-slate-700">
               {trainings.map((t) => {
                 const fb = feedbackMap.get(t.id);
                 return (
@@ -231,7 +231,7 @@ export function AvaliarTreinoPage() {
                     Comentário (opcional)
                   </label>
                   <textarea
-                    className="w-full rounded-2xl border border-blue-100 bg-pegasus-surface px-4 py-3 text-sm outline-none transition focus:border-pegasus-primary focus:ring-2 focus:ring-pegasus-sky dark:border-slate-700 dark:bg-slate-900"
+                    className="w-full rounded-2xl border border-stone-200 bg-pegasus-surface px-4 py-3 text-sm outline-none transition focus:border-pegasus-primary focus:ring-2 focus:ring-pegasus-sky dark:border-slate-700 dark:bg-slate-900"
                     id="fb-comment"
                     onChange={(e) => setComment(e.target.value)}
                     placeholder="O que achou do treino? Algo poderia ser diferente?"
@@ -260,11 +260,11 @@ export function AvaliarTreinoPage() {
           {/* Histórico de avaliações */}
           {history.length > 0 && (
             <div className="panel overflow-hidden">
-              <div className="flex items-center gap-2 border-b border-blue-100 p-4 dark:border-slate-700">
+              <div className="flex items-center gap-2 border-b border-stone-200 p-4 dark:border-slate-700">
                 <History className="text-pegasus-primary" size={18} />
                 <h3 className="font-bold text-pegasus-navy">Histórico de avaliações</h3>
               </div>
-              <div className="divide-y divide-blue-50 dark:divide-slate-700">
+              <div className="divide-y divide-stone-100 dark:divide-slate-700">
                 {history.map((fb) => {
                   const training = trainings.find((t) => t.id === fb.trainingId);
                   return (

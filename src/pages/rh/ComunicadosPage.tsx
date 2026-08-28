@@ -322,7 +322,7 @@ export function ComunicadosPage() {
   const isConnected = status === "connected";
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-6">
       <PageHeader
         title="Comunicados"
         description="Envie comunicados para grupos de WhatsApp, crie templates e agende mensagens."
@@ -344,7 +344,7 @@ export function ComunicadosPage() {
       />
 
       {/* Tabs */}
-      <div data-tour="com-tabs" className="flex flex-wrap gap-2 rounded-2xl border border-blue-100 bg-white p-2 shadow-sm">
+      <div data-tour="com-tabs" className="flex flex-wrap gap-2 rounded-2xl border border-stone-200 bg-white p-2 shadow-sm">
         {tabs.map((tab) => (
           <button
             className={`rounded-xl px-4 py-2 text-sm font-bold transition ${
@@ -432,7 +432,7 @@ export function ComunicadosPage() {
               <h2 className="font-black text-pegasus-navy">Mensagem</h2>
               <div className="flex-1">
                 <textarea
-                  className="w-full resize-none rounded-2xl border border-blue-100 bg-white px-4 py-3 text-sm text-pegasus-navy placeholder-slate-400 outline-none transition focus:border-pegasus-primary focus:ring-2 focus:ring-pegasus-primary/20 disabled:opacity-50"
+                  className="w-full resize-none rounded-2xl border border-stone-200 bg-white px-4 py-3 text-sm text-pegasus-navy placeholder-slate-400 outline-none transition focus:border-pegasus-primary focus:ring-2 focus:ring-pegasus-primary/20 disabled:opacity-50"
                   disabled={!isConnected || isSending}
                   onChange={(e) => setMessage(e.target.value)}
                   placeholder="Digite o comunicado aqui… Você pode usar *negrito*, _itálico_ e emojis 🎉"
@@ -461,7 +461,7 @@ export function ComunicadosPage() {
             </section>
           </div>
 
-          <section className="rounded-2xl border border-blue-100 bg-pegasus-surface p-5">
+          <section className="rounded-2xl border border-stone-200 bg-pegasus-surface p-5">
             <div className="flex items-center gap-2">
               <MessageCircle className="text-pegasus-primary" size={16} />
               <p className="text-sm font-bold text-pegasus-navy">Dicas de formatação</p>
@@ -479,7 +479,7 @@ export function ComunicadosPage() {
       {/* ── Templates Tab ──────────────────────────────────────────────────────── */}
       {activeTab === "templates" ? (
         <section className="panel overflow-hidden">
-          <div className="flex items-center gap-3 border-b border-blue-100 p-6">
+          <div className="flex items-center gap-3 border-b border-stone-200 p-6">
             <FileText className="text-pegasus-primary" size={22} />
             <div>
               <h2 className="text-xl font-bold text-pegasus-navy">Templates de mensagem</h2>
@@ -495,7 +495,7 @@ export function ComunicadosPage() {
               <EmptyState description="Crie templates para reutilizar mensagens frequentes." icon={FileText} title="Nenhum template" />
             </div>
           ) : (
-            <div className="divide-y divide-blue-50">
+            <div className="divide-y divide-stone-100">
               {templates.map((template) => (
                 <div className="flex items-start justify-between gap-4 p-5" key={template.id}>
                   <div className="min-w-0 flex-1">
@@ -520,7 +520,7 @@ export function ComunicadosPage() {
       {/* ── Agendados Tab ─────────────────────────────────────────────────────── */}
       {activeTab === "agendados" ? (
         <section className="panel overflow-hidden">
-          <div className="flex items-center gap-3 border-b border-blue-100 p-6">
+          <div className="flex items-center gap-3 border-b border-stone-200 p-6">
             <Clock className="text-pegasus-primary" size={22} />
             <div>
               <h2 className="text-xl font-bold text-pegasus-navy">Comunicados agendados</h2>
@@ -536,7 +536,7 @@ export function ComunicadosPage() {
               <EmptyState description="Agende comunicados para envio automático." icon={Calendar} title="Nenhum agendamento" />
             </div>
           ) : (
-            <div className="divide-y divide-blue-50">
+            <div className="divide-y divide-stone-100">
               {scheduled.map((item) => (
                 <div className="flex items-start justify-between gap-4 p-5" key={item.id}>
                   <div className="min-w-0 flex-1">
@@ -695,7 +695,7 @@ export function ComunicadosPage() {
       {/* ── Mural Tab ──────────────────────────────────────────────────────────── */}
       {activeTab === "mural" ? (
         <section className="panel overflow-hidden">
-          <div className="flex items-center gap-3 border-b border-blue-100 p-6">
+          <div className="flex items-center gap-3 border-b border-stone-200 p-6">
             <MessageSquare className="text-pegasus-primary" size={22} />
             <div>
               <h2 className="text-xl font-bold text-pegasus-navy">Mural de Avisos</h2>
@@ -711,7 +711,7 @@ export function ComunicadosPage() {
               <p className="text-sm text-slate-400">Nenhum aviso publicado. Clique em "Publicar aviso" para criar.</p>
             </div>
           ) : (
-            <div className="divide-y divide-blue-50">
+            <div className="divide-y divide-stone-100">
               {muralPosts.map((post) => (
                 <div className="flex items-start justify-between gap-4 p-5" key={post.id}>
                   <div className="min-w-0 flex-1">

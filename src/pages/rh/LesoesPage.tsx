@@ -197,7 +197,7 @@ export function LesoesPage() {
   }
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-6">
       <PageHeader
         title="Controle de Lesões"
         description="Gerencie lesões e afastamentos dos atletas."

@@ -355,7 +355,7 @@ export function UniformsPage() {
   const activeAthletes = athletes.filter((a) => a.status === "ativo");
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-6">
       <PageHeader
         title="Uniformes"
         description="Numeração do elenco, estoque e entregas de uniformes."

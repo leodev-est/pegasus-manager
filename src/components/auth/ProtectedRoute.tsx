@@ -15,7 +15,7 @@ export function ProtectedRoute({ children, permissions }: ProtectedRouteProps) {
   if (isLoading) {
     return (
       <div className="grid min-h-screen place-items-center bg-pegasus-surface">
-        <div className="flex items-center gap-3 rounded-2xl border border-blue-100 bg-white px-5 py-4 text-sm font-bold text-pegasus-primary shadow-soft">
+        <div className="flex items-center gap-3 rounded-2xl border border-stone-200 bg-white px-5 py-4 text-sm font-bold text-pegasus-primary shadow-soft">
           <Loader2 className="animate-spin" size={18} />
           Carregando sessão
         </div>

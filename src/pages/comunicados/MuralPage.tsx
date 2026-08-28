@@ -129,7 +129,7 @@ export function MuralPage() {
   }
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-6">
       <PageHeader
         title="Mural de Avisos"
         description="Comunicados e informações importantes do clube."
@@ -152,7 +152,7 @@ export function MuralPage() {
             className={`rounded-full px-4 py-1.5 text-sm font-bold transition ${
               filter === cat
                 ? "bg-pegasus-primary text-white"
-                : "bg-white border border-blue-100 text-slate-600 hover:bg-pegasus-ice"
+                : "bg-white border border-stone-200 text-slate-600 hover:bg-pegasus-ice"
             }`}
           >
             {cat === "all" ? "Todos" : CATEGORY_LABELS[cat]}
@@ -173,7 +173,7 @@ export function MuralPage() {
       ) : (
         <div data-tour="mural-posts" className="space-y-4">
           {filtered.map((post) => (
-            <article key={post.id} className="panel p-6">
+            <article key={post.id} className="panel p-5">
               <div className="flex items-start justify-between gap-4">
                 <div className="min-w-0 flex-1">
                   <div className="flex flex-wrap items-center gap-2">

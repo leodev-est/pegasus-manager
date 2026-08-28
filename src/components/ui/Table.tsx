@@ -19,7 +19,7 @@ export function Table({ headers, children, minWidth = "760px" }: TableProps) {
             ))}
           </tr>
         </thead>
-        <tbody className="divide-y divide-blue-50">{children}</tbody>
+        <tbody className="divide-y divide-stone-100">{children}</tbody>
       </table>
     </div>
   );

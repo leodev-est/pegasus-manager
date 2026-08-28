@@ -5,7 +5,7 @@ import { ORG_NAME } from "../../config/org";
 export function NotFoundPage() {
   return (
     <main className="grid min-h-screen place-items-center bg-pegasus-surface px-4 py-10 text-pegasus-navy">
-      <section className="w-full max-w-2xl rounded-3xl border border-blue-100 bg-white p-6 text-center shadow-soft sm:p-8">
+      <section className="w-full max-w-2xl rounded-3xl border border-stone-200 bg-white p-6 text-center shadow-soft sm:p-8">
         <span className="mx-auto grid h-16 w-16 place-items-center rounded-2xl bg-pegasus-ice text-pegasus-primary">
           <SearchX size={30} />
         </span>
@@ -25,7 +25,7 @@ export function NotFoundPage() {
             Voltar ao dashboard
           </Link>
           <Link
-            className="focus-ring inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-blue-100 bg-white px-4 py-2.5 text-sm font-bold text-pegasus-primary shadow-sm hover:bg-pegasus-ice"
+            className="focus-ring inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-stone-200 bg-white px-4 py-2.5 text-sm font-bold text-pegasus-primary shadow-sm hover:bg-pegasus-ice"
             to="/"
           >
             <ArrowLeft size={17} />

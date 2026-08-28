@@ -52,7 +52,7 @@ export function SugestoesPage() {
   }
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-6">
       <PageHeader
         title="Caixinha de Sugestões"
         description={`Compartilhe ideias, críticas ou sugestões para melhorar o ${ORG_NAME}.`}
@@ -75,7 +75,7 @@ export function SugestoesPage() {
           </Button>
         </div>
       ) : (
-        <form data-tour="sugestoes-form" className="panel p-6" onSubmit={handleSubmit}>
+        <form data-tour="sugestoes-form" className="panel p-5" onSubmit={handleSubmit}>
           <div className="flex items-center gap-3">
             <span className="rounded-2xl bg-pegasus-ice p-3 text-pegasus-primary">
               <MessageSquarePlus size={22} />
@@ -92,7 +92,7 @@ export function SugestoesPage() {
                 Sua mensagem
               </label>
               <textarea
-                className="w-full rounded-2xl border border-blue-100 bg-pegasus-surface px-4 py-3 text-sm text-pegasus-navy outline-none transition placeholder:text-slate-400 focus:border-pegasus-primary focus:ring-2 focus:ring-pegasus-sky dark:border-slate-700 dark:bg-slate-900"
+                className="w-full rounded-2xl border border-stone-200 bg-pegasus-surface px-4 py-3 text-sm text-pegasus-navy outline-none transition placeholder:text-slate-400 focus:border-pegasus-primary focus:ring-2 focus:ring-pegasus-sky dark:border-slate-700 dark:bg-slate-900"
                 id="suggestion-message"
                 minLength={5}
                 onChange={(e) => setMessage(e.target.value)}
@@ -103,7 +103,7 @@ export function SugestoesPage() {
               />
             </div>
 
-            <label className="flex cursor-pointer items-center gap-3 rounded-2xl border border-blue-100 p-4 transition hover:bg-pegasus-ice dark:border-slate-700 dark:hover:bg-slate-800">
+            <label className="flex cursor-pointer items-center gap-3 rounded-2xl border border-stone-200 p-4 transition hover:bg-pegasus-ice dark:border-slate-700 dark:hover:bg-slate-800">
               <input
                 checked={anonymous}
                 className="h-4 w-4 accent-pegasus-primary"

@@ -206,7 +206,7 @@ export function AthleteEvaluationsPage() {
   }
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-6">
       <PageHeader
         title="Avaliações"
         description="Avaliação técnica estilo FIFA por atleta ativo."
@@ -278,7 +278,7 @@ export function AthleteEvaluationsPage() {
       ) : (
         <section data-tour="aval-form" className="grid gap-6 xl:grid-cols-[0.85fr_1.15fr]">
           <aside className="space-y-6">
-            <article className="panel p-6">
+            <article className="panel p-5">
               <div className="flex items-center gap-4">
                 <div className="grid h-16 w-16 place-items-center rounded-2xl bg-pegasus-navy text-xl font-black text-white">
                   {initials(selectedAthlete.name)}
@@ -324,7 +324,7 @@ export function AthleteEvaluationsPage() {
               </div>
             </article>
 
-            <article className="panel p-6">
+            <article className="panel p-5">
               <h3 className="text-lg font-black text-pegasus-navy">Autoavaliação do atleta</h3>
               <div className="mt-4 space-y-3 text-sm text-slate-600">
                 <p><strong className="text-pegasus-navy">Nota própria:</strong> {evaluation.selfRating ?? "--"}</p>
@@ -334,7 +334,7 @@ export function AthleteEvaluationsPage() {
             </article>
           </aside>
 
-          <article className="panel p-6">
+          <article className="panel p-5">
             <div className="mb-5 flex items-center gap-3">
               <Shield className="text-pegasus-primary" size={22} />
               <div>
@@ -389,7 +389,7 @@ export function AthleteEvaluationsPage() {
       )}
 
       {selectedAthlete && history.length >= 2 ? (
-        <section className="panel p-6">
+        <section className="panel p-5">
           <div className="mb-5 flex items-center gap-3">
             <TrendingUp className="text-pegasus-primary" size={20} />
             <h2 className="text-xl font-black text-pegasus-navy">Evolução por atributo</h2>
@@ -424,7 +424,7 @@ export function AthleteEvaluationsPage() {
       ) : null}
 
       {selectedAthlete && history.length > 0 ? (
-        <section className="panel p-6">
+        <section className="panel p-5">
           <div className="mb-5 flex items-center gap-3">
             <History className="text-pegasus-primary" size={20} />
             <h2 className="text-xl font-black text-pegasus-navy">Histórico de avaliações</h2>
@@ -437,7 +437,7 @@ export function AthleteEvaluationsPage() {
               const prev = history[index + 1] ?? null;
               const isExpanded = expandedHistoryId === entry.id;
               return (
-                <article key={entry.id} className="overflow-hidden rounded-2xl border border-blue-100 bg-white">
+                <article key={entry.id} className="overflow-hidden rounded-2xl border border-stone-200 bg-white">
                   <button
                     className="flex w-full items-center justify-between gap-4 p-4 text-left"
                     onClick={() => setExpandedHistoryId(isExpanded ? null : entry.id)}
@@ -463,7 +463,7 @@ export function AthleteEvaluationsPage() {
                     </div>
                   </button>
                   {isExpanded ? (
-                    <div className="border-t border-blue-50 px-4 pb-4 pt-3">
+                    <div className="border-t border-stone-100 px-4 pb-4 pt-3">
                       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
                         {([["Técnica", entry.technical, prev?.technical], ["Físico", entry.physical, prev?.physical], ["Tático", entry.tactical, prev?.tactical], ["Mental", entry.mental, prev?.mental]] as [string, number | null, number | null | undefined][]).map(([name, current, previous]) => {
                           const delta = current !== null && previous != null ? +(current - previous).toFixed(1) : null;

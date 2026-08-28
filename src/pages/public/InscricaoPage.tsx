@@ -83,7 +83,7 @@ function TextInput({
     <label className="block space-y-1.5">
       <FieldLabel required={required}>{label}</FieldLabel>
       <input
-        className="min-h-11 w-full rounded-2xl border border-blue-100 bg-white px-4 py-3 text-sm text-pegasus-navy placeholder:text-slate-400 focus:border-pegasus-sky focus:outline-none focus:ring-2 focus:ring-blue-100 disabled:opacity-60"
+        className="min-h-11 w-full rounded-2xl border border-stone-200 bg-white px-4 py-3 text-sm text-pegasus-navy placeholder:text-slate-400 focus:border-pegasus-sky focus:outline-none focus:ring-2 focus:ring-blue-100 disabled:opacity-60"
         disabled={disabled}
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder}
@@ -116,7 +116,7 @@ function TextareaInput({
     <label className="block space-y-1.5">
       <FieldLabel required={required}>{label}</FieldLabel>
       <textarea
-        className="w-full resize-none rounded-2xl border border-blue-100 bg-white px-4 py-3 text-sm text-pegasus-navy placeholder:text-slate-400 focus:border-pegasus-sky focus:outline-none focus:ring-2 focus:ring-blue-100 disabled:opacity-60"
+        className="w-full resize-none rounded-2xl border border-stone-200 bg-white px-4 py-3 text-sm text-pegasus-navy placeholder:text-slate-400 focus:border-pegasus-sky focus:outline-none focus:ring-2 focus:ring-blue-100 disabled:opacity-60"
         disabled={disabled}
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder}
@@ -153,7 +153,7 @@ function RadioGroup<T extends string>({
             className={`flex cursor-pointer items-center gap-2.5 rounded-2xl border px-4 py-2.5 text-sm font-semibold transition-colors ${
               value === opt.value
                 ? "border-pegasus-primary bg-pegasus-ice text-pegasus-primary"
-                : "border-blue-100 bg-white text-slate-600 hover:border-pegasus-sky hover:bg-pegasus-ice/50"
+                : "border-stone-200 bg-white text-slate-600 hover:border-pegasus-sky hover:bg-pegasus-ice/50"
             } ${disabled ? "cursor-not-allowed opacity-60" : ""}`}
           >
             <input
@@ -208,7 +208,7 @@ function ToggleGroup({
             className={`rounded-2xl border px-4 py-2.5 text-sm font-semibold transition-colors ${
               value.includes(opt)
                 ? "border-pegasus-primary bg-pegasus-ice text-pegasus-primary"
-                : "border-blue-100 bg-white text-slate-600 hover:border-pegasus-sky hover:bg-pegasus-ice/50"
+                : "border-stone-200 bg-white text-slate-600 hover:border-pegasus-sky hover:bg-pegasus-ice/50"
             } ${disabled ? "cursor-not-allowed opacity-60" : "cursor-pointer"}`}
           >
             {opt}
@@ -437,7 +437,7 @@ export function InscricaoPage() {
         <form className="space-y-6" noValidate onSubmit={handleSubmit}>
 
           {/* Seção 1: Dados Pessoais */}
-          <section className="rounded-3xl border border-blue-100 bg-white p-6 shadow-soft sm:p-8">
+          <section className="rounded-3xl border border-stone-200 bg-white p-6 shadow-soft sm:p-8">
             <SectionTitle
               step={1}
               title="Dados Pessoais"
@@ -474,7 +474,7 @@ export function InscricaoPage() {
           </section>
 
           {/* Seção 2: Disponibilidade */}
-          <section className="rounded-3xl border border-blue-100 bg-white p-6 shadow-soft sm:p-8">
+          <section className="rounded-3xl border border-stone-200 bg-white p-6 shadow-soft sm:p-8">
             <SectionTitle
               step={2}
               title="Disponibilidade"
@@ -521,7 +521,7 @@ export function InscricaoPage() {
           </section>
 
           {/* Seção 3: Experiência no Vôlei */}
-          <section className="rounded-3xl border border-blue-100 bg-white p-6 shadow-soft sm:p-8">
+          <section className="rounded-3xl border border-stone-200 bg-white p-6 shadow-soft sm:p-8">
             <SectionTitle
               step={3}
               title="Experiência no Vôlei"
@@ -607,7 +607,7 @@ export function InscricaoPage() {
           </section>
 
           {/* Seção 4: Motivação */}
-          <section className="rounded-3xl border border-blue-100 bg-white p-6 shadow-soft sm:p-8">
+          <section className="rounded-3xl border border-stone-200 bg-white p-6 shadow-soft sm:p-8">
             <SectionTitle
               step={4}
               title="Motivação e Contato"
@@ -687,7 +687,7 @@ export function InscricaoPage() {
             </button>
             <Link
               to="/"
-              className="inline-flex min-h-12 items-center justify-center gap-2 rounded-2xl border border-blue-100 bg-white px-6 font-bold text-pegasus-primary hover:bg-pegasus-ice"
+              className="inline-flex min-h-12 items-center justify-center gap-2 rounded-2xl border border-stone-200 bg-white px-6 font-bold text-pegasus-primary hover:bg-pegasus-ice"
             >
               <ArrowLeft size={18} />
               Voltar

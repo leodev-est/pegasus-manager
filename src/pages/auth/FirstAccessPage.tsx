@@ -75,7 +75,7 @@ export function FirstAccessPage() {
           <form className="mt-8 space-y-5" onSubmit={handleSubmit}>
             <label className="block">
               <span className="text-sm font-semibold text-pegasus-navy">Nova senha</span>
-              <span className="mt-2 flex items-center gap-3 rounded-2xl border border-blue-100 bg-white px-4 py-3">
+              <span className="mt-2 flex items-center gap-3 rounded-2xl border border-stone-200 bg-white px-4 py-3">
                 <LockKeyhole className="text-pegasus-medium" size={18} />
                 <input
                   className="w-full outline-none placeholder:text-slate-400"
@@ -98,7 +98,7 @@ export function FirstAccessPage() {
             </label>
             <label className="block">
               <span className="text-sm font-semibold text-pegasus-navy">Confirmar senha</span>
-              <span className="mt-2 flex items-center gap-3 rounded-2xl border border-blue-100 bg-white px-4 py-3">
+              <span className="mt-2 flex items-center gap-3 rounded-2xl border border-stone-200 bg-white px-4 py-3">
                 <LockKeyhole className="text-pegasus-medium" size={18} />
                 <input
                   className="w-full outline-none placeholder:text-slate-400"

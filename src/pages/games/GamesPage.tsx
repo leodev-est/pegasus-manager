@@ -96,13 +96,13 @@ function SetsPanel({ game, canEdit, onRefresh }: { game: Game; canEdit: boolean;
   const setsOpp = sets.filter((s) => s.scoreOpponent > s.scorePegasus).length;
 
   return (
-    <div className="mt-3 rounded-xl border border-blue-50 bg-pegasus-surface p-3">
+    <div className="mt-3 rounded-xl border border-stone-100 bg-pegasus-surface p-3">
       <p className="mb-2 text-xs font-bold uppercase tracking-wide text-slate-400">
         Sets{sets.length > 0 ? ` — ${ORG_NAME} ${setsPeg} × ${setsOpp} adversário` : ""}
       </p>
       <div className="flex flex-wrap gap-2">
         {sets.map((s) => (
-          <div key={s.setNumber} className="flex items-center gap-1.5 rounded-lg border border-blue-100 bg-white px-3 py-1.5 text-sm">
+          <div key={s.setNumber} className="flex items-center gap-1.5 rounded-lg border border-stone-200 bg-white px-3 py-1.5 text-sm">
             <span className="text-xs font-bold text-slate-400">S{s.setNumber}</span>
             <span className={`font-bold ${s.scorePegasus > s.scoreOpponent ? "text-emerald-600" : "text-rose-600"}`}>
               {s.scorePegasus}–{s.scoreOpponent}
@@ -119,7 +119,7 @@ function SetsPanel({ game, canEdit, onRefresh }: { game: Game; canEdit: boolean;
           </div>
         ))}
         {canEdit && (
-          <div className="flex items-center gap-1.5 rounded-lg border border-dashed border-blue-200 bg-white px-2 py-1">
+          <div className="flex items-center gap-1.5 rounded-lg border border-dashed border-stone-300 bg-white px-2 py-1">
             <span className="text-xs font-bold text-slate-400">S{nextSetNumber}</span>
             <input
               type="number"
@@ -142,7 +142,7 @@ function SetsPanel({ game, canEdit, onRefresh }: { game: Game; canEdit: boolean;
               type="button"
               onClick={handleAddSet}
               disabled={isSaving}
-              className="rounded-full bg-pegasus-primary px-2 py-0.5 text-xs font-bold text-white hover:bg-blue-700 disabled:opacity-50"
+              className="rounded-full bg-pegasus-primary px-2 py-0.5 text-xs font-bold text-white hover:bg-stone-700 disabled:opacity-50"
             >
               +
             </button>
@@ -240,7 +240,7 @@ export function GamesPage() {
   }
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-6">
       <PageHeader
         title="Jogos e Resultados"
         description={`Histórico de partidas, sets e estatísticas do Projeto ${ORG_NAME}.`}

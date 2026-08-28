@@ -1,6 +1,6 @@
 import { ArrowRightCircle, Check, Copy, Download, ExternalLink, Loader2, Plus, UserPlus, XCircle } from "lucide-react";
 import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { useAuth } from "../../auth/AuthContext";
 import { useTour } from "../../tours/useTour";
 import { ActionButtons } from "../../components/ui/ActionButtons";
@@ -331,9 +331,21 @@ export function AthleteApplicationsPage() {
   const canDelete = hasPermission(["rh", "athletes:delete"]);
   const [applications, setApplications] = useState<AthleteApplication[]>([]);
   const [turmas, setTurmas] = useState<Turma[]>([]);
-  const [search, setSearch] = useState("");
-  const [status, setStatus] = useState("pendente");
-  const [position, setPosition] = useState("todos");
+  const [searchParams, setSearchParams] = useSearchParams();
+  const search = searchParams.get("search") ?? "";
+  const status = searchParams.get("status") ?? "pendente";
+  const position = searchParams.get("position") ?? "todos";
+  function updateFilterParam(key: string, value: string) {
+    setSearchParams(
+      (prev) => {
+        const next = new URLSearchParams(prev);
+        if (value) next.set(key, value);
+        else next.delete(key);
+        return next;
+      },
+      { replace: true },
+    );
+  }
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [isImporting, setIsImporting] = useState(false);
@@ -530,7 +542,7 @@ export function AthleteApplicationsPage() {
   const classifiedCount = Object.values(classifications).filter(Boolean).length;
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-6">
       <PageHeader
         title="RH / Inscrições"
         description="Triagem das pessoas inscritas pelo formulário público antes de virarem atletas."
@@ -550,7 +562,7 @@ export function AthleteApplicationsPage() {
         }
       />
 
-      <section className="grid gap-5 md:grid-cols-2 xl:grid-cols-5">
+      <section className="panel flex flex-wrap divide-x divide-stone-100 overflow-hidden dark:divide-slate-700">
         {[
           ["Total", summary.total],
           ["Pendentes", summary.pending],
@@ -558,17 +570,15 @@ export function AthleteApplicationsPage() {
           ["Aprovadas", summary.approved],
           ["Recusadas", summary.rejected],
         ].map(([title, value]) => (
-          <article className="panel p-5" key={title as string}>
-            <div className="flex items-center justify-between gap-4">
-              <div>
-                <p className="text-sm font-semibold text-slate-500">{title}</p>
-                <strong className="mt-2 block text-2xl font-black text-pegasus-navy">{value}</strong>
-              </div>
-              <span className="rounded-2xl bg-pegasus-ice p-3 text-pegasus-primary">
-                <UserPlus size={22} />
-              </span>
+          <div className="flex min-w-[190px] flex-1 items-center gap-3.5 px-6 py-5" key={title as string}>
+            <span className="grid h-10 w-10 shrink-0 place-items-center rounded-lg bg-emerald-50 text-emerald-600 dark:bg-emerald-500/10 dark:text-emerald-400">
+              <UserPlus size={19} />
+            </span>
+            <div className="min-w-0">
+              <p className="truncate text-[11px] font-bold uppercase tracking-wide text-stone-400">{title}</p>
+              <p className="mt-0.5 text-xl font-black text-pegasus-navy tabular-nums">{value}</p>
             </div>
-          </article>
+          </div>
         ))}
       </section>
 
@@ -596,14 +606,14 @@ export function AthleteApplicationsPage() {
 
       <div data-tour="inscricoes-filtros">
       <FilterBar>
-        <Input label="Buscar" onChange={(e) => setSearch(e.target.value)} value={search} />
-        <Select label="Status" onChange={(e) => setStatus(e.target.value)} options={statusOptions} value={status} />
-        <Select label="Posição" onChange={(e) => setPosition(e.target.value)} options={positionOptions} value={position} />
+        <Input label="Buscar" onChange={(e) => updateFilterParam("search", e.target.value)} value={search} />
+        <Select label="Status" onChange={(e) => updateFilterParam("status", e.target.value)} options={statusOptions} value={status} />
+        <Select label="Posição" onChange={(e) => updateFilterParam("position", e.target.value)} options={positionOptions} value={position} />
       </FilterBar>
       </div>
 
       <section data-tour="inscricoes-lista" className="panel overflow-hidden">
-        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-blue-100 p-6">
+        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-stone-200 p-6">
           <div className="flex items-center gap-3">
             <UserPlus className="text-pegasus-primary" size={22} />
             <div>
@@ -637,7 +647,7 @@ export function AthleteApplicationsPage() {
             {/* Mobile cards */}
             <div className="grid gap-3 p-4 md:hidden">
               {applications.map((application) => (
-                <article key={application.id} className="rounded-2xl border border-blue-100 bg-white p-4 shadow-sm">
+                <article key={application.id} className="rounded-2xl border border-stone-200 bg-white p-4 shadow-sm">
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0">
                       <h3 className="font-bold text-pegasus-navy">{application.name}</h3>
@@ -655,7 +665,7 @@ export function AthleteApplicationsPage() {
                     <p className="col-span-2"><strong className="text-pegasus-navy">Entrada:</strong> {formatDate(application.createdAt)}</p>
                   </div>
                   {classifyMode && (
-                    <div className="mt-3 flex gap-2 border-t border-blue-50 pt-3">
+                    <div className="mt-3 flex gap-2 border-t border-stone-100 pt-3">
                       {(["sim", "talvez", "nao"] as const).map((r) => {
                         const cfg = { sim: { emoji: "✅", label: "Boa ideia" }, talvez: { emoji: "🤔", label: "Talvez" }, nao: { emoji: "❌", label: "Não agora" } }[r];
                         const active = classifications[application.id] === r;
@@ -669,7 +679,7 @@ export function AthleteApplicationsPage() {
                     </div>
                   )}
                   {!classifyMode && (application.status === "pendente" || application.status === "em_analise") && (canCreate || canUpdate) ? (
-                    <div className="mt-3 flex gap-2 border-t border-blue-50 pt-3">
+                    <div className="mt-3 flex gap-2 border-t border-stone-100 pt-3">
                       {canCreate ? (
                         <Button className="flex-1" onClick={() => setApproveTarget(application)}>
                           <ArrowRightCircle size={15} />Mandar para Testes
@@ -682,7 +692,7 @@ export function AthleteApplicationsPage() {
                       ) : null}
                     </div>
                   ) : null}
-                  <div className="mt-3 flex flex-wrap items-center gap-3 border-t border-blue-50 pt-3">
+                  <div className="mt-3 flex flex-wrap items-center gap-3 border-t border-stone-100 pt-3">
                     <Button className="h-8 px-3 text-xs" onClick={() => setDetailApplication(application)} variant="secondary">
                       Ver detalhes
                     </Button>
@@ -889,7 +899,7 @@ export function AthleteApplicationsPage() {
 
       {/* Barra flutuante de classificação */}
       {classifyMode && (
-        <div className="fixed bottom-4 left-1/2 z-40 flex -translate-x-1/2 items-center gap-3 rounded-2xl border border-blue-100 bg-white px-5 py-3 shadow-xl dark:border-slate-700 dark:bg-slate-800">
+        <div className="fixed bottom-4 left-1/2 z-40 flex -translate-x-1/2 items-center gap-3 rounded-2xl border border-stone-200 bg-white px-5 py-3 shadow-xl dark:border-slate-700 dark:bg-slate-800">
           <span className="text-sm text-slate-500">
             {classifiedCount} de {applications.length} classificados
           </span>

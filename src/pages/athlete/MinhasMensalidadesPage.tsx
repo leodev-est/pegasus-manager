@@ -91,7 +91,7 @@ export function MinhasMensalidadesPage() {
   const next = payments.find((p) => p.status === "pendente" || p.status === "atrasado");
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-6">
       <PageHeader
         title="Minhas Mensalidades"
         description="Histórico de pagamentos das suas mensalidades."
@@ -131,10 +131,10 @@ export function MinhasMensalidadesPage() {
             <EmptyState icon={CreditCard} title="Nenhuma mensalidade" description="Sem registros de mensalidade ainda." />
           ) : (
             <section data-tour="mensalidades-historico" className="panel overflow-hidden">
-              <div className="border-b border-blue-100 p-5">
+              <div className="border-b border-stone-200 p-5">
                 <h2 className="font-black text-pegasus-navy">Histórico</h2>
               </div>
-              <div className="divide-y divide-blue-50">
+              <div className="divide-y divide-stone-100">
                 {payments.map((payment) => (
                   <div key={payment.id} className="flex flex-col gap-2 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
                     <div className="min-w-0">

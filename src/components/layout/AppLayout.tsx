@@ -6,11 +6,28 @@ import { usePushSetup } from "../../hooks/usePushSetup";
 import { Sidebar } from "./Sidebar";
 import { Topbar } from "./Topbar";
 
+const SIDEBAR_COLLAPSED_KEY = "pegasus-manager:sidebar-collapsed";
+
 export function AppLayout() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [isDesktopCollapsed, setIsDesktopCollapsed] = useState(
+    () => localStorage.getItem(SIDEBAR_COLLAPSED_KEY) === "1",
+  );
   const { user } = useAuth();
   const location = useLocation();
   usePushSetup();
+
+  function toggleSidebar() {
+    if (window.innerWidth >= 1024) {
+      setIsDesktopCollapsed((prev) => {
+        const next = !prev;
+        localStorage.setItem(SIDEBAR_COLLAPSED_KEY, next ? "1" : "0");
+        return next;
+      });
+    } else {
+      setIsSidebarOpen(true);
+    }
+  }
 
   const isAthlete =
     user?.permissions?.includes("atleta") &&
@@ -34,6 +51,7 @@ export function AppLayout() {
     <div className="min-h-screen bg-pegasus-surface dark:bg-slate-900">
       <Sidebar
         isMobileOpen={isSidebarOpen}
+        isDesktopCollapsed={isDesktopCollapsed}
         onNavigate={() => setIsSidebarOpen(false)}
         onOpenTour={handleOpenTour}
       />
@@ -45,8 +63,12 @@ export function AppLayout() {
           type="button"
         />
       ) : null}
-      <div className="min-w-0 max-w-full lg:pl-72">
-        <Topbar onMenuClick={() => setIsSidebarOpen(true)} />
+      <div
+        className={`min-w-0 max-w-full transition-[padding-left] duration-200 ease-in-out ${
+          isDesktopCollapsed ? "lg:pl-[76px]" : "lg:pl-72"
+        }`}
+      >
+        <Topbar onMenuClick={toggleSidebar} />
         <main className="w-full min-w-0 max-w-full px-4 py-5 sm:px-5 md:px-8 md:py-8">
           <div key={location.pathname} className="page-enter">
             <Outlet />

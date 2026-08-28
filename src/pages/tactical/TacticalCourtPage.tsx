@@ -100,7 +100,7 @@ function findSlotByPlayer(positions: FormationPositions, playerId: string) {
 function PlayerCard({ athlete, compact = false }: { athlete: Athlete; compact?: boolean }) {
   return (
     <div
-      className={`rounded-2xl border border-blue-100 bg-white shadow-sm ${
+      className={`rounded-2xl border border-stone-200 bg-white shadow-sm ${
         compact ? "px-3 py-2" : "px-4 py-3"
       }`}
     >
@@ -197,7 +197,7 @@ function BenchDropZone({ canEdit, isEmpty }: { canEdit: boolean; isEmpty: boolea
   return (
     <div
       className={`rounded-2xl border border-dashed p-3 text-center text-sm font-bold transition ${
-        isOver ? "border-rose-300 bg-rose-50 text-rose-700" : "border-blue-100 bg-white text-slate-500"
+        isOver ? "border-rose-300 bg-rose-50 text-rose-700" : "border-stone-200 bg-white text-slate-500"
       }`}
       ref={setNodeRef}
     >
@@ -411,7 +411,7 @@ export function TacticalCourtPage() {
       onDragStart={handleDragStart}
       sensors={sensors}
     >
-      <div className="space-y-8">
+      <div className="space-y-6">
         <PageHeader
           title="Quadra Tática"
           description={

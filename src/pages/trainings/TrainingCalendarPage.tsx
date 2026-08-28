@@ -260,7 +260,7 @@ export function TrainingCalendarPage() {
   );
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-6">
       <PageHeader
         title="Calendário de Treinos"
         description={`Agenda oficial dos treinos ${ORG_NAME}, com bloqueios e horário/local de cada turma.`}
@@ -306,7 +306,7 @@ export function TrainingCalendarPage() {
       )}
 
       <section data-tour="cal-calendar" className="panel overflow-hidden">
-        <div className="flex flex-col gap-4 border-b border-blue-100 p-4 sm:flex-row sm:items-center sm:justify-between sm:p-6">
+        <div className="flex flex-col gap-4 border-b border-stone-200 p-4 sm:flex-row sm:items-center sm:justify-between sm:p-6">
           <div>
             <h2 className="text-xl font-black capitalize text-pegasus-navy">{formatMonth(month)}</h2>
             <p className="mt-1 text-sm text-slate-500">
@@ -325,7 +325,7 @@ export function TrainingCalendarPage() {
           </div>
         </div>
 
-        <div className="grid grid-cols-7 border-b border-blue-100 bg-pegasus-surface text-center text-xs font-bold uppercase tracking-[0.12em] text-slate-500">
+        <div className="grid grid-cols-7 border-b border-stone-200 bg-pegasus-surface text-center text-xs font-bold uppercase tracking-[0.12em] text-slate-500">
           {WEEK_DAYS.map((day) => (
             <div className="px-2 py-3" key={day}>
               {day}
@@ -336,7 +336,7 @@ export function TrainingCalendarPage() {
         <div className="grid grid-cols-7 bg-white">
           {days.map((day, index) => {
             if (!day) {
-              return <div className="min-h-24 border-b border-r border-blue-50 bg-slate-50/60" key={`empty-${index}`} />;
+              return <div className="min-h-24 border-b border-r border-stone-100 bg-slate-50/60" key={`empty-${index}`} />;
             }
 
             const official = isOfficialTrainingDate(day);
@@ -347,7 +347,7 @@ export function TrainingCalendarPage() {
 
             return (
               <button
-                className={`min-h-24 border-b border-r border-blue-50 p-2 text-left transition sm:p-3 ${
+                className={`min-h-24 border-b border-r border-stone-100 p-2 text-left transition sm:p-3 ${
                   official ? "bg-blue-50 hover:bg-blue-100" : "bg-white"
                 } ${blocked ? "bg-rose-50" : ""} ${isEditableDay ? "cursor-pointer hover:ring-2 hover:ring-amber-400" : ""}`}
                 disabled={isTogglingDate || isLoadingDates}

@@ -3,29 +3,23 @@ import {
   Camera,
   CreditCard,
   Loader2,
-  Mail,
   Package,
-  Phone,
   Save,
   Shield,
-  TrendingUp,
   UserRound,
 } from "lucide-react";
 import { FormEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTour } from "../../tours/useTour";
-import { useLocation } from "react-router-dom";
 import { useAuth } from "../../auth/AuthContext";
 import { Button } from "../../components/ui/Button";
 import { EmptyState } from "../../components/ui/EmptyState";
 import { Input } from "../../components/ui/Input";
-import { PageHeader } from "../../components/ui/PageHeader";
 import { StatusBadge, type StatusTone } from "../../components/ui/StatusBadge";
 import { Textarea } from "../../components/ui/Textarea";
 import { useToast } from "../../components/ui/Toast";
 import { OFFICIAL_TRAINING } from "../../data/trainingConfig";
 import { getApiErrorMessage } from "../../services/api";
-import { evaluationService, type CoachEvaluationPayload, type SelfEvaluationPayload } from "../../services/evaluationService";
-import { googleCalendarService, type GoogleCalendarStatus } from "../../services/googleCalendarService";
+import { evaluationService, type CoachEvaluationPayload } from "../../services/evaluationService";
 import { profileService, type MyProfile } from "../../services/profileService";
 import { ORG_NAME } from "../../config/org";
 
@@ -76,7 +70,7 @@ const TOUR_STEPS = [
   {
     popover: {
       title: "👤 Meu Perfil",
-      description: `Sua página pessoal no ${ORG_NAME}: informações de contato, estatísticas de frequência, autoavaliação e próximos treinos.`,
+      description: `Sua página pessoal no ${ORG_NAME}: informações de contato, estatísticas de frequência, avaliação e próximos treinos.`,
     },
   },
   {
@@ -129,26 +123,17 @@ function RatingInput({
 export function MyProfilePage() {
   const { hasPermission, user } = useAuth();
   const { showToast } = useToast();
-  const location = useLocation();
   const canEditCoachEvaluation = hasPermission(["trainings:update"]);
   const [profile, setProfile] = useState<MyProfile | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isSavingProfile, setIsSavingProfile] = useState(false);
 
   useTour("meu-perfil:v1", isLoading ? [] : TOUR_STEPS);
-  const [isSavingSelf, setIsSavingSelf] = useState(false);
   const [isSavingCoach, setIsSavingCoach] = useState(false);
   const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const avatarInputRef = useRef<HTMLInputElement>(null);
   const [contactForm, setContactForm] = useState({ email: "", phone: "", birthDate: "" });
-  const [calendarStatus, setCalendarStatus] = useState<GoogleCalendarStatus | null>(null);
-  const [isConnectingCalendar, setIsConnectingCalendar] = useState(false);
-  const [selfForm, setSelfForm] = useState<SelfEvaluationPayload>({
-    improvements: "",
-    selfRating: null,
-    strengths: "",
-  });
   const [coachForm, setCoachForm] = useState<CoachEvaluationPayload>({
     coachNotes: "",
     mental: null,
@@ -169,11 +154,6 @@ export function MyProfilePage() {
         phone: data.athlete?.phone ?? "",
         birthDate: data.athlete?.birthDate ? new Date(data.athlete.birthDate).toISOString().slice(0, 10) : "",
       });
-      setSelfForm({
-        improvements: data.evaluation.improvements ?? "",
-        selfRating: data.evaluation.selfRating,
-        strengths: data.evaluation.strengths ?? "",
-      });
       setCoachForm({
         coachNotes: data.evaluation.coachNotes ?? "",
         mental: data.evaluation.mental,
@@ -190,19 +170,7 @@ export function MyProfilePage() {
 
   useEffect(() => {
     loadProfile();
-    googleCalendarService.getUserStatus().then(setCalendarStatus).catch(() => {});
   }, [loadProfile]);
-
-  useEffect(() => {
-    const params = new URLSearchParams(location.search);
-    const calResult = params.get("calendar");
-    if (calResult === "success") {
-      showToast("Google Calendar conectado com sucesso!", "success");
-      googleCalendarService.getUserStatus().then(setCalendarStatus).catch(() => {});
-    } else if (calResult === "error") {
-      showToast("Erro ao conectar Google Calendar. Tente novamente.", "error");
-    }
-  }, [location.search, showToast]);
 
   // Refresh profile whenever the user comes back to this tab/page
   useEffect(() => {
@@ -212,30 +180,6 @@ export function MyProfilePage() {
     document.addEventListener("visibilitychange", handleVisibilityChange);
     return () => document.removeEventListener("visibilitychange", handleVisibilityChange);
   }, [loadProfile]);
-
-  async function handleConnectCalendar() {
-    setIsConnectingCalendar(true);
-    try {
-      const url = await googleCalendarService.getAuthUrl();
-      window.location.href = url;
-    } catch (error) {
-      showToast(getApiErrorMessage(error), "error");
-      setIsConnectingCalendar(false);
-    }
-  }
-
-  async function handleDisconnectCalendar() {
-    setIsConnectingCalendar(true);
-    try {
-      await googleCalendarService.disconnect();
-      setCalendarStatus((prev) => prev ? { ...prev, connected: false, calendarId: null } : null);
-      showToast("Google Calendar desconectado.", "success");
-    } catch (error) {
-      showToast(getApiErrorMessage(error), "error");
-    } finally {
-      setIsConnectingCalendar(false);
-    }
-  }
 
   const currentPayment = useMemo(() => {
     if (!profile?.payments.length) return null;
@@ -278,21 +222,6 @@ export function MyProfilePage() {
     }
   }
 
-  async function saveSelfEvaluation(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    setIsSavingSelf(true);
-
-    try {
-      const evaluation = await evaluationService.updateSelfEvaluation(selfForm);
-      setProfile((current) => (current ? { ...current, evaluation } : current));
-      showToast("Autoavaliação salva.", "success");
-    } catch (error) {
-      showToast(getApiErrorMessage(error), "error");
-    } finally {
-      setIsSavingSelf(false);
-    }
-  }
-
   async function saveCoachEvaluation(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!profile?.athlete) return;
@@ -327,78 +256,69 @@ export function MyProfilePage() {
   const overall = evaluation.overall;
   const profileName = athlete?.name ?? profile.user.name ?? user?.name ?? ORG_NAME;
 
-  return (
-    <div className="space-y-8">
-      <PageHeader title="Meu Perfil" description="Dados pessoais, frequência, mensalidade e evolução esportiva." />
+  const headerStats = [
+    { label: "Presenças", value: profile.totalFrequency?.presences ?? 0 },
+    { label: "Faltas", value: profile.totalFrequency?.absences ?? 0 },
+    { label: "Mensalidade", value: athlete?.monthlyPaymentStatus ? statusLabel(athlete.monthlyPaymentStatus) : statusLabel(currentPayment?.status) },
+    { label: "Próximo treino", value: profile.upcomingTrainings[0] ? formatDate(profile.upcomingTrainings[0].date) : "-" },
+    { label: "Frequência", value: `${profile.totalFrequency?.percentage ?? 0}%`, highlight: true },
+  ];
 
-      <section data-tour="perfil-header" className="panel overflow-hidden">
-        <div className="bg-pegasus-navy p-6 text-white sm:p-8">
-          <div className="flex flex-col gap-5 sm:flex-row sm:items-center">
-            <div className="relative h-20 w-20 shrink-0">
-              {avatarUrl ? (
-                <img src={avatarUrl} alt={profileName} className="h-20 w-20 rounded-3xl object-cover" />
-              ) : (
-                <div className="grid h-20 w-20 place-items-center rounded-3xl bg-white text-2xl font-black text-pegasus-primary">
-                  {initials(profileName)}
-                </div>
-              )}
-              <button
-                type="button"
-                onClick={() => avatarInputRef.current?.click()}
-                disabled={isUploadingAvatar}
-                className="absolute -bottom-1 -right-1 flex h-7 w-7 items-center justify-center rounded-full bg-pegasus-primary text-white shadow-md hover:bg-blue-700"
-              >
-                {isUploadingAvatar ? <Loader2 size={12} className="animate-spin" /> : <Camera size={12} />}
-              </button>
-              <input ref={avatarInputRef} type="file" accept="image/*" className="hidden" onChange={handleAvatarChange} />
-            </div>
-            <div className="min-w-0 flex-1">
-              <p className="text-xs font-black uppercase tracking-[0.16em] text-blue-100">@{profile.user.username}</p>
-              <h1 className="mt-1 text-3xl font-black">{profileName}</h1>
-              <div className="mt-3 flex flex-wrap gap-2">
-                <StatusBadge label={statusLabel(athlete?.status)} tone={statusTone(athlete?.status)} />
-                <span className="rounded-full bg-white/10 px-3 py-1 text-xs font-bold text-white ring-1 ring-white/20">
-                  {athlete?.category ?? "Sem categoria"}
-                </span>
-                <span className="rounded-full bg-white/10 px-3 py-1 text-xs font-bold text-white ring-1 ring-white/20">
-                  {athlete?.position ?? "Sem posição"}
-                </span>
+  return (
+    <div className="space-y-4">
+      <h1 className="text-2xl font-black text-pegasus-navy">Meu Perfil</h1>
+
+      <section data-tour="perfil-header">
+        <div className="inline-flex items-center gap-4 rounded-t-2xl border border-b-0 border-stone-200 bg-white px-7 py-5 dark:border-slate-700 dark:bg-slate-800">
+          <div className="relative h-16 w-16 shrink-0">
+            {avatarUrl ? (
+              <img
+                src={avatarUrl}
+                alt={profileName}
+                className="h-16 w-16 rounded-xl object-cover ring-2 ring-emerald-50"
+              />
+            ) : (
+              <div className="grid h-16 w-16 place-items-center rounded-xl bg-stone-100 text-xl font-black text-pegasus-navy ring-2 ring-emerald-50">
+                {initials(profileName)}
               </div>
-            </div>
+            )}
+            <button
+              type="button"
+              onClick={() => avatarInputRef.current?.click()}
+              disabled={isUploadingAvatar}
+              className="focus-ring absolute -bottom-1 -right-1 flex h-6 w-6 items-center justify-center rounded-full bg-stone-900 text-white"
+            >
+              {isUploadingAvatar ? <Loader2 size={12} className="animate-spin" /> : <Camera size={12} />}
+            </button>
+            <input ref={avatarInputRef} type="file" accept="image/*" className="hidden" onChange={handleAvatarChange} />
           </div>
+          <div className="min-w-0">
+            <div className="flex flex-wrap items-center gap-2">
+              <h2 className="text-xl font-black text-pegasus-navy">{profileName}</h2>
+              <StatusBadge label={statusLabel(athlete?.status)} tone={statusTone(athlete?.status)} />
+            </div>
+            <p className="mt-1 truncate text-sm font-semibold text-stone-400">
+              @{profile.user.username} · {athlete?.category ?? "Sem categoria"} · {athlete?.position ?? "Sem posição"}
+            </p>
+          </div>
+        </div>
+        <div className="panel grid grid-cols-5 divide-x divide-stone-100 rounded-tl-none dark:divide-slate-700">
+          {headerStats.map((stat) => (
+            <div key={stat.label} className="px-5 py-3">
+              <p className="text-[10px] font-bold uppercase tracking-wide text-stone-400">{stat.label}</p>
+              <p className={`mt-0.5 text-lg font-black tabular-nums ${stat.highlight ? "text-emerald-600" : "text-pegasus-navy"}`}>
+                {stat.value}
+              </p>
+            </div>
+          ))}
         </div>
       </section>
 
-      <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
-        {[
-          { icon: TrendingUp, label: "Frequência total", value: `${profile.totalFrequency?.percentage ?? 0}%` },
-          { icon: CalendarDays, label: "Presenças totais", value: profile.totalFrequency?.presences ?? 0 },
-          { icon: CalendarDays, label: "Faltas totais", value: profile.totalFrequency?.absences ?? 0 },
-          { icon: CreditCard, label: "Mensalidade", value: athlete?.monthlyPaymentStatus ? statusLabel(athlete.monthlyPaymentStatus) : statusLabel(currentPayment?.status) },
-          { icon: CalendarDays, label: "Próximo treino", value: profile.upcomingTrainings[0] ? formatDate(profile.upcomingTrainings[0].date) : "-" },
-        ].map((card) => {
-          const Icon = card.icon;
-          return (
-            <article className="panel p-5" key={card.label}>
-              <div className="flex items-center justify-between gap-3">
-                <div>
-                  <p className="text-sm font-semibold text-slate-500">{card.label}</p>
-                  <p className="mt-2 text-2xl font-black text-pegasus-navy">{card.value}</p>
-                </div>
-                <span className="grid h-12 w-12 place-items-center rounded-2xl bg-pegasus-ice text-pegasus-primary">
-                  <Icon size={22} />
-                </span>
-              </div>
-            </article>
-          );
-        })}
-      </section>
-
-      <section className="grid gap-6 xl:grid-cols-[0.9fr_1.1fr]">
-        <article data-tour="perfil-contato" className="panel p-6">
-          <div className="mb-5 flex items-center gap-3">
-            <UserRound className="text-pegasus-primary" size={22} />
-            <h2 className="text-xl font-black text-pegasus-navy">Informações pessoais</h2>
+      <section className="grid gap-4 xl:grid-cols-[0.9fr_1.1fr]">
+        <article data-tour="perfil-contato" className="panel p-4">
+          <div className="mb-3 flex items-center gap-2">
+            <UserRound className="text-pegasus-primary" size={18} />
+            <h2 className="text-base font-black text-pegasus-navy">Informações pessoais</h2>
           </div>
           <form className="grid gap-4" onSubmit={saveProfile}>
             <Input
@@ -425,12 +345,12 @@ export function MyProfilePage() {
           </form>
         </article>
 
-        <article className="panel p-6">
-          <h2 className="text-xl font-black text-pegasus-navy">Meus treinos</h2>
+        <article className="panel p-4">
+          <h2 className="text-base font-black text-pegasus-navy">Meus treinos</h2>
           <div className="mt-4 space-y-3">
             {profile.upcomingTrainings.length ? (
               profile.upcomingTrainings.map((training) => (
-                <div className="rounded-2xl border border-blue-100 bg-white p-4" key={training.id}>
+                <div className="rounded-2xl border border-stone-200 bg-white p-4" key={training.id}>
                   <p className="font-black text-pegasus-navy">{training.title}</p>
                   <p className="mt-1 text-sm text-slate-500">{formatDate(training.date)} · {OFFICIAL_TRAINING.location} · {OFFICIAL_TRAINING.time}</p>
                   <p className="mt-2 text-sm text-slate-600">{training.objective ?? `Treino oficial ${ORG_NAME}.`}</p>
@@ -443,19 +363,19 @@ export function MyProfilePage() {
         </article>
       </section>
 
-      <section className="grid gap-6 xl:grid-cols-[0.9fr_1.1fr]">
-        <article className="panel p-6">
-          <div className="mb-5 flex items-center gap-3">
-            <CreditCard className="text-pegasus-primary" size={22} />
-            <h2 className="text-xl font-black text-pegasus-navy">Minha situação financeira</h2>
+      <section className="grid gap-4 xl:grid-cols-[0.9fr_1.1fr]">
+        <article className="panel p-4">
+          <div className="mb-3 flex items-center gap-2">
+            <CreditCard className="text-pegasus-primary" size={18} />
+            <h2 className="text-base font-black text-pegasus-navy">Minha situação financeira</h2>
           </div>
           {athlete?.monthlyPaymentStatus === "isento" ? (
-            <div className="rounded-2xl bg-blue-50 p-4">
+            <div className="rounded-2xl bg-stone-100 p-4">
               <StatusBadge label="Isento" tone="info" />
               <p className="mt-3 text-sm font-semibold text-pegasus-navy">Atleta com mensalidade isenta.</p>
             </div>
           ) : currentPayment ? (
-            <div className="rounded-2xl border border-blue-100 bg-white p-4">
+            <div className="rounded-2xl border border-stone-200 bg-white p-4">
               <div className="flex items-start justify-between gap-3">
                 <div>
                   <p className="font-black text-pegasus-navy">{currentPayment.description}</p>
@@ -470,108 +390,69 @@ export function MyProfilePage() {
           )}
         </article>
 
-        <article className={`overflow-hidden rounded-3xl bg-gradient-to-br ${overallTone(overall)} p-6 text-white shadow-xl`}>
-          <p className="text-xs font-black uppercase tracking-[0.18em] text-white/75">Minha evolução</p>
-          <div className="mt-5 flex items-end gap-5">
-            <div>
-              <p className="text-6xl font-black leading-none">{overall ?? "--"}</p>
-              <p className="mt-2 text-sm font-black uppercase tracking-[0.14em] text-white/80">Overall</p>
-            </div>
-            <div className="pb-2 text-sm font-semibold text-white/80">
-              {overall === null ? "Ainda sem avaliação técnica" : "Avaliação estilo FIFA"}
-            </div>
-          </div>
-          <div className="mt-6 grid grid-cols-2 gap-3">
-            {[
-              ["Técnica", evaluation.technical],
-              ["Físico", evaluation.physical],
-              ["Tático", evaluation.tactical],
-              ["Mental", evaluation.mental],
-            ].map(([label, value]) => (
-              <div className="rounded-2xl bg-white/12 p-3 ring-1 ring-white/15" key={label}>
-                <p className="text-xs font-bold uppercase tracking-[0.12em] text-white/70">{label}</p>
-                <p className="mt-1 text-2xl font-black">{value ?? "--"}</p>
+        <article className="overflow-hidden rounded-3xl shadow-xl">
+          <div className={`bg-gradient-to-br ${overallTone(overall)} p-4 text-white`}>
+            <p className="text-xs font-black uppercase tracking-[0.18em] text-white/75">Minha evolução</p>
+            <div className="mt-2 flex items-end gap-4">
+              <div>
+                <p className="text-4xl font-black leading-none">{overall ?? "--"}</p>
+                <p className="mt-1 text-[10px] font-black uppercase tracking-[0.14em] text-white/80">Overall</p>
               </div>
-            ))}
-          </div>
-        </article>
-      </section>
-
-      <section className="grid gap-6 xl:grid-cols-2">
-        <article className="panel p-6">
-          <h2 className="text-xl font-black text-pegasus-navy">Autoavaliação</h2>
-          <form className="mt-5 grid gap-4" onSubmit={saveSelfEvaluation}>
-            <RatingInput
-              label="Nota atual"
-              onChange={(value) => setSelfForm({ ...selfForm, selfRating: value })}
-              value={selfForm.selfRating ?? null}
-            />
-            <Textarea
-              label="Pontos fortes"
-              onChange={(event) => setSelfForm({ ...selfForm, strengths: event.target.value })}
-              value={selfForm.strengths ?? ""}
-            />
-            <Textarea
-              label="O que preciso treinar mais"
-              onChange={(event) => setSelfForm({ ...selfForm, improvements: event.target.value })}
-              value={selfForm.improvements ?? ""}
-            />
-            <Button disabled={isSavingSelf} type="submit">
-              {isSavingSelf ? <Loader2 className="animate-spin" size={17} /> : <Save size={17} />}
-              Salvar autoavaliação
-            </Button>
-          </form>
-        </article>
-
-        <article className="panel p-6">
-          <div className="mb-5 flex items-center gap-3">
-            <Shield className="text-pegasus-primary" size={22} />
-            <h2 className="text-xl font-black text-pegasus-navy">Avaliação do técnico</h2>
-          </div>
-          {canEditCoachEvaluation && athlete ? (
-            <form className="grid gap-4" onSubmit={saveCoachEvaluation}>
-              <div className="grid gap-4 sm:grid-cols-2">
-                <RatingInput label="Técnica" onChange={(value) => setCoachForm({ ...coachForm, technical: value })} value={coachForm.technical ?? null} />
-                <RatingInput label="Físico" onChange={(value) => setCoachForm({ ...coachForm, physical: value })} value={coachForm.physical ?? null} />
-                <RatingInput label="Tático" onChange={(value) => setCoachForm({ ...coachForm, tactical: value })} value={coachForm.tactical ?? null} />
-                <RatingInput label="Mental" onChange={(value) => setCoachForm({ ...coachForm, mental: value })} value={coachForm.mental ?? null} />
+              <div className="pb-1 text-xs font-semibold text-white/80">
+                {overall === null ? "Ainda sem avaliação técnica" : "Avaliação estilo FIFA"}
               </div>
-              <Textarea
-                label="Observações do técnico"
-                onChange={(event) => setCoachForm({ ...coachForm, coachNotes: event.target.value })}
-                value={coachForm.coachNotes ?? ""}
-              />
-              <Button disabled={isSavingCoach} type="submit">
-                {isSavingCoach ? <Loader2 className="animate-spin" size={17} /> : <Save size={17} />}
-                Salvar avaliação técnica
-              </Button>
-            </form>
-          ) : (
-            <div className="space-y-3">
+            </div>
+            <div className="mt-3 grid grid-cols-4 gap-2">
               {[
                 ["Técnica", evaluation.technical],
                 ["Físico", evaluation.physical],
                 ["Tático", evaluation.tactical],
                 ["Mental", evaluation.mental],
               ].map(([label, value]) => (
-                <div className="flex items-center justify-between rounded-2xl bg-pegasus-surface p-4" key={label}>
-                  <span className="font-bold text-pegasus-navy">{label}</span>
-                  <strong className="text-pegasus-primary">{value ?? "--"}</strong>
+                <div className="rounded-lg bg-white/12 p-2 text-center ring-1 ring-white/15" key={label}>
+                  <p className="truncate text-[9px] font-bold uppercase tracking-[0.1em] text-white/70">{label}</p>
+                  <p className="mt-0.5 text-lg font-black">{value ?? "--"}</p>
                 </div>
               ))}
-              <div className="rounded-2xl border border-blue-100 bg-white p-4">
-                <p className="font-bold text-pegasus-navy">Observações</p>
-                <p className="mt-2 whitespace-pre-wrap text-sm text-slate-600">{evaluation.coachNotes || "Ainda sem observações."}</p>
-              </div>
             </div>
-          )}
+          </div>
+
+          <div className="panel rounded-t-none border-t-0 p-4">
+            <div className="mb-3 flex items-center gap-2">
+              <Shield className="text-pegasus-primary" size={18} />
+              <h2 className="text-base font-black text-pegasus-navy">Avaliação do técnico</h2>
+            </div>
+            {canEditCoachEvaluation && athlete ? (
+              <form className="grid gap-4" onSubmit={saveCoachEvaluation}>
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <RatingInput label="Técnica" onChange={(value) => setCoachForm({ ...coachForm, technical: value })} value={coachForm.technical ?? null} />
+                  <RatingInput label="Físico" onChange={(value) => setCoachForm({ ...coachForm, physical: value })} value={coachForm.physical ?? null} />
+                  <RatingInput label="Tático" onChange={(value) => setCoachForm({ ...coachForm, tactical: value })} value={coachForm.tactical ?? null} />
+                  <RatingInput label="Mental" onChange={(value) => setCoachForm({ ...coachForm, mental: value })} value={coachForm.mental ?? null} />
+                </div>
+                <Textarea
+                  label="Observações do técnico"
+                  onChange={(event) => setCoachForm({ ...coachForm, coachNotes: event.target.value })}
+                  value={coachForm.coachNotes ?? ""}
+                />
+                <Button disabled={isSavingCoach} type="submit">
+                  {isSavingCoach ? <Loader2 className="animate-spin" size={17} /> : <Save size={17} />}
+                  Salvar avaliação técnica
+                </Button>
+              </form>
+            ) : (
+              <p className="whitespace-pre-wrap text-sm text-slate-600">
+                {evaluation.coachNotes || "Ainda sem observações do técnico."}
+              </p>
+            )}
+          </div>
         </article>
       </section>
 
       {/* 3-month attendance chart */}
       {profile.monthlyAttendance && profile.monthlyAttendance.length > 0 && (
-        <section className="panel p-6">
-          <h2 className="mb-4 text-xl font-black text-pegasus-navy">Frequência — últimos 3 meses</h2>
+        <section className="panel p-4">
+          <h2 className="mb-4 text-base font-black text-pegasus-navy">Frequência — últimos 3 meses</h2>
           <div className="flex flex-wrap gap-2">
             {profile.monthlyAttendance.map((entry) => {
               const d = new Date(entry.training.date);
@@ -599,10 +480,10 @@ export function MyProfilePage() {
 
       {/* Uniforms received */}
       {athlete?.uniformDeliveries && athlete.uniformDeliveries.length > 0 && (
-        <section className="panel p-6">
+        <section className="panel p-4">
           <div className="mb-4 flex items-center gap-3">
             <Package className="text-pegasus-primary" size={20} />
-            <h2 className="text-xl font-black text-pegasus-navy">Uniformes recebidos</h2>
+            <h2 className="text-base font-black text-pegasus-navy">Uniformes recebidos</h2>
           </div>
           <div className="space-y-2">
             {athlete.uniformDeliveries.map((d) => (
@@ -617,64 +498,6 @@ export function MyProfilePage() {
         </section>
       )}
 
-      <section className="grid gap-6 xl:grid-cols-2">
-        <article className="panel p-6">
-          <div className="mb-4 flex items-center gap-3">
-            <Mail className="text-pegasus-primary" size={20} />
-            <h2 className="text-xl font-black text-pegasus-navy">Contato</h2>
-          </div>
-          <p className="text-sm text-slate-600">Email: {contactForm.email || "-"}</p>
-          <p className="mt-2 text-sm text-slate-600">Telefone: {contactForm.phone || "-"}</p>
-        </article>
-        <article className="panel p-6">
-          <div className="mb-4 flex items-center gap-3">
-            <Phone className="text-pegasus-primary" size={20} />
-            <h2 className="text-xl font-black text-pegasus-navy">Acesso</h2>
-          </div>
-          <p className="text-sm text-slate-600">Usuário: @{profile.user.username}</p>
-          <p className="mt-2 text-sm text-slate-600">Perfis: {profile.user.roles.join(", ") || "-"}</p>
-        </article>
-      </section>
-
-      {calendarStatus && (
-        <section className="panel p-6">
-          <div className="mb-4 flex items-center gap-3">
-            <CalendarDays className="text-pegasus-primary" size={20} />
-            <h2 className="text-xl font-black text-pegasus-navy">Google Calendar</h2>
-          </div>
-          {!calendarStatus.configured ? (
-            <p className="text-sm text-slate-500">Google Calendar não está configurado no servidor.</p>
-          ) : calendarStatus.connected ? (
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-              <div>
-                <p className="text-sm font-semibold text-emerald-700">Conectado</p>
-                {calendarStatus.calendarId && (
-                  <p className="mt-0.5 text-xs text-slate-500">{calendarStatus.calendarId}</p>
-                )}
-                <p className="mt-1 text-xs text-slate-400">Os treinos futuros serão adicionados automaticamente ao seu calendário.</p>
-              </div>
-              <Button
-                variant="outline"
-                onClick={handleDisconnectCalendar}
-                disabled={isConnectingCalendar}
-              >
-                {isConnectingCalendar ? <Loader2 size={14} className="animate-spin" /> : null}
-                Desconectar
-              </Button>
-            </div>
-          ) : (
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-              <div>
-                <p className="text-sm text-slate-600">Conecte sua conta Google para sincronizar treinos automaticamente.</p>
-              </div>
-              <Button onClick={handleConnectCalendar} disabled={isConnectingCalendar}>
-                {isConnectingCalendar ? <Loader2 size={14} className="animate-spin" /> : null}
-                Conectar Google Calendar
-              </Button>
-            </div>
-          )}
-        </section>
-      )}
     </div>
   );
 }

@@ -202,7 +202,7 @@ export function PlanosIndividuaisPage() {
   const selectedAthlete = athletes.find((a) => a.id === selectedAthleteId);
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-6">
       <PageHeader
         title="Planos Individuais"
         description="Crie e gerencie planos de treino individuais para os atletas."
@@ -349,7 +349,7 @@ export function PlanosIndividuaisPage() {
               </div>
               <div className="space-y-3">
                 {form.exercises.map((ex, idx) => (
-                  <div key={idx} className="relative rounded-2xl border border-blue-100 bg-pegasus-surface p-3">
+                  <div key={idx} className="relative rounded-2xl border border-stone-200 bg-pegasus-surface p-3">
                     {form.exercises.length > 1 && (
                       <button
                         type="button"

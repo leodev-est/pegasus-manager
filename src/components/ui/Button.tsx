@@ -16,18 +16,18 @@ const buttonVariants = cva(
     variants: {
       variant: {
         primary: [
-          "bg-gradient-to-br from-pegasus-primary to-pegasus-medium text-white",
-          "shadow-md shadow-blue-900/25",
-          "hover:from-[#0B3D8C] hover:to-pegasus-primary hover:shadow-lg hover:shadow-blue-900/30 hover:-translate-y-px",
+          "bg-stone-900 text-white",
+          "shadow-sm",
+          "hover:bg-stone-800 hover:-translate-y-px hover:shadow-md",
         ],
         secondary: [
-          "border border-blue-100 bg-white text-pegasus-primary",
+          "border border-stone-200 bg-white text-stone-700",
           "shadow-sm",
-          "hover:bg-pegasus-ice hover:border-pegasus-sky hover:-translate-y-px hover:shadow-md",
+          "hover:bg-stone-50 hover:border-stone-300 hover:-translate-y-px hover:shadow-md",
         ],
         ghost: [
-          "text-pegasus-primary",
-          "hover:bg-pegasus-ice",
+          "text-stone-600",
+          "hover:bg-stone-100",
         ],
         danger: [
           "bg-rose-600 text-white",

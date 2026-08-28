@@ -66,7 +66,7 @@ export function MinhasLesoesPage() {
   const recovered = injuries.filter((i) => Boolean(i.returnedAt));
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-6">
       <PageHeader
         title="Minha Saúde"
         description="Histórico de lesões e afastamentos."

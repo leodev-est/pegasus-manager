@@ -91,11 +91,11 @@ export function MyFrequencyPage() {
   const monthlyPct = data?.percentual ?? 0;
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-6">
       <PageHeader title="Minha Frequência" description={`Acompanhe sua presença nos treinos oficiais ${ORG_NAME}.`} />
 
       {/* Total geral */}
-      <section data-tour="freq-geral" className="panel p-6">
+      <section data-tour="freq-geral" className="panel p-5">
         <div className="mb-4 flex items-center gap-2">
           <TrendingUp className="text-pegasus-primary" size={20} />
           <h2 className="font-black text-pegasus-navy">Frequência Geral (todos os treinos)</h2>
@@ -134,7 +134,7 @@ export function MyFrequencyPage() {
       </section>
 
       {/* Filtro por mês */}
-      <section className="rounded-2xl border border-blue-100 bg-white p-4 shadow-sm dark:border-slate-700 dark:bg-slate-800 sm:rounded-3xl">
+      <section className="rounded-2xl border border-stone-200 bg-white p-4 shadow-sm dark:border-slate-700 dark:bg-slate-800 sm:rounded-3xl">
         <Input label="Mês" onChange={(event) => setMonthValue(event.target.value)} type="month" value={monthValue} />
       </section>
 
@@ -165,7 +165,7 @@ export function MyFrequencyPage() {
 
       {/* Detalhe do mês */}
       <section className="panel overflow-hidden">
-        <div className="border-b border-blue-100 p-5 dark:border-slate-700">
+        <div className="border-b border-stone-200 p-5 dark:border-slate-700">
           <h2 className="text-xl font-black text-pegasus-navy">Treinos do mês</h2>
           <p className="text-sm text-slate-500">Presenças, faltas e datas programadas.</p>
         </div>
@@ -176,7 +176,7 @@ export function MyFrequencyPage() {
             Carregando frequência
           </div>
         ) : data?.details.length ? (
-          <div className="divide-y divide-blue-50 dark:divide-slate-700">
+          <div className="divide-y divide-stone-100 dark:divide-slate-700">
             {data.details.map((detail) => (
               <article className="flex flex-col gap-3 p-5 sm:flex-row sm:items-center sm:justify-between" key={detail.date}>
                 <div>

@@ -114,7 +114,7 @@ export function AccessControlPage() {
   }
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-6">
       <PageHeader
         title="Controle de Acessos"
         description={`Mapa inicial de usuários, perfis e permissões por área do ${ORG_NAME}.`}
@@ -122,7 +122,7 @@ export function AccessControlPage() {
 
       <section className="grid gap-6 xl:grid-cols-[1.2fr_0.8fr]">
         <article data-tour="acesso-usuarios" className="panel overflow-hidden">
-          <div className="flex items-center gap-3 border-b border-blue-100 p-6">
+          <div className="flex items-center gap-3 border-b border-stone-200 p-6">
             <Users className="text-pegasus-primary" size={22} />
             <div>
               <h2 className="text-xl font-bold text-pegasus-navy">Usuários</h2>
@@ -136,7 +136,7 @@ export function AccessControlPage() {
             {!isLoading && !error ? (
               <div className="grid gap-3 p-4">
                 {users.map((user) => (
-                  <article key={user.id || user.email} className="rounded-2xl border border-blue-100 bg-white p-4 shadow-sm">
+                  <article key={user.id || user.email} className="rounded-2xl border border-stone-200 bg-white p-4 shadow-sm">
                     <div className="flex items-start justify-between gap-3">
                       <div className="min-w-0">
                         <h3 className="font-bold text-pegasus-navy">{user.name}</h3>
@@ -240,7 +240,7 @@ export function AccessControlPage() {
           </div>
         </article>
 
-        <article className="panel p-6">
+        <article className="panel p-5">
           <div className="flex items-center gap-3">
             <ShieldCheck className="text-pegasus-primary" size={22} />
             <div>

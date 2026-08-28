@@ -183,8 +183,8 @@ export function MarketingPage() {
   }
 
   return (
-    <div className="space-y-8">
-      <div data-tour="mkt-tabs" className="flex flex-wrap gap-2 rounded-2xl border border-blue-100 bg-white p-2 shadow-sm">
+    <div className="space-y-6">
+      <div data-tour="mkt-tabs" className="flex flex-wrap gap-2 rounded-2xl border border-stone-200 bg-white p-2 shadow-sm">
         {marketingTabs.map((tab) => (
           <button
             className={`rounded-xl px-4 py-2 text-sm font-bold transition ${
@@ -298,7 +298,7 @@ export function MarketingPage() {
       ) : null}
 
       {activeTab === "identidade" ? (
-      <section className="panel p-6">
+      <section className="panel p-5">
         <div className="flex items-center gap-3">
           <Palette className="text-pegasus-primary" size={22} />
           <div>
@@ -308,7 +308,7 @@ export function MarketingPage() {
         </div>
         <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           {palette.map(([name, color]) => (
-            <div key={color} className="rounded-2xl border border-blue-100 bg-white p-4 shadow-sm">
+            <div key={color} className="rounded-2xl border border-stone-200 bg-white p-4 shadow-sm">
               <div className="h-20 rounded-xl border border-slate-100" style={{ backgroundColor: color }} />
               <p className="mt-3 font-bold text-pegasus-navy">{name}</p>
               <p className="text-sm text-slate-500">{color}</p>
@@ -316,21 +316,21 @@ export function MarketingPage() {
           ))}
         </div>
         <div className="mt-6 grid gap-4 md:grid-cols-3">
-          <div className="rounded-2xl border border-blue-100 bg-white p-5">
+          <div className="rounded-2xl border border-stone-200 bg-white p-5">
             <ShieldCheck className="text-pegasus-primary" size={20} />
             <h3 className="mt-3 font-bold text-pegasus-navy">Uso da logo</h3>
             <p className="mt-2 text-sm leading-6 text-slate-600">
               Manter contraste alto, área de respiro e preferir fundo branco ou azul escuro.
             </p>
           </div>
-          <div className="rounded-2xl border border-blue-100 bg-white p-5">
+          <div className="rounded-2xl border border-stone-200 bg-white p-5">
             <Lightbulb className="text-pegasus-primary" size={20} />
             <h3 className="mt-3 font-bold text-pegasus-navy">Ideias de campanhas</h3>
             <p className="mt-2 text-sm leading-6 text-slate-600">
               Bastidores de treino, histórias de atletas, chamadas para voluntários e captação.
             </p>
           </div>
-          <div className="rounded-2xl border border-blue-100 bg-white p-5">
+          <div className="rounded-2xl border border-stone-200 bg-white p-5">
             <ExternalLink className="text-pegasus-primary" size={20} />
             <h3 className="mt-3 font-bold text-pegasus-navy">Observações futuras</h3>
             <p className="mt-2 text-sm leading-6 text-slate-600">

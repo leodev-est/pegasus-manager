@@ -94,6 +94,20 @@ function typeLabel(type: Notification["type"]) {
   return labels[type];
 }
 
+function notificationHref(type: Notification["type"], isAthlete: boolean): string | null {
+  const routes: Record<Notification["type"], { athlete: string; staff: string } | null> = {
+    treino: { athlete: "/app/meu-perfil", staff: "/app/treinos/calendario" },
+    financeiro: { athlete: "/app/atleta/mensalidades", staff: "/app/financeiro" },
+    frequencia: { athlete: "/app/atleta/frequencia", staff: "/app/frequencia" },
+    avaliacao: { athlete: "/app/meu-perfil", staff: "/app/avaliacoes" },
+    sistema: null,
+  };
+
+  const route = routes[type];
+  if (!route) return null;
+  return isAthlete ? route.athlete : route.staff;
+}
+
 type TopbarProps = {
   onMenuClick: () => void;
 };
@@ -188,9 +202,21 @@ export function Topbar({ onMenuClick }: TopbarProps) {
     }
   }
 
+  const isAthlete = Boolean(
+    user?.permissions?.includes("atleta") &&
+      !user?.permissions?.includes("rh") &&
+      !user?.permissions?.includes("gestao") &&
+      !user?.permissions?.includes("financeiro"),
+  );
+
   function handleNotificationClick(notification: Notification) {
     if (!notification.read) {
       markAsRead(notification.id);
+    }
+    const href = notificationHref(notification.type, isAthlete);
+    if (href) {
+      setIsNotificationsOpen(false);
+      navigate(href);
     }
   }
 
@@ -212,12 +238,12 @@ export function Topbar({ onMenuClick }: TopbarProps) {
   }
 
   return (
-    <header className="sticky top-0 z-20 w-full max-w-full border-b border-blue-100 bg-pegasus-surface/90 px-4 py-3 backdrop-blur dark:border-slate-700 dark:bg-slate-900/90 md:px-8 md:py-4">
+    <header className="sticky top-0 z-20 w-full max-w-full border-b border-stone-200 bg-white/90 px-4 py-3 backdrop-blur dark:border-slate-700 dark:bg-slate-900/90 md:px-8 md:py-4">
       <div className="flex min-w-0 items-center justify-between gap-3">
         <div className="flex min-w-0 items-center gap-3">
           <button
-            aria-label="Abrir menu"
-            className="focus-ring grid h-11 w-11 shrink-0 place-items-center rounded-full border border-blue-100 bg-white text-pegasus-primary shadow-sm dark:border-slate-700 dark:bg-slate-800 dark:text-blue-400 lg:hidden"
+            aria-label="Abrir ou recolher menu"
+            className="focus-ring grid h-11 w-11 shrink-0 place-items-center rounded-full border border-stone-200 bg-white text-stone-600 shadow-sm transition hover:bg-stone-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300"
             onClick={onMenuClick}
             type="button"
           >
@@ -229,17 +255,17 @@ export function Topbar({ onMenuClick }: TopbarProps) {
             src={ORG_LOGO_URL || logoIcon}
           />
           <div className="min-w-0">
-            <p className="text-sm font-semibold text-pegasus-medium">Sistema administrativo</p>
-            <p className="hidden text-xs text-slate-500 sm:block">Gestão integrada do Projeto {ORG_NAME}</p>
+            <p className="text-sm font-semibold text-stone-900 dark:text-slate-100">Sistema administrativo</p>
+            <p className="hidden text-xs text-stone-500 sm:block">Gestão integrada do Projeto {ORG_NAME}</p>
           </div>
         </div>
 
         <div className="flex shrink-0 items-center gap-2 sm:gap-3">
           <div className="relative hidden min-w-72 xl:block" ref={searchRef}>
-            <label className="flex items-center gap-2 rounded-md border border-blue-100 bg-white px-4 py-2 text-sm text-slate-500 shadow-sm dark:border-slate-700 dark:bg-slate-800 dark:text-slate-400">
+            <label className="flex items-center gap-2 rounded-md border border-stone-200 bg-stone-50 px-4 py-2 text-sm text-stone-500 shadow-sm dark:border-slate-700 dark:bg-slate-800 dark:text-slate-400">
               <Search size={17} />
               <input
-                className="w-full bg-transparent text-slate-700 outline-none placeholder:text-slate-400"
+                className="w-full bg-transparent text-stone-700 outline-none placeholder:text-stone-400"
                 onChange={(e) => setSearchQuery(e.target.value)}
                 onFocus={() => searchResults.length > 0 && setIsSearchOpen(true)}
                 placeholder="Buscar no sistema"
@@ -247,7 +273,7 @@ export function Topbar({ onMenuClick }: TopbarProps) {
               />
             </label>
             {isSearchOpen && searchResults.length > 0 ? (
-              <div className="absolute left-0 top-12 z-50 w-full overflow-hidden rounded-lg border border-blue-100 bg-white shadow-2xl dark:border-slate-700 dark:bg-slate-800">
+              <div className="absolute left-0 top-12 z-50 w-full overflow-hidden rounded-lg border border-stone-200 bg-white shadow-2xl dark:border-slate-700 dark:bg-slate-800">
                 {Object.entries(
                   searchResults.reduce<Record<string, SearchResult[]>>((acc, result) => {
                     if (!acc[result.category]) acc[result.category] = [];
@@ -256,12 +282,12 @@ export function Topbar({ onMenuClick }: TopbarProps) {
                   }, {}),
                 ).map(([category, items]) => (
                   <div key={category}>
-                    <p className="border-b border-blue-50 bg-pegasus-surface px-4 py-2 text-xs font-black uppercase tracking-[0.12em] text-pegasus-primary">
+                    <p className="border-b border-stone-100 bg-stone-50 px-4 py-2 text-xs font-black uppercase tracking-[0.12em] text-stone-500">
                       {category}
                     </p>
                     {items.map((result) => (
                       <button
-                        className="block w-full px-4 py-3 text-left transition hover:bg-pegasus-ice"
+                        className="block w-full px-4 py-3 text-left transition hover:bg-stone-50"
                         key={result.id}
                         onClick={() => {
                           navigate(result.href);
@@ -271,7 +297,7 @@ export function Topbar({ onMenuClick }: TopbarProps) {
                         type="button"
                       >
                         <p className="font-bold text-pegasus-navy">{result.label}</p>
-                        {result.sublabel ? <p className="text-xs text-slate-500">{result.sublabel}</p> : null}
+                        {result.sublabel ? <p className="text-xs text-stone-500">{result.sublabel}</p> : null}
                       </button>
                     ))}
                   </div>
@@ -282,7 +308,7 @@ export function Topbar({ onMenuClick }: TopbarProps) {
 
           <button
             aria-label={theme === "dark" ? "Modo claro" : "Modo escuro"}
-            className="focus-ring grid h-10 w-10 shrink-0 place-items-center rounded-full border border-blue-100 bg-white text-slate-500 shadow-sm transition hover:text-pegasus-primary dark:border-slate-700 dark:bg-slate-800 dark:text-slate-400 dark:hover:text-blue-400"
+            className="focus-ring grid h-10 w-10 shrink-0 place-items-center rounded-full border border-stone-200 bg-white text-stone-500 shadow-sm transition hover:text-stone-900 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-400 dark:hover:text-slate-100"
             onClick={toggleTheme}
             type="button"
           >
@@ -294,7 +320,7 @@ export function Topbar({ onMenuClick }: TopbarProps) {
           <div className="relative" ref={dropdownRef}>
             <button
               aria-label="Notificações"
-              className="focus-ring relative grid h-10 w-10 place-items-center rounded-full border border-blue-100 bg-white text-pegasus-primary shadow-sm dark:border-slate-700 dark:bg-slate-800 dark:text-blue-400"
+              className="focus-ring relative grid h-10 w-10 place-items-center rounded-full border border-stone-200 bg-white text-stone-600 shadow-sm dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300"
               onClick={handleOpenNotifications}
               type="button"
             >
@@ -307,14 +333,14 @@ export function Topbar({ onMenuClick }: TopbarProps) {
             </button>
 
             {isNotificationsOpen ? (
-              <section className="fixed inset-x-2 top-[4.5rem] z-50 overflow-hidden rounded-lg border border-blue-100 bg-white shadow-2xl dark:border-slate-700 dark:bg-slate-800 sm:absolute sm:inset-x-auto sm:right-0 sm:top-12 sm:w-[22rem]">
-                <header className="flex items-center justify-between gap-3 border-b border-blue-100 p-4">
+              <section className="fixed inset-x-2 top-[4.5rem] z-50 overflow-hidden rounded-lg border border-stone-200 bg-white shadow-2xl dark:border-slate-700 dark:bg-slate-800 sm:absolute sm:inset-x-auto sm:right-0 sm:top-12 sm:w-[22rem]">
+                <header className="flex items-center justify-between gap-3 border-b border-stone-200 p-4">
                   <div>
                     <p className="font-black text-pegasus-navy">Notificações</p>
-                    <p className="text-xs text-slate-500">{unreadCount} não lida(s)</p>
+                    <p className="text-xs text-stone-500">{unreadCount} não lida(s)</p>
                   </div>
                   <button
-                    className="text-xs font-bold text-pegasus-primary disabled:opacity-50"
+                    className="text-xs font-bold text-emerald-700 disabled:opacity-50"
                     disabled={unreadCount === 0}
                     onClick={handleMarkAllAsRead}
                     type="button"
@@ -335,7 +361,7 @@ export function Topbar({ onMenuClick }: TopbarProps) {
                       if (isLesaoAction) {
                         return (
                           <div
-                            className="border-b border-blue-50 bg-amber-50/60 p-4 dark:bg-amber-900/20"
+                            className="border-b border-stone-100 bg-amber-50/60 p-4 dark:bg-amber-900/20"
                             key={notification.id}
                           >
                             <div className="flex items-start justify-between gap-3">
@@ -371,8 +397,8 @@ export function Topbar({ onMenuClick }: TopbarProps) {
 
                       return (
                         <button
-                          className={`block w-full border-b border-blue-50 p-4 text-left transition hover:bg-pegasus-ice ${
-                            notification.read ? "bg-white dark:bg-slate-800" : "bg-blue-50/70 dark:bg-blue-900/20"
+                          className={`block w-full border-b border-stone-100 p-4 text-left transition hover:bg-stone-50 ${
+                            notification.read ? "bg-white dark:bg-slate-800" : "bg-emerald-50/60 dark:bg-emerald-900/20"
                           }`}
                           key={notification.id}
                           onClick={() => handleNotificationClick(notification)}
@@ -381,13 +407,13 @@ export function Topbar({ onMenuClick }: TopbarProps) {
                           <div className="flex items-start justify-between gap-3">
                             <div>
                               <p className="break-words font-black text-pegasus-navy">{notification.title}</p>
-                              <p className="mt-1 break-words text-sm leading-5 text-slate-600">{notification.message}</p>
+                              <p className="mt-1 break-words text-sm leading-5 text-stone-600">{notification.message}</p>
                             </div>
                             {!notification.read ? (
-                              <span className="mt-1 h-2.5 w-2.5 shrink-0 rounded-full bg-pegasus-primary" />
+                              <span className="mt-1 h-2.5 w-2.5 shrink-0 rounded-full bg-emerald-500" />
                             ) : null}
                           </div>
-                          <div className="mt-3 flex items-center justify-between gap-3 text-xs font-bold text-slate-500">
+                          <div className="mt-3 flex items-center justify-between gap-3 text-xs font-bold text-stone-500">
                             <span>{typeLabel(notification.type)}</span>
                             <span>{formatRelativeTime(notification.createdAt)}</span>
                           </div>
@@ -395,20 +421,20 @@ export function Topbar({ onMenuClick }: TopbarProps) {
                       );
                     })
                   ) : (
-                    <div className="p-6 text-center text-sm text-slate-500">Nenhuma notificação</div>
+                    <div className="p-6 text-center text-sm text-stone-500">Nenhuma notificação</div>
                   )}
                 </div>
               </section>
             ) : null}
           </div>
 
-          <div className="flex min-w-0 items-center gap-2 rounded-md border border-blue-100 bg-white py-1 pl-1 pr-2 shadow-sm dark:border-slate-700 dark:bg-slate-800 sm:pr-3">
-            <span className="grid h-8 w-8 place-items-center rounded-full bg-pegasus-primary text-xs font-bold text-white">
+          <div className="flex min-w-0 items-center gap-2 rounded-md border border-stone-200 bg-white py-1 pl-1 pr-2 shadow-sm dark:border-slate-700 dark:bg-slate-800 sm:pr-3">
+            <span className="grid h-8 w-8 place-items-center rounded-full bg-stone-900 text-xs font-bold text-white">
               {getInitials(user?.name)}
             </span>
             <span className="hidden text-sm font-semibold text-pegasus-navy sm:inline">{user?.name}</span>
-            <span className="hidden text-xs font-semibold text-slate-500 lg:inline">{userRole}</span>
-            <ShieldCheck className="hidden text-pegasus-medium sm:block" size={16} />
+            <span className="hidden text-xs font-semibold text-stone-500 lg:inline">{userRole}</span>
+            <ShieldCheck className="hidden text-emerald-600 sm:block" size={16} />
           </div>
           <Button onClick={handleLogout} variant="secondary" className="min-h-10 px-3">
             <LogOut size={17} />

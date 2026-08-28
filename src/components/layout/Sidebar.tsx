@@ -24,6 +24,7 @@
   Star,
   type LucideIcon,
 } from "lucide-react";
+import { useState } from "react";
 import { NavLink } from "react-router-dom";
 import { useAuth } from "../../auth/AuthContext";
 import logoIcon from "../../assets/logo/logo-icon.png";
@@ -268,12 +269,14 @@ export const menuGroups: MenuGroup[] = [
 
 type SidebarProps = {
   isMobileOpen?: boolean;
+  isDesktopCollapsed?: boolean;
   onNavigate?: () => void;
   onOpenTour?: () => void;
 };
 
-export function Sidebar({ isMobileOpen = false, onNavigate, onOpenTour }: SidebarProps) {
+export function Sidebar({ isMobileOpen = false, isDesktopCollapsed = false, onNavigate, onOpenTour }: SidebarProps) {
   const { hasPermission } = useAuth();
+  const [isHovering, setIsHovering] = useState(false);
   const visibleGroups = menuGroups
     .map((group) => ({
       ...group,
@@ -281,79 +284,104 @@ export function Sidebar({ isMobileOpen = false, onNavigate, onOpenTour }: Sideba
     }))
     .filter((group) => group.items.length > 0);
 
+  // On desktop, a collapsed sidebar is a narrow icon rail that expands over
+  // the content (Instagram-style) on hover — it never pushes the layout.
+  const isRail = isDesktopCollapsed;
+  const expanded = !isRail || isHovering;
+  const hideAtLg = expanded ? "" : "lg:hidden";
+
   return (
     <aside
-      className={`fixed inset-y-0 left-0 z-40 flex w-[min(19rem,86vw)] flex-col border-r border-white/5 bg-gradient-to-b from-[#071b33] via-[#0B2E59] to-[#0D3870] text-white shadow-2xl transition-transform duration-200 lg:w-72 lg:translate-x-0 lg:shadow-none ${
-        isMobileOpen ? "translate-x-0" : "-translate-x-full"
+      onMouseEnter={() => isRail && setIsHovering(true)}
+      onMouseLeave={() => setIsHovering(false)}
+      className={`fixed inset-y-0 left-0 z-40 flex w-[min(19rem,86vw)] flex-col overflow-hidden border-r border-stone-200 bg-white text-stone-900 shadow-2xl transition-[width,transform] duration-200 ease-in-out dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 lg:shadow-none ${
+        expanded ? "lg:w-72" : "lg:w-[76px]"
+      } ${isRail && isHovering ? "lg:shadow-2xl" : ""} ${
+        isMobileOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
       }`}
     >
-      <div className="flex h-20 items-center gap-3 border-b border-white/[0.08] px-5">
-        <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-white/10 p-1.5 ring-1 ring-white/10">
+      <div className={`flex h-20 shrink-0 items-center gap-3 border-b border-stone-100 px-5 dark:border-slate-800 ${expanded ? "" : "lg:justify-center lg:px-0"}`}>
+        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-stone-100 p-1.5 dark:bg-slate-800">
           <img
             alt={`Projeto ${ORG_NAME}`}
             className="h-full w-full rounded-lg object-contain"
             src={ORG_LOGO_URL || logoIcon}
           />
         </div>
-        <div>
-          <p className="text-[15px] font-bold tracking-tight text-white">{ORG_NAME}</p>
-          <p className="text-[11px] text-blue-300/70">Projeto esportivo</p>
+        <div className={`min-w-0 ${hideAtLg}`}>
+          <p className="truncate text-[15px] font-bold tracking-tight text-stone-900 dark:text-slate-100">{ORG_NAME}</p>
+          <p className="truncate text-[11px] text-stone-400">Projeto esportivo</p>
         </div>
       </div>
 
-      <nav className="flex-1 space-y-4 overflow-y-auto px-3 py-5">
-        {visibleGroups.map((group) => (
-          <div key={group.title}>
-            <p className="mb-1.5 px-3 text-[10px] font-bold uppercase tracking-[0.18em] text-blue-300/50">
-              {group.title}
-            </p>
-            <div className="space-y-0.5">
-              {group.items.map((item) => {
-                const Icon = item.icon;
+      <nav className="slim-scroll flex-1 space-y-3 overflow-y-auto overflow-x-hidden px-3 py-4">
+        {visibleGroups.map((group, index) => {
+          const isTopLevel = group.items.length === 1 && index === 0;
 
-                return (
-                  <NavLink
-                    key={`${group.title}-${item.label}`}
-                    to={item.path}
-                    end
-                    onClick={onNavigate}
-                    className="block"
-                  >
-                    {({ isActive }) => (
-                      <div
-                        className={`relative flex min-h-10 items-center gap-3 rounded-lg px-3 py-2.5 text-sm transition-all duration-150 ${
-                          isActive
-                            ? "bg-white/[0.13] font-semibold text-white"
-                            : "font-medium text-blue-200/70 hover:bg-white/[0.07] hover:text-white"
-                        }`}
-                      >
-                        {isActive && (
-                          <span className="absolute inset-y-2 left-0 w-[3px] rounded-r-full bg-sky-400" />
-                        )}
-                        <Icon
-                          size={17}
-                          className={isActive ? "shrink-0 text-sky-300" : "shrink-0"}
-                        />
-                        <span>{item.label}</span>
-                      </div>
-                    )}
-                  </NavLink>
-                );
-              })}
+          return (
+            <div
+              key={group.title}
+              className={isTopLevel ? "" : "rounded-2xl bg-stone-100/70 p-2 dark:bg-slate-800/50"}
+            >
+              {!isTopLevel && (
+                <p className={`mb-1 px-2 pt-1 text-[10px] font-bold uppercase tracking-[0.12em] text-stone-400 ${hideAtLg}`}>
+                  {group.title}
+                </p>
+              )}
+              <div className="space-y-0.5">
+                {group.items.map((item) => {
+                  const Icon = item.icon;
+
+                  return (
+                    <NavLink
+                      key={`${group.title}-${item.label}`}
+                      to={item.path}
+                      end
+                      onClick={onNavigate}
+                      title={expanded ? undefined : item.label}
+                      className="focus-ring block rounded-lg"
+                    >
+                      {({ isActive }) => (
+                        <div
+                          className={`flex min-h-9 items-center gap-2.5 rounded-lg px-2.5 py-2 text-[13px] transition-all duration-150 ${
+                            expanded ? "" : "lg:justify-center lg:px-0"
+                          } ${
+                            isActive
+                              ? "bg-white font-semibold text-emerald-900 shadow-sm dark:bg-slate-700 dark:text-emerald-300"
+                              : "font-medium text-stone-600 hover:bg-white/70 hover:text-stone-900 dark:text-slate-400 dark:hover:bg-slate-700/60 dark:hover:text-slate-100"
+                          }`}
+                        >
+                          <span
+                            className={`grid h-6 w-6 shrink-0 place-items-center rounded-md ${
+                              isActive ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-300" : "text-stone-500"
+                            }`}
+                          >
+                            <Icon size={15} />
+                          </span>
+                          <span className={`truncate ${hideAtLg}`}>{item.label}</span>
+                        </div>
+                      )}
+                    </NavLink>
+                  );
+                })}
+              </div>
             </div>
-          </div>
-        ))}
+          );
+        })}
       </nav>
 
       {onOpenTour && (
-        <div className="border-t border-white/[0.08] px-3 py-3">
+        <div className="shrink-0 border-t border-stone-100 px-3 py-3 dark:border-slate-800">
           <button
             type="button"
             onClick={onOpenTour}
-            className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-blue-200/70 transition hover:bg-white/[0.07] hover:text-white"
+            title={expanded ? undefined : "Tutorial do App"}
+            className={`focus-ring flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-stone-500 transition hover:bg-stone-100 hover:text-stone-900 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-100 ${
+              expanded ? "" : "lg:justify-center lg:px-0"
+            }`}
           >
-            <HelpCircle size={17} />
-            Tutorial do App
+            <HelpCircle size={17} className="shrink-0" />
+            <span className={hideAtLg}>Tutorial do App</span>
           </button>
         </div>
       )}

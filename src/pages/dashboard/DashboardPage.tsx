@@ -11,7 +11,6 @@ import {
   TrendingUp,
   Trophy,
   UserCheck,
-  UserPlus,
   Users,
   WalletCards,
   type LucideIcon,
@@ -21,9 +20,8 @@ import { Link } from "react-router-dom";
 import { CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { useAuth } from "../../auth/AuthContext";
 import { useTour } from "../../tours/useTour";
-import { PageHeader } from "../../components/ui/PageHeader";
 import { ORG_NAME } from "../../config/org";
-import { StatCard } from "../../components/ui/StatCard";
+import { Skeleton } from "../../components/ui/Skeleton";
 import { useToast } from "../../components/ui/Toast";
 import { athleteApplicationService, type AthleteApplication } from "../../services/athleteApplicationService";
 import { muralService, type MuralPost } from "../../services/muralService";
@@ -333,55 +331,86 @@ export function DashboardPage() {
   ].filter(isDashboardStat);
 
   return (
-    <div className="w-full max-w-full space-y-8 overflow-hidden">
-      <PageHeader
-        title="Dashboard"
-        description={`Visao geral operacional, financeira e esportiva do Projeto ${ORG_NAME}.`}
-      />
-
-      <section className="rounded-lg bg-pegasus-navy p-6 text-white shadow-soft">
-        <p className="text-sm font-semibold uppercase tracking-[0.18em] text-blue-100">
-          Area administrativa
-        </p>
-        <h2 className="mt-2 text-3xl font-black">Bem-vindo, {user?.name}</h2>
-        <p className="mt-2 max-w-2xl text-sm leading-6 text-blue-50">
-          Os indicadores abaixo refletem os dados atuais das telas que seu perfil pode acessar.
-        </p>
-      </section>
+    <div className="w-full max-w-full space-y-6 overflow-hidden">
+      <div className="flex items-baseline gap-2.5">
+        <h1 className="text-2xl font-black text-pegasus-navy">Dashboard</h1>
+        <span className="text-sm text-stone-400">Bem-vindo, {user?.name?.split(" ")[0]}</span>
+      </div>
 
       {isLoading ? (
-        <section className="panel flex items-center gap-3 p-6 text-sm font-bold text-pegasus-primary">
-          <Loader2 className="animate-spin" size={18} />
-          Carregando indicadores do sistema
-        </section>
+        <div className="space-y-6">
+          <section className="panel flex flex-wrap divide-x divide-stone-100 overflow-hidden dark:divide-slate-700">
+            {Array.from({ length: 4 }).map((_, i) => (
+              <div key={i} className="flex min-w-[220px] flex-1 items-center gap-3.5 px-6 py-5">
+                <Skeleton className="h-10 w-10 shrink-0 rounded-lg" />
+                <div className="min-w-0 flex-1 space-y-2">
+                  <Skeleton className="h-2.5 w-20" />
+                  <Skeleton className="h-5 w-12" />
+                </div>
+              </div>
+            ))}
+          </section>
+          <section className="panel p-5">
+            <Skeleton className="h-4 w-40" />
+            <Skeleton className="mt-2 h-3 w-56" />
+            <Skeleton className="mt-5 h-44 w-full" />
+          </section>
+          <section className="grid gap-6 xl:grid-cols-[1.2fr_0.8fr]">
+            <div className="panel space-y-3 p-6">
+              <Skeleton className="h-5 w-40" />
+              <Skeleton className="h-14 w-full" />
+              <Skeleton className="h-14 w-full" />
+            </div>
+            <div className="panel space-y-3 p-6">
+              <Skeleton className="h-5 w-32" />
+              <Skeleton className="h-10 w-full" />
+              <Skeleton className="h-10 w-full" />
+            </div>
+          </section>
+        </div>
       ) : (
         <>
-          <section data-tour="dash-stats" className="grid gap-5 md:grid-cols-2 xl:grid-cols-4">
-            {stats.map((stat) => (
-              <StatCard key={stat.label} {...stat} />
-            ))}
+          <section data-tour="dash-stats" className="panel flex flex-wrap divide-x divide-stone-100 overflow-hidden dark:divide-slate-700">
+            {stats.map((stat) => {
+              const Icon = stat.icon;
+              return (
+                <Link
+                  key={stat.label}
+                  to={stat.href}
+                  className="focus-ring flex min-w-[220px] flex-1 items-center gap-3.5 px-6 py-5 transition hover:bg-stone-50 dark:hover:bg-slate-700/40"
+                >
+                  <span className="grid h-10 w-10 shrink-0 place-items-center rounded-lg bg-emerald-50 text-emerald-600 dark:bg-emerald-500/10 dark:text-emerald-400">
+                    <Icon size={19} />
+                  </span>
+                  <div className="min-w-0">
+                    <p className="truncate text-[11px] font-bold uppercase tracking-wide text-stone-400">{stat.label}</p>
+                    <p className="mt-0.5 text-xl font-black text-pegasus-navy tabular-nums">{stat.value}</p>
+                  </div>
+                </Link>
+              );
+            })}
           </section>
 
           {/* Painel do atleta */}
           {isAthlete && (
             <section className="space-y-5">
               {/* Próximo treino — destaque */}
-              <div className="rounded-3xl bg-pegasus-navy p-5 text-white">
-                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-blue-200">
+              <div className="rounded-2xl bg-pegasus-navy p-5 text-white">
+                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-stone-400">
                   Próximo treino
                 </p>
                 {nextTraining ? (
                   <>
                     <p className="mt-1 text-2xl font-black">{nextTraining.title}</p>
-                    <p className="mt-1 text-sm text-blue-100">{formatDateTime(nextTraining.date)}</p>
+                    <p className="mt-1 text-sm text-stone-300">{formatDateTime(nextTraining.date)}</p>
                     {nextTraining.category && (
-                      <span className="mt-2 inline-block rounded-full bg-white/10 px-3 py-0.5 text-xs font-semibold text-blue-100">
+                      <span className="mt-2 inline-block rounded-full bg-white/10 px-3 py-0.5 text-xs font-semibold text-stone-200">
                         {nextTraining.category}
                       </span>
                     )}
                   </>
                 ) : (
-                  <p className="mt-1 text-lg font-bold text-blue-200">
+                  <p className="mt-1 text-lg font-bold text-stone-300">
                     Nenhum treino futuro agendado.
                   </p>
                 )}
@@ -432,7 +461,7 @@ export function DashboardPage() {
                                   ? "bg-rose-100 text-rose-700"
                                   : daysUntil === 1
                                   ? "bg-amber-100 text-amber-700"
-                                  : "bg-blue-100 text-blue-700"
+                                  : "bg-emerald-100 text-emerald-700"
                               }`}
                             >
                               {daysUntil <= 0 ? "Hoje!" : daysUntil === 1 ? "Amanhã!" : `Em ${daysUntil} dias`}
@@ -495,7 +524,7 @@ export function DashboardPage() {
 
               {/* Frequência */}
               <div className="panel overflow-hidden">
-                <div className="flex items-center gap-3 border-b border-blue-100 p-5 dark:border-slate-700">
+                <div className="flex items-center gap-3 border-b border-stone-100 p-5 dark:border-slate-700">
                   <TrendingUp className="text-pegasus-primary" size={20} />
                   <div>
                     <h2 className="font-black text-pegasus-navy">Minha Frequência</h2>
@@ -558,7 +587,7 @@ export function DashboardPage() {
 
           {/* Mural de Avisos */}
           {muralPosts.length > 0 && (
-            <article data-tour="dash-mural" className="panel p-6">
+            <article data-tour="dash-mural" className="panel p-5">
               <div className="mb-4 flex items-center justify-between gap-3">
                 <div className="flex items-center gap-3">
                   <span className="rounded-lg bg-pegasus-ice p-3 text-pegasus-primary">
@@ -583,7 +612,7 @@ export function DashboardPage() {
                       <span className={`rounded-full px-2.5 py-0.5 text-xs font-bold ${
                         post.category === "urgente" ? "bg-rose-100 text-rose-700" :
                         post.category === "evento" ? "bg-violet-100 text-violet-700" :
-                        "bg-blue-100 text-blue-700"
+                        "bg-stone-100 text-stone-600"
                       }`}>
                         {post.category === "urgente" ? "Urgente" : post.category === "evento" ? "Evento" : "Info"}
                       </span>
@@ -601,8 +630,8 @@ export function DashboardPage() {
 
           {/* Gráfico de frequência mensal */}
           {canSeeTrainings && monthlyStats.length > 0 && (
-            <section className="panel p-6">
-              <div className="mb-6 flex items-center gap-3">
+            <section className="panel p-5">
+              <div className="mb-4 flex items-center gap-3">
                 <Star className="text-pegasus-primary" size={20} />
                 <div>
                   <h2 className="font-black text-pegasus-navy">Frequência por mês</h2>
@@ -611,16 +640,16 @@ export function DashboardPage() {
               </div>
               <ResponsiveContainer width="100%" height={220}>
                 <LineChart data={monthlyStats.map((s) => ({ ...s, label: formatMonth(s.month) }))}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+                  <CartesianGrid strokeDasharray="3 3" stroke="#e7e5e4" />
                   <XAxis dataKey="label" tick={{ fontSize: 12 }} />
                   <YAxis domain={[0, 100]} tick={{ fontSize: 12 }} tickFormatter={(v) => `${v}%`} />
                   <Tooltip formatter={(v) => [`${v}%`, "Frequência"]} />
                   <Line
                     type="monotone"
                     dataKey="percentual"
-                    stroke="#2563eb"
+                    stroke="#059669"
                     strokeWidth={2.5}
-                    dot={{ fill: "#2563eb", r: 4 }}
+                    dot={{ fill: "#059669", r: 4 }}
                     activeDot={{ r: 6 }}
                   />
                 </LineChart>
@@ -628,9 +657,9 @@ export function DashboardPage() {
             </section>
           )}
 
-          <section className="grid gap-6 xl:grid-cols-[1.2fr_0.8fr]">
+          <section className="grid gap-4 xl:grid-cols-[1.2fr_0.8fr]">
             {canSeeTrainings ? (
-              <article className="panel p-6">
+              <article className="panel p-5">
                 <div className="flex items-center gap-3">
                   <span className="rounded-lg bg-pegasus-ice p-3 text-pegasus-primary">
                     <CalendarDays size={22} />
@@ -642,7 +671,7 @@ export function DashboardPage() {
                     </p>
                   </div>
                 </div>
-                <div className="mt-6 grid gap-3">
+                <div className="mt-4 grid gap-2.5">
                   {upcomingTrainings.slice(0, 4).map((training) => (
                     <div
                       key={training.id}
@@ -669,18 +698,18 @@ export function DashboardPage() {
             ) : null}
 
             {(canSeeRh || canSeeFinance || canSeeOperational) && (
-            <article className="panel p-6">
+            <article className="panel p-5">
               <div className="flex items-center gap-3">
                 <span className="rounded-lg bg-pegasus-ice p-3 text-pegasus-primary">
                   <Megaphone size={22} />
                 </span>
                 <h2 className="text-xl font-bold text-pegasus-navy">Alertas Operacionais</h2>
               </div>
-              <div className="mt-6 grid gap-3">
+              <div className="mt-4 grid gap-2.5">
                 {canSeeRh ? (
                   <Link
                     to="/app/rh/inscricoes"
-                    className={`group flex items-center justify-between rounded-lg p-4 transition hover:brightness-95 ${pendingApplications > 0 ? "bg-amber-50" : "bg-pegasus-surface"}`}
+                    className={`group flex items-center justify-between rounded-lg p-4 transition hover:-translate-y-0.5 hover:shadow-md hover:brightness-95 ${pendingApplications > 0 ? "bg-amber-50" : "bg-pegasus-surface"}`}
                   >
                     <div>
                       <p className="text-sm font-semibold text-slate-600">Inscrições pendentes</p>
@@ -694,7 +723,7 @@ export function DashboardPage() {
                 {canSeeFinance ? (
                   <Link
                     to="/app/financeiro"
-                    className={`group flex items-center justify-between rounded-lg p-4 transition hover:brightness-95 ${(data.financeSummary?.overdueMonthlyPayments ?? 0) > 0 ? "bg-rose-50" : "bg-pegasus-surface"}`}
+                    className={`group flex items-center justify-between rounded-lg p-4 transition hover:-translate-y-0.5 hover:shadow-md hover:brightness-95 ${(data.financeSummary?.overdueMonthlyPayments ?? 0) > 0 ? "bg-rose-50" : "bg-pegasus-surface"}`}
                   >
                     <div>
                       <p className="text-sm font-semibold text-slate-600">Mensalidades em aberto</p>
@@ -714,7 +743,7 @@ export function DashboardPage() {
                 {canSeeOperational ? (
                   <Link
                     to="/app/operacional"
-                    className="group flex items-center justify-between rounded-lg bg-pegasus-surface p-4 transition hover:brightness-95"
+                    className="group flex items-center justify-between rounded-lg bg-pegasus-surface p-4 transition hover:-translate-y-0.5 hover:shadow-md hover:brightness-95"
                   >
                     <div>
                       <p className="text-sm font-semibold text-slate-600">Escolas sem envio</p>
@@ -729,7 +758,7 @@ export function DashboardPage() {
           </section>
 
           {data.upcomingGames.length > 0 ? (
-            <article className="panel p-6">
+            <article className="panel p-5">
               <div className="flex items-center gap-3">
                 <span className="rounded-lg bg-pegasus-ice p-3 text-pegasus-primary">
                   <Trophy size={22} />
@@ -739,7 +768,7 @@ export function DashboardPage() {
                   <p className="text-sm text-slate-500">{data.upcomingGames.length} jogo(s) agendado(s)</p>
                 </div>
               </div>
-              <div className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+              <div className="mt-4 grid gap-2.5 sm:grid-cols-2 lg:grid-cols-3">
                 {data.upcomingGames.map((game) => (
                   <div key={game.id} className="rounded-lg bg-pegasus-surface p-4">
                     <p className="font-bold text-pegasus-navy">vs {game.opponent}</p>
@@ -755,7 +784,7 @@ export function DashboardPage() {
           ) : null}
 
           {canSeeRh && (birthdays.today.length > 0 || birthdays.week.length > 0) ? (
-            <article className="panel p-6">
+            <article className="panel p-5">
               <div className="flex items-center gap-3">
                 <span className="rounded-lg bg-pink-50 p-3 text-pink-600">
                   <Cake size={22} />
@@ -769,7 +798,7 @@ export function DashboardPage() {
                   </p>
                 </div>
               </div>
-              <div className="mt-6 grid gap-3 sm:grid-cols-2">
+              <div className="mt-4 grid gap-2.5 sm:grid-cols-2">
                 {birthdays.today.map((a) => (
                   <div key={a.id} className="flex items-center gap-3 rounded-lg bg-pink-50 p-4">
                     <span className="text-2xl">🎂</span>
@@ -796,104 +825,6 @@ export function DashboardPage() {
             </article>
           ) : null}
 
-          <section className="grid gap-6 xl:grid-cols-3">
-            {canSeeFinance ? (
-              <article className="panel p-6">
-                <div className="flex items-center gap-3">
-                  <WalletCards className="text-pegasus-primary" size={22} />
-                  <h2 className="text-xl font-bold text-pegasus-navy">Financeiro</h2>
-                </div>
-                <div className="mt-6 grid gap-4">
-                  <div className="rounded-lg bg-emerald-50 p-4 text-emerald-700">
-                    <p className="text-sm font-semibold">Receitas do mes</p>
-                    <strong className="mt-1 block text-2xl">
-                      {formatCurrency(data.financeSummary?.monthlyRevenue ?? 0)}
-                    </strong>
-                  </div>
-                  <div className="rounded-lg bg-rose-50 p-4 text-rose-700">
-                    <p className="text-sm font-semibold">Despesas do mes</p>
-                    <strong className="mt-1 block text-2xl">
-                      {formatCurrency(data.financeSummary?.monthlyExpenses ?? 0)}
-                    </strong>
-                  </div>
-                  <div className="rounded-lg bg-blue-50 p-4 text-blue-700">
-                    <p className="text-sm font-semibold">Balanco do mes</p>
-                    <strong className="mt-1 block text-2xl">
-                      {formatCurrency(data.financeSummary?.monthlyBalance ?? 0)}
-                    </strong>
-                  </div>
-                </div>
-              </article>
-            ) : null}
-
-            {canSeeRh ? (
-              <article className="panel p-6">
-                <div className="flex items-center gap-3">
-                  <UserPlus className="text-pegasus-primary" size={22} />
-                  <h2 className="text-xl font-bold text-pegasus-navy">RH</h2>
-                </div>
-                <div className="mt-6 grid gap-4">
-                  {[
-                    ["Ativos", activeAthletes],
-                    ["Teste", countByStatus(athletes, "teste")],
-                    ["Inativos", countByStatus(athletes, "inativo")],
-                    ["Isentos", athletes.filter((athlete) => athlete.monthlyPaymentStatus === "isento").length],
-                  ].map(([label, value]) => (
-                    <div
-                      key={label}
-                      className="flex items-center justify-between rounded-lg bg-pegasus-surface p-4"
-                    >
-                      <span className="font-semibold text-slate-600">{label}</span>
-                      <strong className="text-2xl text-pegasus-primary">{value}</strong>
-                    </div>
-                  ))}
-                </div>
-              </article>
-            ) : null}
-
-            {canSeeManagement || canSeeMarketing ? (
-              <article className="panel p-6">
-                <div className="flex items-center gap-3">
-                  <ClipboardList className="text-pegasus-primary" size={22} />
-                  <h2 className="text-xl font-bold text-pegasus-navy">Tarefas</h2>
-                </div>
-                <div className="mt-6 grid gap-4">
-                  {canSeeManagement ? (
-                    <>
-                      <div className="flex items-center justify-between rounded-lg bg-pegasus-surface p-4">
-                        <span className="font-semibold text-slate-600">Gestao a fazer</span>
-                        <strong className="text-2xl text-pegasus-primary">
-                          {countByStatus(data.managementTasks, "todo")}
-                        </strong>
-                      </div>
-                      <div className="flex items-center justify-between rounded-lg bg-pegasus-surface p-4">
-                        <span className="font-semibold text-slate-600">Gestao em andamento</span>
-                        <strong className="text-2xl text-pegasus-primary">
-                          {countByStatus(data.managementTasks, "doing")}
-                        </strong>
-                      </div>
-                    </>
-                  ) : null}
-                  {canSeeMarketing ? (
-                    <>
-                      <div className="flex items-center justify-between rounded-lg bg-pegasus-surface p-4">
-                        <span className="font-semibold text-slate-600">Marketing em producao</span>
-                        <strong className="text-2xl text-pegasus-primary">
-                          {countByStatus(data.marketingTasks, "production")}
-                        </strong>
-                      </div>
-                      <div className="flex items-center justify-between rounded-lg bg-pegasus-surface p-4">
-                        <span className="font-semibold text-slate-600">Marketing em revisao</span>
-                        <strong className="text-2xl text-pegasus-primary">
-                          {countByStatus(data.marketingTasks, "review")}
-                        </strong>
-                      </div>
-                    </>
-                  ) : null}
-                </div>
-              </article>
-            ) : null}
-          </section>
         </>
       )}
     </div>

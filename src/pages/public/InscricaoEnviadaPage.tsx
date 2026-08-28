@@ -41,7 +41,7 @@ export function InscricaoEnviadaPage() {
           Nossa equipe vai analisar seu perfil e entrará em contato em breve.
         </p>
 
-        <div className="mt-8 w-full rounded-2xl border border-blue-100 bg-white p-6 text-left shadow-soft">
+        <div className="mt-8 w-full rounded-2xl border border-stone-200 bg-white p-6 text-left shadow-soft">
           <p className="font-bold text-pegasus-navy">Próximos passos</p>
           <ul className="mt-3 space-y-3">
             {[
@@ -68,7 +68,7 @@ export function InscricaoEnviadaPage() {
           </Link>
           <Link
             to="/inscricao"
-            className="inline-flex min-h-11 items-center justify-center gap-2 rounded-2xl border border-blue-100 bg-white px-6 font-bold text-pegasus-primary hover:bg-pegasus-ice"
+            className="inline-flex min-h-11 items-center justify-center gap-2 rounded-2xl border border-stone-200 bg-white px-6 font-bold text-pegasus-primary hover:bg-pegasus-ice"
           >
             <ArrowLeft size={17} />
             Nova inscrição

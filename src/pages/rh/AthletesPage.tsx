@@ -1,5 +1,6 @@
 ﻿import { ClockArrowUp, Download, FileDown, Info, Loader2, Plus, UserCheck } from "lucide-react";
 import { FormEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import { useAthletes, useInvalidateAthletes } from "../../hooks/useAthletes";
 import { useAuth } from "../../auth/AuthContext";
 import { useTour } from "../../tours/useTour";
@@ -188,8 +189,20 @@ export function AthletesPage() {
   const canCreate = hasPermission(["athletes:create"]);
   const canUpdate = hasPermission(["athletes:update"]);
   const canDelete = hasPermission(["athletes:delete"]);
-  const [search, setSearch] = useState("");
-  const [status, setStatus] = useState("ativo");
+  const [searchParams, setSearchParams] = useSearchParams();
+  const search = searchParams.get("search") ?? "";
+  const status = searchParams.get("status") ?? "ativo";
+  function updateFilterParam(key: string, value: string) {
+    setSearchParams(
+      (prev) => {
+        const next = new URLSearchParams(prev);
+        if (value) next.set(key, value);
+        else next.delete(key);
+        return next;
+      },
+      { replace: true },
+    );
+  }
   const invalidateAthletes = useInvalidateAthletes();
   const [isSaving, setIsSaving] = useState(false);
   const [isImporting, setIsImporting] = useState(false);
@@ -207,8 +220,9 @@ export function AthletesPage() {
   const [infoApplication, setInfoApplication] = useState<AthleteApplication | null>(null);
   const [isLoadingInfo, setIsLoadingInfo] = useState(false);
   const [genderSuggestion, setGenderSuggestion] = useState<{ gender: AthleteGender; probability: number } | null>(null);
-  const [genderFilter, setGenderFilter] = useState<"todos" | "masculino" | "feminino">("todos");
+  const genderFilter = (searchParams.get("gender") as "todos" | "masculino" | "feminino" | null) ?? "todos";
   const [turmas, setTurmas] = useState<Turma[]>([]);
+  const [nameError, setNameError] = useState<string | null>(null);
 
   useEffect(() => {
     turmaService.getAll().then(setTurmas).catch(() => {});
@@ -289,6 +303,7 @@ export function AthletesPage() {
 
   function handleNameChange(value: string) {
     setForm((f) => ({ ...f, name: value }));
+    if (nameError) setNameError(null);
     fetchGenderSuggestion(value);
   }
 
@@ -296,6 +311,7 @@ export function AthletesPage() {
     setEditingAthlete(null);
     setForm(emptyAthlete);
     setGenderSuggestion(null);
+    setNameError(null);
     setIsModalOpen(true);
   }
 
@@ -303,11 +319,18 @@ export function AthletesPage() {
     setEditingAthlete(athlete);
     setForm(athleteToForm(athlete));
     setGenderSuggestion(null);
+    setNameError(null);
     setIsModalOpen(true);
   }
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+
+    if (!form.name.trim()) {
+      setNameError("Informe o nome do atleta.");
+      return;
+    }
+    setNameError(null);
     setIsSaving(true);
 
     try {
@@ -387,7 +410,7 @@ export function AthletesPage() {
   }
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-6">
       <PageHeader
         title="RH / Atletas"
         description="Cadastro, filtros e acompanhamento dos atletas."
@@ -447,12 +470,12 @@ export function AthletesPage() {
       <FilterBar>
         <Input
           label="Buscar por nome"
-          onChange={(event) => setSearch(event.target.value)}
+          onChange={(event) => updateFilterParam("search", event.target.value)}
           value={search}
         />
         <Select
           label="Status"
-          onChange={(event) => setStatus(event.target.value)}
+          onChange={(event) => updateFilterParam("status", event.target.value)}
           options={statusOptions}
           value={status}
         />
@@ -463,7 +486,7 @@ export function AthletesPage() {
               <button
                 key={opt}
                 type="button"
-                onClick={() => setGenderFilter(opt)}
+                onClick={() => updateFilterParam("gender", opt)}
                 className={`px-3 py-2 transition ${
                   genderFilter === opt
                     ? opt === "masculino"
@@ -483,7 +506,7 @@ export function AthletesPage() {
       </div>
 
       <section data-tour="atletas-lista" className="panel overflow-hidden">
-        <div className="flex items-center gap-3 border-b border-blue-100 p-6">
+        <div className="flex items-center gap-3 border-b border-stone-200 p-6">
           <UserCheck className="text-pegasus-primary" size={22} />
           <div>
             <h2 className="text-xl font-bold text-pegasus-navy">Atletas</h2>
@@ -500,7 +523,7 @@ export function AthletesPage() {
           <>
             <div className="grid gap-3 p-4 md:hidden">
               {displayedAthletes.map((athlete) => (
-                <article key={athlete.id} className={`rounded-2xl border border-blue-100 bg-white p-4 shadow-sm${athlete.status === "inativo" ? " opacity-60" : ""}`}>
+                <article key={athlete.id} className={`rounded-2xl border border-stone-200 bg-white p-4 shadow-sm${athlete.status === "inativo" ? " opacity-60" : ""}`}>
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0">
                       <h3 className="font-bold text-pegasus-navy">{athlete.name}</h3>
@@ -512,7 +535,7 @@ export function AthletesPage() {
                     <p><strong className="text-pegasus-navy">Posição:</strong> {athlete.position ?? "-"}</p>
                     <p><strong className="text-pegasus-navy">Categoria:</strong> {athlete.category ?? "-"}</p>
                   </div>
-                  <div className="mt-4 flex flex-wrap items-center gap-2 border-t border-blue-50 pt-3">
+                  <div className="mt-4 flex flex-wrap items-center gap-2 border-t border-stone-100 pt-3">
                     <Button
                       className="h-8 px-3 text-xs"
                       onClick={() => openPaymentHistory(athlete)}
@@ -521,7 +544,7 @@ export function AthletesPage() {
                       <ClockArrowUp size={13} />Histórico
                     </Button>
                     <button
-                      className="flex items-center gap-1.5 rounded-xl bg-blue-50 px-3 py-1.5 text-sm font-semibold text-blue-700 hover:bg-blue-100"
+                      className="flex items-center gap-1.5 rounded-xl bg-stone-100 px-3 py-1.5 text-sm font-semibold text-stone-700 hover:bg-stone-200"
                       onClick={() => openInfo(athlete)}
                       type="button"
                     >
@@ -597,7 +620,7 @@ export function AthletesPage() {
                             <ClockArrowUp size={13} />Histórico
                           </Button>
                           <button
-                            className="flex items-center gap-1.5 rounded-xl bg-blue-50 px-3 py-1.5 text-sm font-semibold text-blue-700 hover:bg-blue-100"
+                            className="flex items-center gap-1.5 rounded-xl bg-stone-100 px-3 py-1.5 text-sm font-semibold text-stone-700 hover:bg-stone-200"
                             onClick={() => openInfo(athlete)}
                             type="button"
                           >
@@ -634,6 +657,14 @@ export function AthletesPage() {
         ) : (
           <div className="p-6">
             <EmptyState
+              action={
+                canCreate ? (
+                  <Button onClick={openCreateModal}>
+                    <Plus size={17} />
+                    Novo atleta
+                  </Button>
+                ) : undefined
+              }
               description="Ajuste os filtros ou cadastre um novo atleta para preencher a listagem."
               icon={UserCheck}
               title="Nenhum atleta encontrado"
@@ -675,7 +706,7 @@ export function AthletesPage() {
         ) : paymentHistory.length === 0 ? (
           <p className="py-8 text-center text-sm text-slate-500">Nenhuma alteração registrada ainda.</p>
         ) : (
-          <div className="divide-y divide-blue-50">
+          <div className="divide-y divide-stone-100">
             {paymentHistory.map((entry) => (
               <div className="flex items-start justify-between gap-4 py-3" key={entry.id}>
                 <div>
@@ -706,6 +737,7 @@ export function AthletesPage() {
           <div className="grid gap-4 md:grid-cols-2">
             <Input
               disabled={isSaving}
+              error={nameError ?? undefined}
               label="Nome"
               onChange={(event) => handleNameChange(event.target.value)}
               required

@@ -110,7 +110,7 @@ export function AuditLogPage() {
     : logs;
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-6">
       <PageHeader
         title="Log de Auditoria"
         description="Histórico de ações realizadas no sistema."

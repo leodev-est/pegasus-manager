@@ -182,7 +182,7 @@ export function TestesPage() {
   }
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-6">
       <PageHeader
         title="RH / Testes"
         description="Avalie e aprove atletas em período de teste."
@@ -227,7 +227,7 @@ export function TestesPage() {
       </FilterBar>
 
       <section data-tour="testes-lista" className="panel overflow-hidden">
-        <div className="flex items-center gap-3 border-b border-blue-100 p-6">
+        <div className="flex items-center gap-3 border-b border-stone-200 p-6">
           <ClipboardList className="text-pegasus-primary" size={22} />
           <div>
             <h2 className="text-xl font-bold text-pegasus-navy">Atletas em teste</h2>
@@ -247,7 +247,7 @@ export function TestesPage() {
             {/* Mobile */}
             <div className="grid gap-3 p-4 md:hidden">
               {displayedAthletes.map((athlete) => (
-                <article key={athlete.id} className="rounded-lg border border-blue-100 bg-white p-4 shadow-sm">
+                <article key={athlete.id} className="rounded-lg border border-stone-200 bg-white p-4 shadow-sm">
                   <div className="mb-1 flex items-start justify-between gap-3">
                     <div>
                       <h3 className="font-bold text-pegasus-navy">{athlete.name}</h3>
@@ -260,7 +260,7 @@ export function TestesPage() {
                       {athlete.notes}
                     </p>
                   ) : null}
-                  <div className="mt-4 flex flex-wrap gap-2 border-t border-blue-50 pt-3">
+                  <div className="mt-4 flex flex-wrap gap-2 border-t border-stone-100 pt-3">
                     <button
                       className="flex items-center gap-1.5 rounded-md bg-emerald-50 px-3 py-1.5 text-sm font-semibold text-emerald-700 hover:bg-emerald-100"
                       onClick={() => setApproveTarget(athlete)}

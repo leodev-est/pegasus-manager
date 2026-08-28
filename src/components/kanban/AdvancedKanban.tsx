@@ -17,7 +17,6 @@ import {
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import {
-  CalendarClock,
   CheckSquare,
   Clock,
   GripVertical,
@@ -150,7 +149,7 @@ function priorityLabel(priority: string) {
 function priorityTone(priority: string): StatusTone {
   if (priority === "alta") return "danger";
   if (priority === "media") return "warning";
-  return "info";
+  return "neutral";
 }
 
 function formatDate(value?: string | null) {
@@ -259,22 +258,20 @@ function Column<TTask extends KanbanTaskBase, TStatus extends string>({
 
   return (
     <div
-      className={`w-[84vw] max-w-sm shrink-0 rounded-2xl border p-3 transition sm:w-80 xl:w-auto xl:max-w-none ${
-        isOver ? "border-pegasus-sky bg-blue-100/80 shadow-md" : "border-blue-100 bg-blue-50/60"
+      className={`w-[84vw] max-w-sm shrink-0 rounded-xl p-2 transition sm:w-80 xl:w-auto xl:max-w-none ${
+        isOver ? "bg-emerald-50 ring-2 ring-emerald-300" : ""
       }`}
       ref={setNodeRef}
     >
-      <div className="mb-4 flex items-center justify-between">
+      <div className="mb-3 flex items-center justify-between border-b-2 border-stone-900 px-1 pb-2.5 dark:border-slate-200">
         <div className="flex items-center gap-2">
-          <Icon className="text-pegasus-primary" size={19} />
-          <h2 className="font-bold text-pegasus-navy">{column.label}</h2>
+          <Icon className="text-stone-500" size={16} />
+          <h2 className="text-[13px] font-bold text-pegasus-navy">{column.label}</h2>
         </div>
-        <span className="rounded-full bg-white px-3 py-1 text-xs font-bold text-pegasus-primary">
-          {tasks.length}
-        </span>
+        <span className="text-xs font-bold text-stone-400">{tasks.length}</span>
       </div>
       <SortableContext items={tasks.map((task) => task.id)} strategy={verticalListSortingStrategy}>
-        <div className="min-h-36 space-y-3">
+        <div className="min-h-36 space-y-2">
           {tasks.length > 0 ? (
             tasks.map((task) => (
               <SortableTaskCard
@@ -292,6 +289,23 @@ function Column<TTask extends KanbanTaskBase, TStatus extends string>({
       </SortableContext>
     </div>
   );
+}
+
+const priorityDot: Record<string, string> = {
+  alta: "bg-amber-500",
+  media: "bg-stone-400",
+  baixa: "bg-stone-300",
+};
+
+function initialsOf(value?: string | null) {
+  if (!value) return "?";
+  return value
+    .split(" ")
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0])
+    .join("")
+    .toUpperCase();
 }
 
 function SortableTaskCard<TTask extends KanbanTaskBase>({
@@ -364,78 +378,77 @@ function TaskCard<TTask extends KanbanTaskBase>({
 
   return (
     <article
-      className={`rounded-2xl border border-blue-100 bg-white p-4 shadow-sm transition ${
-        isDragging ? "scale-[1.02] opacity-70 shadow-xl" : "hover:-translate-y-0.5 hover:shadow-md"
+      className={`focus-ring rounded-lg border border-stone-200 bg-white p-3 transition ${
+        isDragging ? "scale-[1.02] opacity-70 shadow-xl" : "hover:border-stone-300 hover:shadow-sm"
       }`}
       ref={refCallback}
       style={style}
     >
-      <div className="flex items-start gap-3">
+      <div className="flex items-start gap-2">
+        <span className={`mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full ${priorityDot[task.priority] ?? "bg-stone-300"}`} />
         <button
           aria-label="Arrastar tarefa"
-          className="mt-0.5 grid h-8 w-8 shrink-0 cursor-grab place-items-center rounded-xl bg-pegasus-surface text-slate-500 active:cursor-grabbing disabled:cursor-not-allowed disabled:opacity-40"
+          className="mt-0.5 grid h-5 w-5 shrink-0 cursor-grab place-items-center text-stone-300 hover:text-stone-500 active:cursor-grabbing disabled:cursor-not-allowed disabled:opacity-40"
           disabled={!dragListeners}
           type="button"
           {...dragAttributes}
           {...dragListeners}
         >
-          <GripVertical size={16} />
+          <GripVertical size={13} />
         </button>
         <button className="min-w-0 flex-1 text-left" onClick={() => onCardClick(task)} type="button">
-          <div className="flex items-start justify-between gap-3">
-            <h3 className="font-bold text-pegasus-navy">{task.title}</h3>
-            <StatusBadge label={statusLabel(task.status)} tone="info" />
+          <h3 className="text-[13px] font-bold leading-snug text-pegasus-navy">{task.title}</h3>
+          {task.description ? (
+            <p className="mt-1 text-xs leading-5 text-slate-500">{truncate(task.description)}</p>
+          ) : null}
+
+          {labels.length > 0 || task.channel ? (
+            <div className="mt-2 flex flex-wrap gap-1.5">
+              {task.channel ? (
+                <span className="inline-flex rounded-full bg-stone-100 px-2 py-0.5 text-[10px] font-bold text-stone-600">
+                  {task.channel}
+                </span>
+              ) : null}
+              {labels.map((label) => (
+                <span
+                  className={`inline-flex rounded-full px-2 py-0.5 text-[10px] font-bold ring-1 ${labelClass(label)}`}
+                  key={label}
+                >
+                  {label}
+                </span>
+              ))}
+            </div>
+          ) : null}
+
+          <div className="mt-2.5 flex items-center justify-between gap-2">
+            <div className="flex min-w-0 items-center gap-1.5">
+              <span className="grid h-5 w-5 shrink-0 place-items-center rounded-full bg-stone-200 text-[9px] font-bold text-stone-600">
+                {initialsOf(task.assignedTo)}
+              </span>
+              <span className={`truncate text-[11px] font-semibold ${overdue ? "text-rose-600" : "text-stone-500"}`}>
+                {formatDate(task.dueDate)}
+              </span>
+            </div>
+            <div className="flex shrink-0 items-center gap-2 text-[11px] font-bold text-stone-400">
+              {comments.length > 0 ? (
+                <span className="inline-flex items-center gap-1">
+                  <MessageSquare size={11} />
+                  {comments.length}
+                </span>
+              ) : null}
+              {checklist.length > 0 ? (
+                <span className="inline-flex items-center gap-1">
+                  <CheckSquare size={11} />
+                  {doneItems}/{checklist.length}
+                </span>
+              ) : null}
+            </div>
           </div>
-          <p className="mt-2 text-sm leading-6 text-slate-600">{truncate(task.description)}</p>
         </button>
-      </div>
-
-      {labels.length > 0 ? (
-        <div className="mt-4 flex flex-wrap gap-2">
-          {labels.map((label) => (
-            <span
-              className={`inline-flex rounded-full px-2.5 py-1 text-xs font-bold ring-1 ${labelClass(label)}`}
-              key={label}
-            >
-              {label}
-            </span>
-          ))}
-        </div>
-      ) : null}
-
-      <div className="mt-4 flex flex-wrap items-center gap-2">
-        {task.channel ? (
-          <span className="rounded-full bg-pegasus-surface px-3 py-1 text-xs font-bold text-slate-600">
-            {task.channel}
-          </span>
-        ) : null}
-        <span className="rounded-full bg-pegasus-surface px-3 py-1 text-xs font-bold text-slate-600">
-          {task.assignedTo ?? "Sem responsável"}
-        </span>
-        <span
-          className={`inline-flex items-center gap-1 rounded-full px-3 py-1 text-xs font-bold ${
-            overdue ? "bg-rose-50 text-rose-700 ring-1 ring-rose-200" : "bg-pegasus-surface text-slate-600"
-          }`}
-        >
-          <CalendarClock size={13} />
-          {formatDate(task.dueDate)}
-        </span>
-        <StatusBadge label={priorityLabel(task.priority)} tone={priorityTone(task.priority)} />
-      </div>
-
-      <div className="mt-4 flex items-center gap-3 text-xs font-bold text-slate-500">
-        <span className="inline-flex items-center gap-1">
-          <MessageSquare size={14} />
-          {comments.length}
-        </span>
-        <span className="inline-flex items-center gap-1">
-          <CheckSquare size={14} />
-          {doneItems}/{checklist.length}
-        </span>
       </div>
 
       {task.scheduledAt && task.status === "scheduled" ? (
-        <div className="mt-3">
+        <div className="mt-2.5">
           <ScheduledBadge scheduledAt={task.scheduledAt} />
         </div>
       ) : null}
@@ -755,14 +768,14 @@ export function AdvancedKanban<TTask extends KanbanTaskBase, TStatus extends str
               <p><strong className="text-pegasus-navy">Atualizada em:</strong> {formatDate(viewTask.updatedAt)}</p>
             </div>
 
-            <section className="rounded-2xl border border-blue-100 bg-white p-4">
+            <section className="rounded-2xl border border-stone-200 bg-white p-4">
               <h3 className="font-black text-pegasus-navy">Descrição</h3>
               <p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-slate-600">
                 {viewTask.description || "Sem descrição."}
               </p>
             </section>
 
-            <section className="rounded-2xl border border-blue-100 bg-white p-4">
+            <section className="rounded-2xl border border-stone-200 bg-white p-4">
               <h3 className="font-black text-pegasus-navy">Etiquetas</h3>
               <div className="mt-3 flex flex-wrap gap-2">
                 {normalizeList(viewTask.labels).length > 0 ? normalizeList(viewTask.labels).map((label) => (
@@ -773,19 +786,19 @@ export function AdvancedKanban<TTask extends KanbanTaskBase, TStatus extends str
               </div>
             </section>
 
-            <section className="rounded-2xl border border-blue-100 bg-white p-4">
+            <section className="rounded-2xl border border-stone-200 bg-white p-4">
               <h3 className="font-black text-pegasus-navy">Checklist</h3>
               <div className="mt-3 space-y-2">
                 {normalizeList(viewTask.checklist).length > 0 ? normalizeList(viewTask.checklist).map((item) => (
                   <p className="flex items-center gap-2 text-sm text-slate-600" key={item.id}>
-                    <span className={`h-4 w-4 rounded border ${item.done ? "border-emerald-500 bg-emerald-500" : "border-blue-200"}`} />
+                    <span className={`h-4 w-4 rounded border ${item.done ? "border-emerald-500 bg-emerald-500" : "border-stone-300"}`} />
                     <span className={item.done ? "line-through" : ""}>{item.text}</span>
                   </p>
                 )) : <p className="text-sm text-slate-500">Sem itens.</p>}
               </div>
             </section>
 
-            <section className="rounded-2xl border border-blue-100 bg-white p-4">
+            <section className="rounded-2xl border border-stone-200 bg-white p-4">
               <h3 className="font-black text-pegasus-navy">Histórico e comentários</h3>
               <div className="mt-3 space-y-3">
                 <p className="text-sm text-slate-500">
@@ -860,7 +873,7 @@ export function AdvancedKanban<TTask extends KanbanTaskBase, TStatus extends str
         title={editingTask ? "Editar tarefa" : "Nova tarefa"}
       >
         {labelsAsTab ? (
-          <div className="mb-4 flex gap-2 rounded-xl border border-blue-100 bg-pegasus-surface p-1">
+          <div className="mb-4 flex gap-2 rounded-xl border border-stone-200 bg-pegasus-surface p-1">
             {(["detalhes", "etiquetas"] as const).map((tab) => (
               <button
                 className={`rounded-lg px-4 py-1.5 text-sm font-bold transition ${
@@ -947,7 +960,7 @@ export function AdvancedKanban<TTask extends KanbanTaskBase, TStatus extends str
               </div>
 
               {!labelsAsTab ? (
-                <section className="rounded-2xl border border-blue-100 p-4">
+                <section className="rounded-2xl border border-stone-200 p-4">
                   <div className="flex items-center gap-2">
                     <Tag className="text-pegasus-primary" size={18} />
                     <h3 className="font-black text-pegasus-navy">Etiquetas</h3>
@@ -973,7 +986,7 @@ export function AdvancedKanban<TTask extends KanbanTaskBase, TStatus extends str
                 </section>
               ) : null}
 
-              <section className="rounded-2xl border border-blue-100 p-4">
+              <section className="rounded-2xl border border-stone-200 p-4">
                 <div className="flex items-center gap-2">
                   <MessageSquare className="text-pegasus-primary" size={18} />
                   <h3 className="font-black text-pegasus-navy">Comentários</h3>
@@ -994,7 +1007,7 @@ export function AdvancedKanban<TTask extends KanbanTaskBase, TStatus extends str
                 </div>
               </section>
 
-              <section className="rounded-2xl border border-blue-100 p-4">
+              <section className="rounded-2xl border border-stone-200 p-4">
                 <div className="flex items-center gap-2">
                   <CheckSquare className="text-pegasus-primary" size={18} />
                   <h3 className="font-black text-pegasus-navy">Checklist</h3>
@@ -1004,7 +1017,7 @@ export function AdvancedKanban<TTask extends KanbanTaskBase, TStatus extends str
                     <label className="flex items-center gap-3 text-sm text-slate-600" key={item.id}>
                       <input
                         checked={item.done}
-                        className="h-5 w-5 rounded border-blue-200 text-pegasus-primary"
+                        className="h-5 w-5 rounded border-stone-300 text-pegasus-primary"
                         onChange={(event) =>
                           setForm({
                             ...form,
@@ -1039,7 +1052,7 @@ export function AdvancedKanban<TTask extends KanbanTaskBase, TStatus extends str
           ) : null}
 
           {labelsAsTab && formTab === "etiquetas" ? (
-            <section className="rounded-2xl border border-blue-100 p-4">
+            <section className="rounded-2xl border border-stone-200 p-4">
               <div className="flex items-center gap-2">
                 <Tag className="text-pegasus-primary" size={18} />
                 <h3 className="font-black text-pegasus-navy">Etiquetas</h3>
@@ -1090,7 +1103,7 @@ export function AdvancedKanban<TTask extends KanbanTaskBase, TStatus extends str
             </p>
             <div className="grid gap-3 sm:grid-cols-2">
               <button
-                className={`rounded-2xl border-2 p-4 text-left transition ${approvalMode === "publish" ? "border-pegasus-primary bg-blue-50" : "border-blue-100 hover:border-pegasus-primary"}`}
+                className={`rounded-2xl border-2 p-4 text-left transition ${approvalMode === "publish" ? "border-stone-900 bg-stone-100" : "border-stone-200 hover:border-stone-400"}`}
                 onClick={() => setApprovalMode("publish")}
                 type="button"
               >
@@ -1098,7 +1111,7 @@ export function AdvancedKanban<TTask extends KanbanTaskBase, TStatus extends str
                 <p className="mt-1 text-sm text-slate-500">Mover diretamente para publicado.</p>
               </button>
               <button
-                className={`rounded-2xl border-2 p-4 text-left transition ${approvalMode === "schedule" ? "border-pegasus-primary bg-blue-50" : "border-blue-100 hover:border-pegasus-primary"}`}
+                className={`rounded-2xl border-2 p-4 text-left transition ${approvalMode === "schedule" ? "border-stone-900 bg-stone-100" : "border-stone-200 hover:border-stone-400"}`}
                 onClick={() => setApprovalMode("schedule")}
                 type="button"
               >

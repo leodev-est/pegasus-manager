@@ -175,7 +175,7 @@ export function MarketingCalendarPage() {
       />
 
       <div className="panel overflow-hidden">
-        <div className="flex items-center justify-between border-b border-blue-100 px-5 py-4">
+        <div className="flex items-center justify-between border-b border-stone-200 px-5 py-4">
           <div className="flex items-center gap-2">
             <button
               type="button"
@@ -207,7 +207,7 @@ export function MarketingCalendarPage() {
           </div>
         </div>
 
-        <div className="grid grid-cols-7 border-b border-blue-100 bg-pegasus-surface text-center text-xs font-semibold uppercase tracking-widest text-slate-500">
+        <div className="grid grid-cols-7 border-b border-stone-200 bg-pegasus-surface text-center text-xs font-semibold uppercase tracking-widest text-slate-500">
           {WEEK_DAYS.map((d) => (
             <div key={d} className="py-2.5">{d}</div>
           ))}
@@ -219,7 +219,7 @@ export function MarketingCalendarPage() {
               return (
                 <div
                   key={`empty-${index}`}
-                  className="min-h-28 border-b border-r border-blue-50 bg-slate-50/40"
+                  className="min-h-28 border-b border-r border-stone-100 bg-slate-50/40"
                 />
               );
             }
@@ -233,9 +233,9 @@ export function MarketingCalendarPage() {
             return (
               <div
                 key={dateKey}
-                className={`group min-h-28 border-b border-r border-blue-50 p-1.5 transition-colors ${
-                  canEdit ? "cursor-pointer hover:bg-blue-50/40" : ""
-                } ${isToday ? "bg-blue-50/60" : "bg-white"}`}
+                className={`group min-h-28 border-b border-r border-stone-100 p-1.5 transition-colors ${
+                  canEdit ? "cursor-pointer hover:bg-emerald-50/50" : ""
+                } ${isToday ? "bg-emerald-50/70" : "bg-white"}`}
                 onClick={() => openCreate(dateKey)}
               >
                 <div className="mb-1 flex items-center justify-between px-0.5">
@@ -334,7 +334,7 @@ export function MarketingCalendarPage() {
             )}
 
             {canEdit && !selectedEvent.isReadOnly && (
-              <div className="flex gap-2 border-t border-blue-50 pt-4">
+              <div className="flex gap-2 border-t border-stone-100 pt-4">
                 <Button onClick={startEdit} variant="secondary">
                   Editar
                 </Button>
