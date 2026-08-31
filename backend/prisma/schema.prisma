@@ -105,6 +105,8 @@ model Athlete {
 model Turma {
   id           String   @id @default(uuid())
   name         String
+  // Gênero da turma ("masculino"/"feminino"); null = turma mista, sem auto-atribuição por sexo.
+  gender       String?
   daysOfWeek   String[] @default([])
   time         String
   location     String

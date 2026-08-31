@@ -700,7 +700,7 @@ export function DashboardPage() {
                 <Star className="text-pegasus-primary" size={16} />
                 <h2 className="text-sm font-bold text-pegasus-navy">Frequência por mês</h2>
               </div>
-              <ResponsiveContainer width="100%" height={150}>
+              <ResponsiveContainer width="100%" height={190}>
                 <LineChart data={monthlyStats.map((s) => ({ ...s, label: formatMonth(s.month) }))}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#e7e5e4" />
                   <XAxis dataKey="label" tick={{ fontSize: 11 }} />

@@ -3,6 +3,7 @@ import { api } from "./api";
 export type Turma = {
   id: string;
   name: string;
+  gender: "masculino" | "feminino" | null;
   daysOfWeek: string[];
   time: string;
   location: string;
@@ -19,6 +20,7 @@ export type PublicTurma = Pick<Turma, "id" | "name" | "time" | "location" | "dep
 
 export type TurmaPayload = {
   name?: string;
+  gender?: "masculino" | "feminino" | null;
   daysOfWeek?: string[];
   time?: string;
   location?: string;

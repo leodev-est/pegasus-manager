@@ -147,8 +147,60 @@ function invalidateAthleteCache() {
   cache.delPrefix(CACHE_PREFIX);
 }
 
+/** Turma ativa cujo gênero bate com o do atleta, se houver uma cadastrada. */
+async function autoAssignTurmaId(gender: string | null | undefined) {
+  if (!gender) return undefined;
+  const turma = await prisma.turma.findFirst({
+    where: { active: true, gender },
+    orderBy: { order: "asc" },
+  });
+  return turma?.id;
+}
+
+let lastTurmaAssignRun = 0;
+const TURMA_ASSIGN_THROTTLE_MS = 5 * 60 * 1000;
+
+/** Atribui a turma correspondente ao sexo de atletas que ainda não têm turma. */
+async function ensureTurmaAssignments() {
+  const now = Date.now();
+  if (now - lastTurmaAssignRun < TURMA_ASSIGN_THROTTLE_MS) return;
+  lastTurmaAssignRun = now;
+
+  const turmas = await prisma.turma.findMany({
+    where: { active: true, gender: { not: null } },
+    select: { id: true, gender: true },
+  });
+  if (turmas.length === 0) return;
+
+  const turmaByGender = new Map(turmas.map((t) => [t.gender as string, t.id]));
+
+  const unassigned = await prisma.athlete.findMany({
+    where: {
+      turmaId: null,
+      gender: { in: Array.from(turmaByGender.keys()) },
+      status: { in: ["ativo", "teste"] },
+    },
+    select: { id: true, gender: true },
+  });
+
+  if (unassigned.length === 0) return;
+
+  await Promise.all(
+    unassigned.map((athlete) =>
+      prisma.athlete.update({
+        where: { id: athlete.id },
+        data: { turmaId: turmaByGender.get(athlete.gender as string) },
+      }),
+    ),
+  );
+
+  invalidateAthleteCache();
+}
+
 export const athletesService = {
   async findAll(filters: AthleteFilters) {
+    await ensureTurmaAssignments().catch(() => {});
+
     const key = CACHE_PREFIX + JSON.stringify(filters);
     const cached = cache.get<Awaited<ReturnType<typeof prisma.athlete.findMany>>>(key);
     if (cached) return cached;
@@ -239,6 +291,11 @@ export const athletesService = {
   async create(payload: AthletePayload) {
     const data = buildData(payload, true) as Prisma.AthleteUncheckedCreateInput;
 
+    if (data.turmaId === undefined) {
+      const autoTurmaId = await autoAssignTurmaId(data.gender as string | null | undefined);
+      if (autoTurmaId) data.turmaId = autoTurmaId;
+    }
+
     const athlete = await prisma.athlete.create({
       data,
     });
@@ -259,6 +316,13 @@ export const athletesService = {
     const wasInTest = currentAthlete.status === "teste";
 
     const data = buildData(payload, false) as Prisma.AthleteUncheckedUpdateInput;
+
+    if (data.turmaId === undefined && !currentAthlete.turmaId) {
+      const effectiveGender = (data.gender as string | null | undefined) ?? currentAthlete.gender;
+      const autoTurmaId = await autoAssignTurmaId(effectiveGender);
+      if (autoTurmaId) data.turmaId = autoTurmaId;
+    }
+
     const athleteName = typeof data.name === "string" ? data.name : currentAthlete.name;
     const athleteStatus = typeof data.status === "string" ? data.status : currentAthlete.status;
 

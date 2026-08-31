@@ -7,6 +7,7 @@ import { EmptyState } from "../../components/ui/EmptyState";
 import { Input } from "../../components/ui/Input";
 import { Modal } from "../../components/ui/Modal";
 import { PageHeader } from "../../components/ui/PageHeader";
+import { Select } from "../../components/ui/Select";
 import { useToast } from "../../components/ui/Toast";
 import { getApiErrorMessage } from "../../services/api";
 import { turmaService, type Turma, type TurmaPayload } from "../../services/turmaService";
@@ -25,6 +26,7 @@ const colorPresets = ["#ec4899", "#0D47A1", "#22c55e", "#f59e0b", "#8b5cf6", "#0
 
 type TurmaForm = {
   name: string;
+  gender: "masculino" | "feminino" | "";
   daysOfWeek: string[];
   time: string;
   location: string;
@@ -37,6 +39,7 @@ type TurmaForm = {
 
 const emptyForm: TurmaForm = {
   name: "",
+  gender: "",
   daysOfWeek: [],
   time: "",
   location: "",
@@ -47,9 +50,16 @@ const emptyForm: TurmaForm = {
   startDate: "",
 };
 
+const genderOptions = [
+  { value: "", label: "Mista (sem atribuição automática por sexo)" },
+  { value: "masculino", label: "Masculino" },
+  { value: "feminino", label: "Feminino" },
+];
+
 function turmaToForm(turma: Turma): TurmaForm {
   return {
     name: turma.name,
+    gender: turma.gender ?? "",
     daysOfWeek: turma.daysOfWeek,
     time: turma.time,
     location: turma.location,
@@ -64,6 +74,7 @@ function turmaToForm(turma: Turma): TurmaForm {
 function buildPayload(form: TurmaForm): TurmaPayload {
   return {
     name: form.name,
+    gender: form.gender || null,
     daysOfWeek: form.daysOfWeek,
     time: form.time,
     location: form.location,
@@ -209,6 +220,11 @@ export function TurmasPage() {
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2">
                       <h4 className="font-bold text-pegasus-navy">{turma.name}</h4>
+                      {turma.gender && (
+                        <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${turma.gender === "masculino" ? "bg-blue-100 text-blue-700" : "bg-pink-100 text-pink-700"}`}>
+                          {turma.gender === "masculino" ? "Masc." : "Fem."}
+                        </span>
+                      )}
                       {!turma.active && (
                         <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-bold text-slate-500">Inativa</span>
                       )}
@@ -248,6 +264,14 @@ export function TurmasPage() {
       <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title={editingTurma ? "Editar turma" : "Nova turma"}>
         <form className="grid gap-4" onSubmit={handleSubmit}>
           <Input disabled={isSaving} error={formErrors.name} label="Nome" onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="Ex: Feminino, Masculino, Feminino Sub-18" required value={form.name} />
+
+          <Select
+            disabled={isSaving}
+            label="Gênero da turma"
+            onChange={(e) => setForm({ ...form, gender: e.target.value as TurmaForm["gender"] })}
+            options={genderOptions}
+            value={form.gender}
+          />
 
           <div>
             <p className="mb-2 text-sm font-medium text-slate-700">Dias de treino</p>

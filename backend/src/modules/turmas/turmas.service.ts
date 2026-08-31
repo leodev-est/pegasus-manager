@@ -3,6 +3,7 @@ import { AppError } from "../../middlewares/error.middleware";
 
 export type TurmaPayload = {
   name?: string;
+  gender?: "masculino" | "feminino" | null;
   daysOfWeek?: string[];
   time?: string;
   location?: string;
@@ -14,10 +15,14 @@ export type TurmaPayload = {
 };
 
 const weekdays = ["sunday", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday"];
+const allowedGenders = ["masculino", "feminino"] as const;
 
 function validate(payload: TurmaPayload, requireCore: boolean) {
   if (requireCore && !payload.name?.trim()) {
     throw new AppError("Nome da turma é obrigatório", 400);
+  }
+  if (payload.gender && !allowedGenders.includes(payload.gender)) {
+    throw new AppError("Gênero da turma deve ser masculino ou feminino", 400);
   }
   if (requireCore && !payload.time?.trim()) {
     throw new AppError("Horário da turma é obrigatório", 400);
@@ -62,6 +67,7 @@ export const turmasService = {
     return prisma.turma.create({
       data: {
         name: payload.name!.trim(),
+        gender: payload.gender ?? null,
         daysOfWeek: payload.daysOfWeek!,
         time: payload.time!.trim(),
         location: payload.location!.trim(),
@@ -80,6 +86,7 @@ export const turmasService = {
 
     const data: Record<string, unknown> = {};
     if (payload.name !== undefined) data.name = payload.name.trim();
+    if (payload.gender !== undefined) data.gender = payload.gender ?? null;
     if (payload.daysOfWeek !== undefined) data.daysOfWeek = payload.daysOfWeek;
     if (payload.time !== undefined) data.time = payload.time.trim();
     if (payload.location !== undefined) data.location = payload.location.trim();
