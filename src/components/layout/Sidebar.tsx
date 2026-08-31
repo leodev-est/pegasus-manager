@@ -375,13 +375,13 @@ export function Sidebar({ isMobileOpen = false, isDesktopCollapsed = false, onNa
           <button
             type="button"
             onClick={onOpenTour}
-            title={expanded ? undefined : "Tutorial do App"}
+            title={expanded ? undefined : "Tutorial desta tela"}
             className={`focus-ring flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-stone-500 transition hover:bg-stone-100 hover:text-stone-900 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-100 ${
               expanded ? "" : "lg:justify-center lg:px-0"
             }`}
           >
             <HelpCircle size={17} className="shrink-0" />
-            <span className={hideAtLg}>Tutorial do App</span>
+            <span className={hideAtLg}>Tutorial desta tela</span>
           </button>
         </div>
       )}

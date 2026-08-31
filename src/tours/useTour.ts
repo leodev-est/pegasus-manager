@@ -31,15 +31,30 @@ function filterAvailableSteps(steps: DriveStep[]): DriveStep[] {
 }
 
 const DRIVER_LABELS = {
-  nextBtnText: "Próximo →",
-  prevBtnText: "← Anterior",
-  doneBtnText: "✓ Concluir",
+  nextBtnText: "Próximo",
+  prevBtnText: "Voltar",
+  doneBtnText: "Concluir",
 };
+
+/** Insere um botão "Pular tutorial" no rodapé do popover, ao lado da navegação. */
+function injectSkipButton(popover: { footer: HTMLElement }, onSkip: () => void) {
+  if (popover.footer.querySelector(".pegasus-tour-skip")) return;
+
+  const skipBtn = document.createElement("button");
+  skipBtn.type = "button";
+  skipBtn.className = "pegasus-tour-skip";
+  skipBtn.textContent = "Pular tutorial";
+  skipBtn.addEventListener("click", onSkip);
+  popover.footer.prepend(skipBtn);
+}
 
 /**
  * Auto-dispara um tour driver.js na primeira visita do usuário à página.
- * Quando "Tutorial do App" é clicado, o evento 'pegasus:tour:current' reinicia o tour.
+ * Quando "Tutorial da tela" é clicado, o evento 'pegasus:tour:current' reinicia o tour.
  * tourId deve incluir versão, ex: "mensalidades:v1". Incrementar versão força re-exibição.
+ *
+ * O tour é marcado como "visto" assim que é exibido (não só ao ser concluído), para que
+ * navegar para outra tela no meio do tour não o faça reaparecer na próxima visita.
  */
 export function useTour(tourId: string, steps: DriveStep[]) {
   const { user } = useAuth();
@@ -56,15 +71,20 @@ export function useTour(tourId: string, steps: DriveStep[]) {
     const availableSteps = filterAvailableSteps(stepsRef.current);
     if (!uid || availableSteps.length === 0) return;
 
+    // Marca como visto já ao iniciar: se o usuário navegar pra outra tela no meio do
+    // tour, ele não deve voltar a aparecer sozinho na próxima visita.
+    markTourSeen(uid, tourId);
+
     const driverObj = driver({
       showProgress: true,
       progressText: "{{current}} de {{total}}",
       animate: true,
       smoothScroll: true,
-      overlayColor: "rgba(0, 0, 30, 0.65)",
+      overlayColor: "rgba(9, 9, 11, 0.7)",
+      popoverClass: "pegasus-tour-popover",
       ...DRIVER_LABELS,
       steps: availableSteps,
-      onDestroyed: () => markTourSeen(uid, tourId),
+      onPopoverRender: (popover) => injectSkipButton(popover, () => driverObj.destroy()),
     });
     driverObj.drive();
   });
@@ -89,7 +109,7 @@ export function useTour(tourId: string, steps: DriveStep[]) {
     return scheduleStart();
   }, [user?.id, tourId, steps.length]);
 
-  // Escuta "Tutorial do App" para reiniciar
+  // Escuta "Tutorial desta tela" para reiniciar
   useEffect(() => {
     function handleRestart(e: Event) {
       const detail = (e as CustomEvent<{ handled: boolean }>).detail;
