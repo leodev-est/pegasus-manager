@@ -9,6 +9,7 @@ export type Athlete = {
   name: string;
   email: string | null;
   phone: string | null;
+  birthDate: string | null;
   category: string | null;
   position: string | null;
   gender: AthleteGender | null;
@@ -34,6 +35,7 @@ export type AthletePayload = {
   name: string;
   email?: string;
   phone?: string;
+  birthDate?: string;
   category?: string;
   position?: string;
   gender?: AthleteGender | null;

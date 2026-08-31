@@ -83,6 +83,7 @@ const emptyAthlete: AthleteForm = {
   name: "",
   email: "",
   phone: "",
+  birthDate: "",
   category: "",
   position: "",
   gender: "",
@@ -158,6 +159,7 @@ function buildPayload(form: AthleteForm): AthletePayload {
     name: form.name,
     email: form.email,
     phone: form.phone || undefined,
+    birthDate: form.birthDate || undefined,
     category: form.category || undefined,
     position: form.position,
     gender: form.gender || null,
@@ -173,6 +175,7 @@ function athleteToForm(athlete: Athlete): AthleteForm {
     name: athlete.name,
     email: athlete.email ?? "",
     phone: athlete.phone ?? "",
+    birthDate: athlete.birthDate ? athlete.birthDate.slice(0, 10) : "",
     category: athlete.category ?? "",
     position: athlete.position ?? "",
     gender: athlete.gender ?? "",
@@ -749,6 +752,13 @@ export function AthletesPage() {
               onChange={(event) => setForm({ ...form, email: event.target.value })}
               type="email"
               value={form.email}
+            />
+            <Input
+              disabled={isSaving}
+              label="Data de nascimento"
+              onChange={(event) => setForm({ ...form, birthDate: event.target.value })}
+              type="date"
+              value={form.birthDate}
             />
             <Select
               label="Posição"

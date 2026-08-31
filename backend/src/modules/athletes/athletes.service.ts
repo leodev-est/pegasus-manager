@@ -37,6 +37,7 @@ type AthletePayload = {
   name?: string;
   email?: string | null;
   phone?: string | null;
+  birthDate?: string | null;
   category?: string | null;
   position?: string | null;
   gender?: Gender | null;
@@ -123,6 +124,9 @@ function buildData(payload: AthletePayload, requireName: boolean) {
 
   if (payload.email !== undefined) data.email = normalizeOptional(payload.email);
   if (payload.phone !== undefined) data.phone = normalizeOptional(payload.phone);
+  if (payload.birthDate !== undefined) {
+    data.birthDate = payload.birthDate ? new Date(payload.birthDate) : null;
+  }
   if (payload.category !== undefined) data.category = normalizeOptional(payload.category);
   if (payload.position !== undefined) data.position = normalizeOptional(payload.position);
   if (payload.gender !== undefined) {
@@ -197,9 +201,40 @@ async function ensureTurmaAssignments() {
   invalidateAthleteCache();
 }
 
+let lastBirthDateBackfillRun = 0;
+const BIRTHDATE_BACKFILL_THROTTLE_MS = 5 * 60 * 1000;
+
+/**
+ * Preenche a data de nascimento de atletas aprovados antes da correção que passou a
+ * copiar esse campo da inscrição (AthleteApplication) pro cadastro do atleta.
+ */
+async function ensureBirthDateBackfill() {
+  const now = Date.now();
+  if (now - lastBirthDateBackfillRun < BIRTHDATE_BACKFILL_THROTTLE_MS) return;
+  lastBirthDateBackfillRun = now;
+
+  const missing = await prisma.athlete.findMany({
+    where: { birthDate: null, application: { birthDate: { not: null } } },
+    select: { id: true, application: { select: { birthDate: true } } },
+  });
+  if (missing.length === 0) return;
+
+  await Promise.all(
+    missing.map((athlete) =>
+      prisma.athlete.update({
+        where: { id: athlete.id },
+        data: { birthDate: athlete.application!.birthDate },
+      }),
+    ),
+  );
+
+  invalidateAthleteCache();
+}
+
 export const athletesService = {
   async findAll(filters: AthleteFilters) {
     await ensureTurmaAssignments().catch(() => {});
+    await ensureBirthDateBackfill().catch(() => {});
 
     const key = CACHE_PREFIX + JSON.stringify(filters);
     const cached = cache.get<Awaited<ReturnType<typeof prisma.athlete.findMany>>>(key);

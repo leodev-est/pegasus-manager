@@ -195,6 +195,7 @@ export const athleteApplicationsService = {
             name: application.name,
             email: application.email,
             phone: application.phone,
+            birthDate: application.birthDate,
             category: application.category,
             turmaId: application.turmaId,
             position: application.position,
