@@ -171,7 +171,17 @@ export const usersService = {
     } = {};
 
     if (payload.name !== undefined) data.name = payload.name;
-    if (payload.username !== undefined) data.username = payload.username.trim().toLowerCase();
+    if (payload.username !== undefined) {
+      const nextUsername = payload.username.trim().toLowerCase();
+      if (!nextUsername) throw new AppError("Nome de usuário não pode ficar vazio.", 400);
+
+      const existing = await prisma.user.findUnique({ where: { username: nextUsername } });
+      if (existing && existing.id !== id) {
+        throw new AppError("Esse nome de usuário já está em uso.", 409);
+      }
+
+      data.username = nextUsername;
+    }
     if (payload.email !== undefined) data.email = payload.email?.trim().toLowerCase() || null;
     if (payload.active !== undefined) data.active = payload.active;
     if (payload.mustChangePassword !== undefined) {

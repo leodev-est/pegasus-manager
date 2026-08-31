@@ -3,28 +3,52 @@ import { prisma } from "../../config/prisma";
 const athleteRoleName = "Atleta";
 const temporaryAthletePassword = process.env.ATHLETE_TEMP_PASSWORD ?? "pegasus2026";
 
-function normalizeUsernameBase(value: string) {
-  return (
-    value
-      .normalize("NFD")
-      .replace(/[\u0300-\u036f]/g, "")
-      .toLowerCase()
-      .trim()
-      .split(/\s+/)[0]
-      ?.replace(/[^a-z0-9._-]/g, "") || "atleta"
-  );
+function slugifyNamePart(value: string) {
+  return value
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9._-]/g, "");
 }
 
 function normalizeEmail(value?: string | null) {
   return value?.trim().toLowerCase() || null;
 }
 
-async function generateUsername(name: string) {
-  const base = normalizeUsernameBase(name);
-  let username = base;
-  let suffix = 1;
+async function isUsernameTaken(username: string) {
+  return Boolean(await prisma.user.findUnique({ where: { username } }));
+}
 
-  while (await prisma.user.findUnique({ where: { username } })) {
+/**
+ * Gera um login leg\u00edvel: tenta o primeiro nome, depois o sobrenome, depois
+ * primeiro nome + inicial do sobrenome, e s\u00f3 recorre a um sufixo num\u00e9rico
+ * (lucas2, lucas3...) se nenhuma dessas varia\u00e7\u00f5es estiver livre.
+ */
+async function generateUsername(name: string) {
+  const words = name
+    .trim()
+    .split(/\s+/)
+    .map(slugifyNamePart)
+    .filter(Boolean);
+
+  const firstName = words[0] || "atleta";
+  const lastName = words.length > 1 ? words[words.length - 1] : null;
+
+  const candidates = [firstName];
+  if (lastName && lastName !== firstName) {
+    candidates.push(lastName);
+    candidates.push(`${firstName}${lastName[0]}`);
+    candidates.push(`${firstName}.${lastName}`);
+  }
+
+  for (const candidate of candidates) {
+    if (!(await isUsernameTaken(candidate))) return candidate;
+  }
+
+  const base = firstName;
+  let suffix = 1;
+  let username = base;
+  while (await isUsernameTaken(username)) {
     suffix += 1;
     username = `${base}${suffix}`;
   }

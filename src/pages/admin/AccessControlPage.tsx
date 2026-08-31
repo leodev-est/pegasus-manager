@@ -1,5 +1,5 @@
-﻿import { ShieldCheck, Users } from "lucide-react";
-import { useEffect, useState } from "react";
+﻿import { Pencil, ShieldCheck, Users } from "lucide-react";
+import { FormEvent, useEffect, useState } from "react";
 import { useTour } from "../../tours/useTour";
 
 const TOUR_STEPS = [
@@ -19,6 +19,9 @@ const TOUR_STEPS = [
   },
 ];
 import type { AuthUser } from "../../auth/AuthContext";
+import { Button } from "../../components/ui/Button";
+import { Input } from "../../components/ui/Input";
+import { Modal } from "../../components/ui/Modal";
 import { PageHeader } from "../../components/ui/PageHeader";
 import { ORG_NAME } from "../../config/org";
 import { StatusBadge } from "../../components/ui/StatusBadge";
@@ -57,6 +60,10 @@ export function AccessControlPage() {
   useTour("acesso:v1", isLoading ? [] : TOUR_STEPS);
   const [savingUserId, setSavingUserId] = useState("");
   const [error, setError] = useState("");
+  const [editingUsernameFor, setEditingUsernameFor] = useState<AuthUser | null>(null);
+  const [usernameInput, setUsernameInput] = useState("");
+  const [usernameError, setUsernameError] = useState("");
+  const [isSavingUsername, setIsSavingUsername] = useState(false);
 
   useEffect(() => {
     let isMounted = true;
@@ -113,6 +120,39 @@ export function AccessControlPage() {
     }
   }
 
+  function openEditUsername(user: AuthUser) {
+    setEditingUsernameFor(user);
+    setUsernameInput(user.username);
+    setUsernameError("");
+  }
+
+  async function saveUsername(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!editingUsernameFor) return;
+
+    const next = usernameInput.trim().toLowerCase();
+    if (!next) {
+      setUsernameError("Informe um nome de usuário.");
+      return;
+    }
+
+    setIsSavingUsername(true);
+    setUsernameError("");
+
+    try {
+      const updatedUser = await userService.updateUser(editingUsernameFor.id, { username: next });
+      setUsers((currentUsers) =>
+        currentUsers.map((currentUser) => (currentUser.id === updatedUser.id ? updatedUser : currentUser)),
+      );
+      showToast("Login atualizado com sucesso.", "success");
+      setEditingUsernameFor(null);
+    } catch (usernameUpdateError) {
+      setUsernameError(getApiErrorMessage(usernameUpdateError));
+    } finally {
+      setIsSavingUsername(false);
+    }
+  }
+
   return (
     <div className="space-y-6">
       <PageHeader
@@ -140,8 +180,16 @@ export function AccessControlPage() {
                     <div className="flex items-start justify-between gap-3">
                       <div className="min-w-0">
                         <h3 className="font-bold text-pegasus-navy">{user.name}</h3>
-                        <p className="mt-1 break-words text-sm text-slate-500">
+                        <p className="mt-1 flex flex-wrap items-center gap-1.5 break-words text-sm text-slate-500">
                           @{user.username} {user.email ? `| ${user.email}` : ""}
+                          <button
+                            aria-label="Editar login"
+                            className="focus-ring text-stone-400 hover:text-pegasus-primary"
+                            onClick={() => openEditUsername(user)}
+                            type="button"
+                          >
+                            <Pencil size={13} />
+                          </button>
                         </p>
                       </div>
                       <StatusBadge
@@ -203,8 +251,16 @@ export function AccessControlPage() {
                     <tr key={user.id || user.email} className="bg-white">
                       <td className="px-6 py-4">
                         <p className="font-bold text-pegasus-navy">{user.name}</p>
-                        <p className="text-xs text-slate-500">
+                        <p className="flex items-center gap-1.5 text-xs text-slate-500">
                           @{user.username} {user.email ? `| ${user.email}` : ""}
+                          <button
+                            aria-label="Editar login"
+                            className="focus-ring text-stone-400 hover:text-pegasus-primary"
+                            onClick={() => openEditUsername(user)}
+                            type="button"
+                          >
+                            <Pencil size={12} />
+                          </button>
                         </p>
                       </td>
                       <td className="px-6 py-4">
@@ -285,6 +341,31 @@ export function AccessControlPage() {
           )}
         </article>
       </section>
+
+      <Modal
+        isOpen={Boolean(editingUsernameFor)}
+        onClose={() => setEditingUsernameFor(null)}
+        title="Editar login"
+        description={editingUsernameFor ? `Usuário: ${editingUsernameFor.name}` : ""}
+      >
+        <form className="grid gap-4" onSubmit={saveUsername}>
+          <Input
+            disabled={isSavingUsername}
+            error={usernameError}
+            label="Nome de usuário"
+            onChange={(event) => setUsernameInput(event.target.value)}
+            value={usernameInput}
+          />
+          <div className="flex flex-col gap-3 sm:flex-row">
+            <Button disabled={isSavingUsername} type="submit">
+              {isSavingUsername ? "Salvando..." : "Salvar"}
+            </Button>
+            <Button disabled={isSavingUsername} onClick={() => setEditingUsernameFor(null)} type="button" variant="secondary">
+              Cancelar
+            </Button>
+          </div>
+        </form>
+      </Modal>
     </div>
   );
 }
