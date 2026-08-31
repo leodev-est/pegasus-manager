@@ -1147,7 +1147,12 @@ export function FinancePage() {
                     <CartesianGrid stroke="#e2e8f0" strokeDasharray="3 3" />
                     <XAxis dataKey="month" tick={{ fontSize: 12 }} tickFormatter={formatChartMonth} />
                     <YAxis tick={{ fontSize: 12 }} tickFormatter={formatChartCurrency} />
-                    <Tooltip formatter={(value: number) => formatCurrency(value)} labelFormatter={formatChartMonth} />
+                    <Tooltip
+                      contentStyle={{ backgroundColor: "var(--chart-tooltip-bg)", border: "1px solid var(--chart-tooltip-border)", borderRadius: 10 }}
+                      labelStyle={{ color: "var(--chart-tooltip-text)", fontWeight: 700 }}
+                      formatter={(value: number) => formatCurrency(value)}
+                      labelFormatter={formatChartMonth}
+                    />
                     <Legend />
                     <Bar dataKey="expected" fill="#94a3b8" name="Esperado" radius={[4, 4, 0, 0]} />
                     <Bar dataKey="paid" fill="#059669" name="Pago" radius={[4, 4, 0, 0]} />
@@ -1162,7 +1167,11 @@ export function FinancePage() {
                     <CartesianGrid stroke="#e2e8f0" strokeDasharray="3 3" />
                     <XAxis dataKey="month" tick={{ fontSize: 12 }} tickFormatter={formatChartMonth} />
                     <YAxis allowDecimals={false} tick={{ fontSize: 12 }} />
-                    <Tooltip labelFormatter={formatChartMonth} />
+                    <Tooltip
+                      contentStyle={{ backgroundColor: "var(--chart-tooltip-bg)", border: "1px solid var(--chart-tooltip-border)", borderRadius: 10 }}
+                      labelStyle={{ color: "var(--chart-tooltip-text)", fontWeight: 700 }}
+                      labelFormatter={formatChartMonth}
+                    />
                     <Line dataKey="overdueCount" dot={{ r: 4 }} name="Em atraso" stroke="#ef4444" strokeWidth={2} />
                   </LineChart>
                 </ResponsiveContainer>
@@ -1175,7 +1184,12 @@ export function FinancePage() {
                     <CartesianGrid stroke="#e2e8f0" strokeDasharray="3 3" />
                     <XAxis dataKey="month" tick={{ fontSize: 12 }} tickFormatter={formatChartMonth} />
                     <YAxis tick={{ fontSize: 12 }} tickFormatter={formatChartCurrency} />
-                    <Tooltip formatter={(value: number) => formatCurrency(value)} labelFormatter={formatChartMonth} />
+                    <Tooltip
+                      contentStyle={{ backgroundColor: "var(--chart-tooltip-bg)", border: "1px solid var(--chart-tooltip-border)", borderRadius: 10 }}
+                      labelStyle={{ color: "var(--chart-tooltip-text)", fontWeight: 700 }}
+                      formatter={(value: number) => formatCurrency(value)}
+                      labelFormatter={formatChartMonth}
+                    />
                     <Legend />
                     <Bar dataKey="paid" fill="#22c55e" name="Pago" stackId="a" />
                     <Bar dataKey="pending" fill="#f59e0b" name="Pendente" stackId="a" />

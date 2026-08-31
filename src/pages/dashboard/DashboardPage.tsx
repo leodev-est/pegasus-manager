@@ -589,7 +589,7 @@ export function DashboardPage() {
           {(() => {
             const cards = [
               muralPosts.length > 0 ? "mural" : null,
-              monthlyBirthdays.length > 0 ? "birthdays" : null,
+              "birthdays",
               canSeeTrainings ? "trainings" : null,
             ].filter((c): c is string => Boolean(c));
             const colsClass =
@@ -635,14 +635,14 @@ export function DashboardPage() {
                   </article>
                 )}
 
-                {monthlyBirthdays.length > 0 && (
-                  <article className="panel flex flex-col p-4">
-                    <div className="mb-3 flex items-center gap-2.5">
-                      <span className="rounded-lg bg-pink-50 p-2 text-pink-600">
-                        <Cake size={16} />
-                      </span>
-                      <h2 className="text-sm font-bold text-pegasus-navy">Aniversariantes do mês</h2>
-                    </div>
+                <article className="panel flex flex-col p-4">
+                  <div className="mb-3 flex items-center gap-2.5">
+                    <span className="rounded-lg bg-pink-50 p-2 text-pink-600">
+                      <Cake size={16} />
+                    </span>
+                    <h2 className="text-sm font-bold text-pegasus-navy">Aniversariantes do mês</h2>
+                  </div>
+                  {monthlyBirthdays.length > 0 ? (
                     <div className="grid max-h-56 grid-cols-1 gap-2 overflow-y-auto slim-scroll pr-1">
                       {monthlyBirthdays.map((a) => (
                         <div
@@ -661,8 +661,12 @@ export function DashboardPage() {
                         </div>
                       ))}
                     </div>
-                  </article>
-                )}
+                  ) : (
+                    <div className="flex flex-1 items-center justify-center rounded-lg bg-pegasus-surface p-4 text-center">
+                      <p className="text-xs text-slate-500">Nenhum aniversariante este mês.</p>
+                    </div>
+                  )}
+                </article>
 
                 {canSeeTrainings && (
                   <article className="panel flex flex-col p-4">
@@ -705,7 +709,17 @@ export function DashboardPage() {
                   <CartesianGrid strokeDasharray="3 3" stroke="#e7e5e4" />
                   <XAxis dataKey="label" tick={{ fontSize: 11 }} />
                   <YAxis domain={[0, 100]} tick={{ fontSize: 11 }} tickFormatter={(v) => `${v}%`} />
-                  <Tooltip formatter={(v) => [`${v}%`, "Frequência"]} />
+                  <Tooltip
+                    contentStyle={{
+                      backgroundColor: "var(--chart-tooltip-bg)",
+                      border: "1px solid var(--chart-tooltip-border)",
+                      borderRadius: 10,
+                      fontSize: 12.5,
+                    }}
+                    labelStyle={{ color: "var(--chart-tooltip-text)", fontWeight: 700, marginBottom: 4 }}
+                    itemStyle={{ color: "#22c55e", fontWeight: 700 }}
+                    formatter={(v) => [`${v}%`, "Frequência"]}
+                  />
                   <Line
                     type="monotone"
                     dataKey="percentual"
