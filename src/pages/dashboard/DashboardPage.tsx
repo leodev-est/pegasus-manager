@@ -585,160 +585,139 @@ export function DashboardPage() {
             </section>
           )}
 
-          {/* Mural de Avisos + Aniversários do mês */}
-          {(muralPosts.length > 0 || monthlyBirthdays.length > 0) && (
-            <section className="grid gap-4 lg:grid-cols-2">
-              {muralPosts.length > 0 && (
-                <article
-                  data-tour="dash-mural"
-                  className={`panel p-5 ${monthlyBirthdays.length === 0 ? "lg:col-span-2" : ""}`}
-                >
-                  <div className="mb-4 flex items-center justify-between gap-3">
-                    <div className="flex items-center gap-3">
-                      <span className="rounded-lg bg-pegasus-ice p-3 text-pegasus-primary">
-                        <MessageSquare size={20} />
-                      </span>
-                      <div>
-                        <h2 className="text-xl font-bold text-pegasus-navy">Avisos do clube</h2>
-                        <p className="text-sm text-slate-500">Comunicados recentes</p>
-                      </div>
-                    </div>
-                    <Link
-                      to="/app/comunicados"
-                      className="text-sm font-semibold text-pegasus-primary hover:underline"
-                    >
-                      Ver todos
-                    </Link>
-                  </div>
-                  <div className="space-y-3">
-                    {muralPosts.map((post) => (
-                      <div key={post.id} className="rounded-lg bg-pegasus-surface p-4">
-                        <div className="flex flex-wrap items-center gap-2">
-                          <span className={`rounded-full px-2.5 py-0.5 text-xs font-bold ${
-                            post.category === "urgente" ? "bg-rose-100 text-rose-700" :
-                            post.category === "evento" ? "bg-violet-100 text-violet-700" :
-                            "bg-stone-100 text-stone-600"
-                          }`}>
-                            {post.category === "urgente" ? "Urgente" : post.category === "evento" ? "Evento" : "Info"}
-                          </span>
-                          <span className="text-xs text-slate-400">
-                            {new Intl.DateTimeFormat("pt-BR", { day: "2-digit", month: "short" }).format(new Date(post.createdAt))}
-                          </span>
-                        </div>
-                        <p className="mt-1.5 font-bold text-pegasus-navy">{post.title}</p>
-                        <p className="mt-1 line-clamp-2 text-sm text-slate-500">{post.body}</p>
-                      </div>
-                    ))}
-                  </div>
-                </article>
-              )}
+          {/* Avisos do clube + Aniversariantes do mês + Próximos treinos */}
+          {(() => {
+            const cards = [
+              muralPosts.length > 0 ? "mural" : null,
+              monthlyBirthdays.length > 0 ? "birthdays" : null,
+              canSeeTrainings ? "trainings" : null,
+            ].filter((c): c is string => Boolean(c));
+            const colsClass =
+              cards.length === 1 ? "lg:grid-cols-1" : cards.length === 2 ? "lg:grid-cols-2" : "lg:grid-cols-3";
 
-              {monthlyBirthdays.length > 0 && (
-                <article className={`panel p-5 ${muralPosts.length === 0 ? "lg:col-span-2" : ""}`}>
-                  <div className="mb-4 flex items-center gap-3">
-                    <span className="rounded-lg bg-pink-50 p-3 text-pink-600">
-                      <Cake size={20} />
-                    </span>
-                    <div>
-                      <h2 className="text-xl font-bold text-pegasus-navy">Aniversariantes do mês</h2>
-                      <p className="text-sm text-slate-500">
-                        {monthlyBirthdays.length} atleta{monthlyBirthdays.length !== 1 ? "s" : ""} fazendo aniversário
-                      </p>
-                    </div>
-                  </div>
-                  <div className="grid gap-2.5 sm:grid-cols-2">
-                    {monthlyBirthdays.map((a) => (
-                      <div
-                        key={a.id}
-                        className={`flex items-center gap-3 rounded-lg p-3 ${a.isToday ? "bg-pink-50" : "bg-pegasus-surface"}`}
-                      >
-                        <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-pink-100 text-xs font-bold text-pink-700">
-                          {a.day}
+            if (cards.length === 0) return null;
+
+            return (
+              <section className={`grid gap-4 ${colsClass}`}>
+                {muralPosts.length > 0 && (
+                  <article data-tour="dash-mural" className="panel flex flex-col p-4">
+                    <div className="mb-3 flex items-center justify-between gap-2">
+                      <div className="flex items-center gap-2.5">
+                        <span className="rounded-lg bg-pegasus-ice p-2 text-pegasus-primary">
+                          <MessageSquare size={16} />
                         </span>
-                        <div className="min-w-0">
-                          <p className="truncate font-bold text-pegasus-navy">{a.name}</p>
-                          <p className={`text-xs font-semibold ${a.isToday ? "text-pink-600" : "text-slate-500"}`}>
-                            {a.isToday ? "Hoje!" : `Dia ${a.day}`}
+                        <h2 className="text-sm font-bold text-pegasus-navy">Avisos do clube</h2>
+                      </div>
+                      <Link to="/app/comunicados" className="text-xs font-semibold text-pegasus-primary hover:underline">
+                        Ver todos
+                      </Link>
+                    </div>
+                    <div className="max-h-56 space-y-2 overflow-y-auto slim-scroll pr-1">
+                      {muralPosts.map((post) => (
+                        <div key={post.id} className="rounded-lg bg-pegasus-surface p-2.5">
+                          <div className="flex flex-wrap items-center gap-1.5">
+                            <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${
+                              post.category === "urgente" ? "bg-rose-100 text-rose-700" :
+                              post.category === "evento" ? "bg-violet-100 text-violet-700" :
+                              "bg-stone-100 text-stone-600"
+                            }`}>
+                              {post.category === "urgente" ? "Urgente" : post.category === "evento" ? "Evento" : "Info"}
+                            </span>
+                            <span className="text-[10px] text-slate-400">
+                              {new Intl.DateTimeFormat("pt-BR", { day: "2-digit", month: "short" }).format(new Date(post.createdAt))}
+                            </span>
+                          </div>
+                          <p className="mt-1 truncate text-xs font-bold text-pegasus-navy">{post.title}</p>
+                          <p className="mt-0.5 line-clamp-2 text-xs text-slate-500">{post.body}</p>
+                        </div>
+                      ))}
+                    </div>
+                  </article>
+                )}
+
+                {monthlyBirthdays.length > 0 && (
+                  <article className="panel flex flex-col p-4">
+                    <div className="mb-3 flex items-center gap-2.5">
+                      <span className="rounded-lg bg-pink-50 p-2 text-pink-600">
+                        <Cake size={16} />
+                      </span>
+                      <h2 className="text-sm font-bold text-pegasus-navy">Aniversariantes do mês</h2>
+                    </div>
+                    <div className="grid max-h-56 grid-cols-1 gap-2 overflow-y-auto slim-scroll pr-1">
+                      {monthlyBirthdays.map((a) => (
+                        <div
+                          key={a.id}
+                          className={`flex items-center gap-2.5 rounded-lg p-2 ${a.isToday ? "bg-pink-50" : "bg-pegasus-surface"}`}
+                        >
+                          <span className="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-pink-100 text-[10px] font-bold text-pink-700">
+                            {a.day}
+                          </span>
+                          <div className="min-w-0">
+                            <p className="truncate text-xs font-bold text-pegasus-navy">{a.name}</p>
+                            <p className={`text-[10px] font-semibold ${a.isToday ? "text-pink-600" : "text-slate-500"}`}>
+                              {a.isToday ? "Hoje!" : `Dia ${a.day}`}
+                            </p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </article>
+                )}
+
+                {canSeeTrainings && (
+                  <article className="panel flex flex-col p-4">
+                    <div className="mb-3 flex items-center gap-2.5">
+                      <span className="rounded-lg bg-pegasus-ice p-2 text-pegasus-primary">
+                        <CalendarDays size={16} />
+                      </span>
+                      <h2 className="text-sm font-bold text-pegasus-navy">Próximos treinos</h2>
+                    </div>
+                    <div className="max-h-56 space-y-2 overflow-y-auto slim-scroll pr-1">
+                      {upcomingTrainings.slice(0, 6).map((training) => (
+                        <div key={training.id} className="rounded-lg bg-pegasus-surface p-2.5">
+                          <p className="truncate text-xs font-bold text-pegasus-navy">{training.title}</p>
+                          <p className="text-[10px] text-slate-500">
+                            {training.category ?? "Sem categoria"} · {formatDateTime(training.date)}
                           </p>
                         </div>
-                      </div>
-                    ))}
-                  </div>
-                </article>
-              )}
-            </section>
-          )}
+                      ))}
+                      {upcomingTrainings.length === 0 ? (
+                        <p className="rounded-lg bg-pegasus-surface p-2.5 text-xs text-slate-600">
+                          Nenhum treino futuro cadastrado.
+                        </p>
+                      ) : null}
+                    </div>
+                  </article>
+                )}
+              </section>
+            );
+          })()}
 
           {/* Gráfico de frequência mensal */}
           {canSeeTrainings && monthlyStats.length > 0 && (
-            <section className="panel p-5">
-              <div className="mb-4 flex items-center gap-3">
-                <Star className="text-pegasus-primary" size={20} />
-                <div>
-                  <h2 className="font-black text-pegasus-navy">Frequência por mês</h2>
-                  <p className="text-sm text-slate-500">Percentual de presença do elenco por treino</p>
-                </div>
+            <section className="panel p-4">
+              <div className="mb-2 flex items-center gap-2.5">
+                <Star className="text-pegasus-primary" size={16} />
+                <h2 className="text-sm font-bold text-pegasus-navy">Frequência por mês</h2>
               </div>
-              <ResponsiveContainer width="100%" height={220}>
+              <ResponsiveContainer width="100%" height={150}>
                 <LineChart data={monthlyStats.map((s) => ({ ...s, label: formatMonth(s.month) }))}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#e7e5e4" />
-                  <XAxis dataKey="label" tick={{ fontSize: 12 }} />
-                  <YAxis domain={[0, 100]} tick={{ fontSize: 12 }} tickFormatter={(v) => `${v}%`} />
+                  <XAxis dataKey="label" tick={{ fontSize: 11 }} />
+                  <YAxis domain={[0, 100]} tick={{ fontSize: 11 }} tickFormatter={(v) => `${v}%`} />
                   <Tooltip formatter={(v) => [`${v}%`, "Frequência"]} />
                   <Line
                     type="monotone"
                     dataKey="percentual"
                     stroke="#059669"
                     strokeWidth={2.5}
-                    dot={{ fill: "#059669", r: 4 }}
-                    activeDot={{ r: 6 }}
+                    dot={{ fill: "#059669", r: 3 }}
+                    activeDot={{ r: 5 }}
                   />
                 </LineChart>
               </ResponsiveContainer>
             </section>
           )}
-
-          <section className="grid gap-4">
-            {canSeeTrainings ? (
-              <article className="panel p-5">
-                <div className="flex items-center gap-3">
-                  <span className="rounded-lg bg-pegasus-ice p-3 text-pegasus-primary">
-                    <CalendarDays size={22} />
-                  </span>
-                  <div>
-                    <h2 className="text-xl font-bold text-pegasus-navy">Proximos Treinos</h2>
-                    <p className="text-sm text-slate-500">
-                      {upcomingTrainings.length} treino(s) futuro(s) cadastrado(s)
-                    </p>
-                  </div>
-                </div>
-                <div className="mt-4 grid gap-2.5">
-                  {upcomingTrainings.slice(0, 4).map((training) => (
-                    <div
-                      key={training.id}
-                      className="flex flex-col gap-2 rounded-lg bg-pegasus-surface p-4 sm:flex-row sm:items-center sm:justify-between"
-                    >
-                      <div>
-                        <p className="font-bold text-pegasus-navy">{training.title}</p>
-                        <p className="text-sm text-slate-500">
-                          {training.category ?? "Sem categoria"} | {formatDateTime(training.date)}
-                        </p>
-                      </div>
-                      <span className="text-sm font-semibold text-pegasus-primary">
-                        {training.createdBy}
-                      </span>
-                    </div>
-                  ))}
-                  {upcomingTrainings.length === 0 ? (
-                    <p className="rounded-lg bg-pegasus-surface p-4 text-sm text-slate-600">
-                      Nenhum treino futuro cadastrado.
-                    </p>
-                  ) : null}
-                </div>
-              </article>
-            ) : null}
-
-          </section>
 
           {data.upcomingGames.length > 0 ? (
             <article className="panel p-5">
