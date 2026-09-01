@@ -305,7 +305,7 @@ export const reportsService = {
   async generate(month?: string) {
     const target = month ?? new Date().toISOString().slice(0, 7);
     const label = monthLabel(target);
-    const fileName = `demonstrativo-${target}.pdf`;
+    const fileName = `Demonstrativo Pegasus ${target}.pdf`;
 
     const pdfBuffer = await generatePdfBuffer(target);
 
