@@ -2,7 +2,7 @@ import { ArrowLeft, ArrowRight, CheckCircle2, Loader2, LogIn, Trophy } from "luc
 import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import logoFull from "../../assets/logo/logo-full.png";
-import { ORG_NAME, ORG_LOGO_URL } from "../../config/org";
+import { ORG_SHORT_NAME, ORG_LOGO_URL } from "../../config/org";
 import {
   athleteApplicationService,
   type PublicApplicationPayload,
@@ -305,7 +305,7 @@ function validate(form: FormData): FieldErrors {
   if (!form.level) errors.level = "Selecione seu nível atual.";
   if (!form.willingToCompete) errors.willingToCompete = "Informe sua disponibilidade para campeonatos.";
   if (!form.motivation.trim()) errors.motivation = "Conte seu motivo para entrar no time.";
-  if (!form.howFound.trim()) errors.howFound = `Informe como você descobriu o ${ORG_NAME}.`;
+  if (!form.howFound.trim()) errors.howFound = `Informe como você descobriu o ${ORG_SHORT_NAME}.`;
   return errors;
 }
 
@@ -460,9 +460,9 @@ export function InscricaoPage() {
         <header className="relative border-b border-white/10">
           <div className="mx-auto flex max-w-4xl items-center justify-between gap-4 px-4 py-4 sm:px-6">
             <Link to="/" className="flex items-center gap-3">
-              <img src={ORG_LOGO_URL || logoFull} alt={`Projeto ${ORG_NAME}`} className="h-10 w-20 rounded-xl object-contain" />
+              <img src={ORG_LOGO_URL || logoFull} alt={`Projeto ${ORG_SHORT_NAME}`} className="h-10 w-20 rounded-xl object-contain" />
               <div>
-                <p className="font-bold leading-tight">Projeto {ORG_NAME}</p>
+                <p className="font-bold leading-tight">Projeto {ORG_SHORT_NAME}</p>
                 <p className="text-xs text-[#42A5F5]">Caminho Para o Time</p>
               </div>
             </Link>
@@ -485,7 +485,7 @@ export function InscricaoPage() {
             </div>
             <h1 className="mt-4 text-3xl font-black sm:text-4xl">Caminho Para o Time</h1>
             <p className="mt-3 max-w-xl text-base leading-7 text-blue-100">
-              Preencha o formulário abaixo para fazer sua inscrição no <strong className="text-white">Projeto {ORG_NAME}</strong>.
+              Preencha o formulário abaixo para fazer sua inscrição no <strong className="text-white">Projeto {ORG_SHORT_NAME}</strong>.
               Nossa equipe analisará seu perfil e entrará em contato.
             </p>
           </div>
@@ -729,7 +729,7 @@ export function InscricaoPage() {
                 id="motivation"
                 label="Por que você quer entrar no time?"
                 onChange={(v) => set("motivation", v)}
-                placeholder={`Conte sua motivação, objetivos e o que espera do Projeto ${ORG_NAME}...`}
+                placeholder={`Conte sua motivação, objetivos e o que espera do Projeto ${ORG_SHORT_NAME}...`}
                 required
                 rows={4}
                 value={form.motivation}
@@ -738,7 +738,7 @@ export function InscricaoPage() {
                 disabled={isSubmitting}
                 error={fieldErrors.howFound}
                 id="howFound"
-                label={`Como você descobriu o Projeto ${ORG_NAME}?`}
+                label={`Como você descobriu o Projeto ${ORG_SHORT_NAME}?`}
                 onChange={(v) => set("howFound", v)}
                 placeholder="Instagram, indicação de amigo, evento..."
                 required

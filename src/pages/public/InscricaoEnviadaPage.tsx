@@ -1,7 +1,7 @@
 import { ArrowLeft, CheckCircle2, LogIn } from "lucide-react";
 import { Link } from "react-router-dom";
 import logoFull from "../../assets/logo/logo-full.png";
-import { ORG_NAME, ORG_LOGO_URL } from "../../config/org";
+import { ORG_SHORT_NAME, ORG_LOGO_URL } from "../../config/org";
 
 export function InscricaoEnviadaPage() {
   return (
@@ -10,9 +10,9 @@ export function InscricaoEnviadaPage() {
       <header className="bg-[#071428] text-white">
         <div className="mx-auto flex max-w-4xl items-center justify-between gap-4 px-4 py-4 sm:px-6">
           <Link to="/" className="flex items-center gap-3">
-            <img src={ORG_LOGO_URL || logoFull} alt={`Projeto ${ORG_NAME}`} className="h-10 w-20 rounded-xl object-contain" />
+            <img src={ORG_LOGO_URL || logoFull} alt={`Projeto ${ORG_SHORT_NAME}`} className="h-10 w-20 rounded-xl object-contain" />
             <div>
-              <p className="font-bold leading-tight">Projeto {ORG_NAME}</p>
+              <p className="font-bold leading-tight">Projeto {ORG_SHORT_NAME}</p>
               <p className="text-xs text-[#42A5F5]">Voleibol e comunidade</p>
             </div>
           </Link>
@@ -37,7 +37,7 @@ export function InscricaoEnviadaPage() {
         </h1>
 
         <p className="mt-4 text-lg leading-7 text-slate-600">
-          Recebemos sua inscrição no <strong className="text-pegasus-navy">Projeto {ORG_NAME}</strong>.
+          Recebemos sua inscrição no <strong className="text-pegasus-navy">Projeto {ORG_SHORT_NAME}</strong>.
           Nossa equipe vai analisar seu perfil e entrará em contato em breve.
         </p>
 
