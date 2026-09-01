@@ -21,7 +21,7 @@ async function generatePdfBuffer(month: string): Promise<Buffer> {
   const start = new Date(Date.UTC(year, m - 1, 1));
   const end = new Date(Date.UTC(year, m, 1));
 
-  const [payments, movements, trainings, games, athletes, allPaidPayments, allMoves, mensalidadePayments] = await Promise.all([
+  const [payments, movements, trainings, games, athletes, paymentsBefore, movesBefore, mensalidadePayments] = await Promise.all([
     prisma.payment.findMany({
       where: { createdAt: { gte: start, lt: end } },
       include: { athlete: { select: { name: true } } },
@@ -34,8 +34,9 @@ async function generatePdfBuffer(month: string): Promise<Buffer> {
       select: { name: true, activatedAt: true, category: true },
       orderBy: { activatedAt: "asc" },
     }),
-    prisma.payment.findMany({ where: { status: "pago" }, select: { amount: true, type: true } }),
-    prisma.cashMovement.findMany({ select: { amount: true, type: true } }),
+    // Tudo pago/lançado ANTES do mês do relatório, pra saber o saldo com que o mês começou.
+    prisma.payment.findMany({ where: { status: "pago", createdAt: { lt: start } }, select: { amount: true, type: true } }),
+    prisma.cashMovement.findMany({ where: { date: { lt: start } }, select: { amount: true, type: true } }),
     // Mensalidades do mês de referência (não de quando a cobrança foi criada), contando só
     // atletas ainda ativos e não isentos — mesmo critério usado no resumo do Financeiro.
     prisma.payment.findMany({
@@ -58,11 +59,11 @@ async function generatePdfBuffer(month: string): Promise<Buffer> {
   });
   const orgName = setting?.systemName ?? "Pegasus Manager";
 
-  const totalCaixaAtual =
-    allPaidPayments.filter((p) => p.type === "receita").reduce((s, p) => s + Number(p.amount), 0) -
-    allPaidPayments.filter((p) => p.type === "despesa").reduce((s, p) => s + Number(p.amount), 0) +
-    allMoves.filter((mv) => mv.type === "entrada").reduce((s, mv) => s + Number(mv.amount), 0) -
-    allMoves.filter((mv) => mv.type === "saida").reduce((s, mv) => s + Number(mv.amount), 0);
+  const saldoInicialDoMes =
+    paymentsBefore.filter((p) => p.type === "receita").reduce((s, p) => s + Number(p.amount), 0) -
+    paymentsBefore.filter((p) => p.type === "despesa").reduce((s, p) => s + Number(p.amount), 0) +
+    movesBefore.filter((mv) => mv.type === "entrada").reduce((s, mv) => s + Number(mv.amount), 0) -
+    movesBefore.filter((mv) => mv.type === "saida").reduce((s, mv) => s + Number(mv.amount), 0);
 
   const totalReceita = payments.filter((p) => p.type === "receita" && p.status === "pago").reduce((s, p) => s + Number(p.amount), 0);
   const totalDespesaPayments = payments.filter((p) => p.type === "despesa").reduce((s, p) => s + Number(p.amount), 0);
@@ -75,6 +76,7 @@ async function generatePdfBuffer(month: string): Promise<Buffer> {
   const mensalidadesPago = mensalidadePayments.filter((p) => p.status === "pago").length;
   const label = monthLabel(month);
   const saldoDoMes = totalReceita + totalEntradasMovimento - totalDespesaGeral;
+  const saldoFinalDoMes = saldoInicialDoMes + saldoDoMes;
   const adimplenciaPct = mensalidadePayments.length > 0
     ? Math.round((mensalidadesPago / mensalidadePayments.length) * 100)
     : null;
@@ -159,7 +161,7 @@ async function generatePdfBuffer(month: string): Promise<Buffer> {
     // ── KPIs em destaque ────────────────────────────────────────────────────
     const kpis: Array<{ label: string; value: string; color: string }> = [
       { label: "Saldo do mês", value: formatCurrency(saldoDoMes), color: saldoDoMes >= 0 ? emerald : rose },
-      { label: "Saldo total do caixa", value: formatCurrency(totalCaixaAtual), color: ink },
+      { label: "Caixa final do mês", value: formatCurrency(saldoFinalDoMes), color: saldoFinalDoMes >= 0 ? ink : rose },
     ];
     if (adimplenciaPct !== null) {
       kpis.push({ label: "Adimplência", value: `${adimplenciaPct}%`, color: adimplenciaPct >= 70 ? emerald : rose });
@@ -179,6 +181,8 @@ async function generatePdfBuffer(month: string): Promise<Buffer> {
 
     // ── Resumo Financeiro ────────────────────────────────────────────────────
     sectionTitle("Resumo Financeiro");
+    row("Saldo inicial do caixa (início do mês)", formatCurrency(saldoInicialDoMes), 0, true);
+    rowDivider();
     row("Receitas pagas (mensalidades e outros)", formatCurrency(totalReceita));
     if (totalEntradasMovimento > 0) {
       row("Entradas de caixa", formatCurrency(totalEntradasMovimento));
@@ -189,7 +193,7 @@ async function generatePdfBuffer(month: string): Promise<Buffer> {
     }
     if (saidasMovimento.length > 0) {
       for (const mv of saidasMovimento) {
-        row(mv.description, `− ${formatCurrency(Number(mv.amount))}`, 8);
+        row(mv.description, `- ${formatCurrency(Number(mv.amount))}`, 8);
       }
     }
     if (totalDespesaGeral === 0) {
@@ -198,6 +202,8 @@ async function generatePdfBuffer(month: string): Promise<Buffer> {
       rowDivider();
       row("Total de saídas", formatCurrency(totalDespesaGeral), 0, true);
     }
+    rowDivider();
+    row("Saldo final do caixa (fim do mês)", formatCurrency(saldoFinalDoMes), 0, true, saldoFinalDoMes >= 0 ? emerald : rose);
     gap(10);
 
     // ── Mensalidades ──────────────────────────────────────────────────────────
