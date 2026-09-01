@@ -16,6 +16,7 @@ import { PageHeader } from "../../components/ui/PageHeader";
 import { useToast } from "../../components/ui/Toast";
 import { getApiErrorMessage } from "../../services/api";
 import { calendarService } from "../../services/calendarService";
+import { marketingCalendarService, type TeamEvent } from "../../services/marketingCalendarService";
 import { settingsService, type TrainingConfig } from "../../services/settingsService";
 import { turmaService, type Turma } from "../../services/turmaService";
 import { MANUAL_BLOCKED_DATES, OFFICIAL_TRAINING } from "../../data/trainingConfig";
@@ -171,6 +172,7 @@ export function TrainingCalendarPage() {
   const [isLoadingDates, setIsLoadingDates] = useState(false);
   const [isTogglingDate, setIsTogglingDate] = useState(false);
   const [turmas, setTurmas] = useState<Turma[]>([]);
+  const [teamEvents, setTeamEvents] = useState<TeamEvent[]>([]);
   const [trainingConfig, setTrainingConfig] = useState<
     Pick<TrainingConfig, "trainingTime" | "trainingLocation" | "trainingDependency" | "trainingDaysOfWeek">
   >({
@@ -225,6 +227,21 @@ export function TrainingCalendarPage() {
     settingsService.getTrainingConfig().then(setTrainingConfig).catch(() => {});
     turmaService.getAll().then(setTurmas).catch(() => {});
   }, [loadDynamicDates]);
+
+  useEffect(() => {
+    marketingCalendarService
+      .getTeamEvents(month.getUTCMonth() + 1, month.getUTCFullYear())
+      .then(setTeamEvents)
+      .catch(() => setTeamEvents([]));
+  }, [month]);
+
+  const teamEventsByDate = useMemo(() => {
+    const map: Record<string, TeamEvent[]> = {};
+    for (const ev of teamEvents) {
+      (map[ev.date] ??= []).push(ev);
+    }
+    return map;
+  }, [teamEvents]);
 
   useTour("calendario:v1", isLoadingDates ? [] : TOUR_STEPS);
 
@@ -344,6 +361,7 @@ export function TrainingCalendarPage() {
             const isDynBlocked = isDynamicallyBlocked(day);
             const isEditableDay = canEditCalendar && official;
             const dayTurmas = turmasForDate(day, turmas);
+            const dayTeamEvents = teamEventsByDate[toDateKey(day)] ?? [];
 
             return (
               <button
@@ -355,13 +373,18 @@ export function TrainingCalendarPage() {
                 onClick={() => {
                   if (isEditableDay) {
                     handleToggleBlock(day);
-                  } else if (official) {
+                  } else if (official || dayTeamEvents.length > 0) {
                     setSelectedDate(day);
                   }
                 }}
                 type="button"
               >
                 <span className="text-sm font-black text-pegasus-navy">{day.getUTCDate()}</span>
+                {dayTeamEvents.length > 0 ? (
+                  <span className="mt-1 block truncate rounded-lg bg-emerald-600 px-2 py-0.5 text-[10px] font-bold text-white">
+                    {dayTeamEvents[0].title}
+                  </span>
+                ) : null}
                 {official && dayTurmas.length > 0 ? (
                   <span className="mt-2 flex flex-wrap gap-1">
                     {dayTurmas.map((turma) => (
@@ -418,41 +441,54 @@ export function TrainingCalendarPage() {
       <Modal
         isOpen={Boolean(selectedDate)}
         onClose={() => setSelectedDate(null)}
-        title={selectedDate ? `Treino oficial - ${formatDate(selectedDate)}` : "Treino oficial"}
+        title={selectedDate ? formatDate(selectedDate) : ""}
       >
         {selectedDate ? (
           <div className="space-y-4 text-sm leading-6 text-slate-600">
-            <p><strong className="text-pegasus-navy">Data:</strong> {formatDate(selectedDate)}</p>
-            {(() => {
-              const dayTurmas = turmasForDate(selectedDate, turmas);
-              if (dayTurmas.length > 0) {
-                return (
-                  <div className="space-y-2">
-                    <strong className="text-pegasus-navy">Turmas:</strong>
-                    {dayTurmas.map((turma) => (
-                      <p key={turma.id}>
-                        <span
-                          className="rounded-full px-2 py-0.5 text-xs font-bold text-white"
-                          style={{ backgroundColor: turma.color }}
-                        >
-                          {turma.name}
-                        </span>{" "}
-                        {turma.time} · {turma.location}{turma.dependency ? ` (${turma.dependency})` : ""}
-                      </p>
-                    ))}
-                  </div>
-                );
-              }
-              return (
-                <>
-                  <p><strong className="text-pegasus-navy">Horário:</strong> {trainingConfig.trainingTime}</p>
-                  <p><strong className="text-pegasus-navy">Local:</strong> {trainingConfig.trainingLocation}</p>
-                  <p><strong className="text-pegasus-navy">Dependência:</strong> {trainingConfig.trainingDependency}</p>
-                </>
-              );
-            })()}
-            <p><strong className="text-pegasus-navy">Modalidade:</strong> {OFFICIAL_TRAINING.modality}</p>
-            <p><strong className="text-pegasus-navy">Observações:</strong> Treino oficial {ORG_NAME}. Verifique comunicados internos em caso de feriados ou ajustes operacionais.</p>
+            {(teamEventsByDate[toDateKey(selectedDate)] ?? []).map((ev) => (
+              <div key={ev.id} className="rounded-xl border border-emerald-200 bg-emerald-50 p-3">
+                <p className="font-bold text-emerald-800">{ev.title}</p>
+                {ev.description && ev.description !== ev.title && (
+                  <p className="mt-1 whitespace-pre-wrap text-emerald-700">{ev.description}</p>
+                )}
+                {ev.time && <p className="mt-1 text-xs font-semibold text-emerald-700">Horário: {ev.time}</p>}
+              </div>
+            ))}
+            {isOfficialTrainingDate(selectedDate) ? (
+              <>
+                <p><strong className="text-pegasus-navy">Data:</strong> {formatDate(selectedDate)}</p>
+                {(() => {
+                  const dayTurmas = turmasForDate(selectedDate, turmas);
+                  if (dayTurmas.length > 0) {
+                    return (
+                      <div className="space-y-2">
+                        <strong className="text-pegasus-navy">Turmas:</strong>
+                        {dayTurmas.map((turma) => (
+                          <p key={turma.id}>
+                            <span
+                              className="rounded-full px-2 py-0.5 text-xs font-bold text-white"
+                              style={{ backgroundColor: turma.color }}
+                            >
+                              {turma.name}
+                            </span>{" "}
+                            {turma.time} · {turma.location}{turma.dependency ? ` (${turma.dependency})` : ""}
+                          </p>
+                        ))}
+                      </div>
+                    );
+                  }
+                  return (
+                    <>
+                      <p><strong className="text-pegasus-navy">Horário:</strong> {trainingConfig.trainingTime}</p>
+                      <p><strong className="text-pegasus-navy">Local:</strong> {trainingConfig.trainingLocation}</p>
+                      <p><strong className="text-pegasus-navy">Dependência:</strong> {trainingConfig.trainingDependency}</p>
+                    </>
+                  );
+                })()}
+                <p><strong className="text-pegasus-navy">Modalidade:</strong> {OFFICIAL_TRAINING.modality}</p>
+                <p><strong className="text-pegasus-navy">Observações:</strong> Treino oficial {ORG_NAME}. Verifique comunicados internos em caso de feriados ou ajustes operacionais.</p>
+              </>
+            ) : null}
           </div>
         ) : null}
       </Modal>

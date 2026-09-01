@@ -23,16 +23,40 @@ export type CalendarEventPayload = {
   type?: string;
 };
 
+export type TeamEvent = {
+  id: string;
+  title: string;
+  description: string | null;
+  date: string;
+  time: string | null;
+};
+
 export function getEventColor(type: string): string {
   if (type === "aniversario") return "bg-rose-500";
+  if (type === "evento_time") return "bg-emerald-600";
   if (type === "agendado") return "bg-sky-600";
   if (type === "publicado") return "bg-teal-600";
   return "bg-blue-600";
 }
 
+export const eventTypeOptions = [
+  { value: "atividade", label: "Atividade" },
+  { value: "evento_time", label: "Evento de time" },
+  { value: "agendado", label: "Post agendado" },
+  { value: "publicado", label: "Post publicado" },
+];
+
 export const marketingCalendarService = {
   async getEvents(month: number, year: number): Promise<CalendarEvent[]> {
     const { data } = await api.get<CalendarEvent[]>("/marketing-calendar/events", {
+      params: { month, year },
+    });
+    return data;
+  },
+
+  /** Eventos "de time" do mês — sem exigir permissão de marketing, pra uso no calendário de treinos. */
+  async getTeamEvents(month: number, year: number): Promise<TeamEvent[]> {
+    const { data } = await api.get<TeamEvent[]>("/marketing-calendar/events/team", {
       params: { month, year },
     });
     return data;

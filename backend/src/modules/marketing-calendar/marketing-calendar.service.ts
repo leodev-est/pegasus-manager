@@ -62,6 +62,23 @@ export const marketingCalendarService = {
     return [...mapped, ...birthdayEvents].sort((a, b) => a.date.localeCompare(b.date));
   },
 
+  /**
+   * Eventos marcados como "evento de time" (visíveis no calendário de treinos dos
+   * atletas). Sem restrição de permissão de marketing — qualquer usuário autenticado
+   * pode ver, igual ao calendário de treinos.
+   */
+  async getTeamEventsForMonth(year: number, month: number) {
+    const { start, end } = toDateRange(year, month);
+
+    const events = await prisma.marketingEvent.findMany({
+      where: { date: { gte: start, lt: end }, type: "evento_time" },
+      orderBy: [{ date: "asc" }, { time: "asc" }],
+      select: { id: true, title: true, description: true, date: true, time: true },
+    });
+
+    return events.map((e) => ({ ...e, date: toDateKey(e.date) }));
+  },
+
   async createEvent(payload: MarketingEventPayload) {
     if (!payload.title?.trim()) throw new AppError("Título é obrigatório", 400);
     if (!payload.date) throw new AppError("Data é obrigatória", 400);

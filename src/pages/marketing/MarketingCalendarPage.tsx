@@ -5,12 +5,14 @@ import { useAuth } from "../../auth/AuthContext";
 import { Button } from "../../components/ui/Button";
 import { Modal } from "../../components/ui/Modal";
 import { PageHeader } from "../../components/ui/PageHeader";
+import { Select } from "../../components/ui/Select";
 import { Textarea } from "../../components/ui/Textarea";
 import { useToast } from "../../components/ui/Toast";
 import { getApiErrorMessage } from "../../services/api";
 import {
   marketingCalendarService,
   getEventColor,
+  eventTypeOptions,
   type CalendarEvent,
 } from "../../services/marketingCalendarService";
 
@@ -59,8 +61,10 @@ export function MarketingCalendarPage() {
   const [selectedEvent, setSelectedEvent] = useState<CalendarEvent | null>(null);
   const [createDate, setCreateDate] = useState<string | null>(null);
   const [createText, setCreateText] = useState("");
+  const [createType, setCreateType] = useState("atividade");
   const [editMode, setEditMode] = useState(false);
   const [editText, setEditText] = useState("");
+  const [editType, setEditType] = useState("atividade");
 
   const queryKey = ["marketing-calendar", year, month];
 
@@ -75,21 +79,24 @@ export function MarketingCalendarPage() {
         title: text.slice(0, 80),
         description: text,
         date: createDate!,
+        type: createType,
       }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey });
       setCreateDate(null);
       setCreateText("");
+      setCreateType("atividade");
       showToast("Evento adicionado.", "success");
     },
     onError: (err) => showToast(getApiErrorMessage(err), "error"),
   });
 
   const updateMutation = useMutation({
-    mutationFn: ({ id, text }: { id: string; text: string }) =>
+    mutationFn: ({ id, text, type }: { id: string; text: string; type: string }) =>
       marketingCalendarService.updateEvent(id, {
         title: text.slice(0, 80),
         description: text,
+        type,
       }),
     onSuccess: (updated) => {
       queryClient.invalidateQueries({ queryKey });
@@ -148,6 +155,7 @@ export function MarketingCalendarPage() {
   function startEdit() {
     if (!selectedEvent) return;
     setEditText(selectedEvent.description ?? selectedEvent.title);
+    setEditType(selectedEvent.type);
     setEditMode(true);
   }
 
@@ -295,6 +303,17 @@ export function MarketingCalendarPage() {
             createMutation.mutate(createText);
           }}
         >
+          <Select
+            label="Categoria"
+            options={eventTypeOptions}
+            value={createType}
+            onChange={(e) => setCreateType(e.target.value)}
+          />
+          {createType === "evento_time" && (
+            <p className="rounded-lg bg-emerald-50 px-3 py-2 text-xs font-medium text-emerald-700">
+              Este evento também vai aparecer no calendário de treinos dos atletas.
+            </p>
+          )}
           <Textarea
             label="Descrição"
             required
@@ -357,9 +376,15 @@ export function MarketingCalendarPage() {
             className="grid gap-4"
             onSubmit={(e) => {
               e.preventDefault();
-              updateMutation.mutate({ id: selectedEvent.id, text: editText });
+              updateMutation.mutate({ id: selectedEvent.id, text: editText, type: editType });
             }}
           >
+            <Select
+              label="Categoria"
+              options={eventTypeOptions}
+              value={editType}
+              onChange={(e) => setEditType(e.target.value)}
+            />
             <Textarea
               label="Descrição"
               required

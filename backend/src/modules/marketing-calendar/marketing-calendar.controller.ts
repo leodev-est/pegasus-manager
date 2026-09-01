@@ -13,6 +13,17 @@ export const marketingCalendarController = {
     }
   }) satisfies RequestHandler,
 
+  getTeamEvents: (async (req, res, next) => {
+    try {
+      const month = Number(req.query.month) || new Date().getMonth() + 1;
+      const year = Number(req.query.year) || new Date().getFullYear();
+      const events = await marketingCalendarService.getTeamEventsForMonth(year, month);
+      res.json(events);
+    } catch (error) {
+      next(error);
+    }
+  }) satisfies RequestHandler,
+
   createEvent: (async (req, res, next) => {
     try {
       const user = (req as { user?: { name?: string } }).user;
