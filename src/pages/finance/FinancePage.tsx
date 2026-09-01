@@ -258,6 +258,7 @@ export function FinancePage() {
   const [reports, setReports] = useState<MonthlyReport[]>([]);
   const [isLoadingReports, setIsLoadingReports] = useState(false);
   const [isGeneratingReport, setIsGeneratingReport] = useState(false);
+  const [reportMonth, setReportMonth] = useState(() => new Date().toISOString().slice(0, 7));
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [paymentModal, setPaymentModal] = useState(false);
@@ -406,7 +407,7 @@ export function FinancePage() {
   async function generateReport() {
     setIsGeneratingReport(true);
     try {
-      await reportsService.generate();
+      await reportsService.generate(reportMonth);
       await loadReports();
       showToast("Relatório gerado com sucesso.", "success");
     } catch (error) {
@@ -695,10 +696,20 @@ export function FinancePage() {
               <p className="text-sm text-slate-500">PDF gerado automaticamente no 1º dia de cada mês.</p>
             </div>
           </div>
-          <Button onClick={generateReport} disabled={isGeneratingReport} variant="secondary">
-            {isGeneratingReport ? <Loader2 className="animate-spin" size={17} /> : <FileDown size={17} />}
-            Gerar agora
-          </Button>
+          <div className="flex items-center gap-2">
+            <input
+              type="month"
+              value={reportMonth}
+              onChange={(event) => setReportMonth(event.target.value)}
+              disabled={isGeneratingReport}
+              className="h-10 rounded-md border border-stone-200 bg-white px-3 text-sm text-stone-900 outline-none transition-all focus:border-pegasus-sky focus:ring-2 focus:ring-pegasus-sky/20 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
+              aria-label="Mês do relatório"
+            />
+            <Button onClick={generateReport} disabled={isGeneratingReport} variant="secondary">
+              {isGeneratingReport ? <Loader2 className="animate-spin" size={17} /> : <FileDown size={17} />}
+              Gerar
+            </Button>
+          </div>
         </div>
         {isLoadingReports ? (
           <div className="flex items-center gap-3 p-6 text-sm font-bold text-pegasus-primary">
@@ -707,7 +718,7 @@ export function FinancePage() {
           </div>
         ) : reports.length === 0 ? (
           <div className="p-6">
-            <EmptyState icon={FileText} title="Nenhum relatório gerado" description="Clique em 'Gerar agora' para criar o relatório do mês atual." />
+            <EmptyState icon={FileText} title="Nenhum relatório gerado" description="Escolha o mês e clique em 'Gerar' para criar o relatório em PDF." />
           </div>
         ) : (
           <div className="divide-y divide-stone-100">

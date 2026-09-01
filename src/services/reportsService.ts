@@ -15,8 +15,10 @@ export const reportsService = {
     return data;
   },
 
-  async generate(): Promise<MonthlyReport> {
-    const { data } = await api.post<MonthlyReport>("/reports/generate");
+  async generate(month?: string): Promise<MonthlyReport> {
+    const { data } = await api.post<MonthlyReport>("/reports/generate", null, {
+      params: month ? { month } : undefined,
+    });
     return data;
   },
 

@@ -74,6 +74,10 @@ async function generatePdfBuffer(month: string): Promise<Buffer> {
 
   const mensalidadesPago = mensalidadePayments.filter((p) => p.status === "pago").length;
   const label = monthLabel(month);
+  const saldoDoMes = totalReceita + totalEntradasMovimento - totalDespesaGeral;
+  const adimplenciaPct = mensalidadePayments.length > 0
+    ? Math.round((mensalidadesPago / mensalidadePayments.length) * 100)
+    : null;
 
   const W = 595.28;
   const H = 841.89;
@@ -92,45 +96,86 @@ async function generatePdfBuffer(month: string): Promise<Buffer> {
     doc.on("end", () => resolve(Buffer.concat(chunks)));
     doc.on("error", reject);
 
-    const navy = "#1e3a5f";
-    const gray = "#64748b";
-    const light = "#eef2f8";
-    const accent = "#3b82f6";
+    // Paleta alinhada ao tema preto + verde do app (Tailwind zinc/emerald).
+    const ink = "#18181b";
+    const gray = "#71717a";
+    const grayLight = "#a1a1aa";
+    const surface = "#f4f4f5";
+    const border = "#e4e4e7";
+    const emerald = "#16a34a";
+    const rose = "#dc2626";
 
     // ── Header ──────────────────────────────────────────────────────────────
-    doc.rect(0, 0, W, 62).fill(navy);
-    doc.fillColor("white").fontSize(20).font("Helvetica-Bold").text(orgName, ML, 14, { lineBreak: false });
-    doc.fontSize(10).font("Helvetica").fillColor("#93c5fd").text(`Relatório Mensal — ${label}`, ML, 40, { lineBreak: false });
+    doc.rect(0, 0, W, 68).fill(ink);
+    doc.rect(0, 68, W, 3).fill(emerald);
+    doc.fillColor("white").fontSize(21).font("Helvetica-Bold").text(orgName, ML, 16, { lineBreak: false });
+    doc.fontSize(10.5).font("Helvetica").fillColor("#86efac")
+      .text(`Relatório Mensal · ${label}`, ML, 42, { lineBreak: false, characterSpacing: 0.2 });
 
-    let y = 82;
+    let y = 92;
 
     // ── helpers ─────────────────────────────────────────────────────────────
     function sectionTitle(title: string) {
-      doc.rect(ML, y, contentW, 20).fill(light);
-      doc.fillColor(navy).font("Helvetica-Bold").fontSize(9.5)
-        .text(title, ML + 6, y + 5, { lineBreak: false });
-      y += 26;
+      doc.rect(ML, y, 3, 12).fill(emerald);
+      doc.fillColor(ink).font("Helvetica-Bold").fontSize(9.5)
+        .text(title.toUpperCase(), ML + 9, y, { lineBreak: false, characterSpacing: 0.6 });
+      y += 12;
+      doc.moveTo(ML, y + 6).lineTo(ML + contentW, y + 6).strokeColor(border).lineWidth(0.75).stroke();
+      y += 16;
     }
 
-    function row(lbl: string, value: string, indent = 0, bold = false) {
+    function row(lbl: string, value: string, indent = 0, bold = false, valueColor = ink) {
       const lx = ML + indent;
       const lw = contentW * 0.65;
       const rx = ML;
       const rw = contentW;
       doc.font("Helvetica").fontSize(9).fillColor(gray)
         .text(lbl, lx, y, { width: lw - indent, lineBreak: false });
-      doc.font(bold ? "Helvetica-Bold" : "Helvetica").fontSize(9).fillColor(navy)
+      doc.font(bold ? "Helvetica-Bold" : "Helvetica").fontSize(9).fillColor(valueColor)
         .text(value, rx, y, { width: rw, align: "right", lineBreak: false });
-      y += 16;
+      y += 17;
+    }
+
+    function zebraRow(lbl: string, value: string, index: number) {
+      if (index % 2 === 0) {
+        doc.rect(ML, y - 3, contentW, 17).fill(surface);
+      }
+      row(lbl, value, 8);
     }
 
     function rowDivider() {
       y += 2;
-      doc.moveTo(ML, y).lineTo(ML + contentW, y).strokeColor("#dde3f0").lineWidth(0.5).stroke();
-      y += 5;
+      doc.moveTo(ML, y).lineTo(ML + contentW, y).strokeColor(border).lineWidth(0.5).stroke();
+      y += 6;
+    }
+
+    function emptyNote(text: string) {
+      doc.font("Helvetica").fontSize(9).fillColor(grayLight).text(text, ML, y, { lineBreak: false });
+      y += 16;
     }
 
     function gap(n = 10) { y += n; }
+
+    // ── KPIs em destaque ────────────────────────────────────────────────────
+    const kpis: Array<{ label: string; value: string; color: string }> = [
+      { label: "Saldo do mês", value: formatCurrency(saldoDoMes), color: saldoDoMes >= 0 ? emerald : rose },
+      { label: "Saldo total do caixa", value: formatCurrency(totalCaixaAtual), color: ink },
+    ];
+    if (adimplenciaPct !== null) {
+      kpis.push({ label: "Adimplência", value: `${adimplenciaPct}%`, color: adimplenciaPct >= 70 ? emerald : rose });
+    }
+    const kpiGap = 10;
+    const kpiW = (contentW - kpiGap * (kpis.length - 1)) / kpis.length;
+    const kpiH = 46;
+    kpis.forEach((kpi, i) => {
+      const x = ML + i * (kpiW + kpiGap);
+      doc.roundedRect(x, y, kpiW, kpiH, 6).fillAndStroke(surface, border);
+      doc.font("Helvetica").fontSize(7.5).fillColor(gray)
+        .text(kpi.label.toUpperCase(), x + 10, y + 9, { width: kpiW - 20, lineBreak: false, characterSpacing: 0.4 });
+      doc.font("Helvetica-Bold").fontSize(15).fillColor(kpi.color)
+        .text(kpi.value, x + 10, y + 22, { width: kpiW - 20, lineBreak: false });
+    });
+    y += kpiH + 18;
 
     // ── Resumo Financeiro ────────────────────────────────────────────────────
     sectionTitle("Resumo Financeiro");
@@ -153,61 +198,45 @@ async function generatePdfBuffer(month: string): Promise<Buffer> {
       rowDivider();
       row("Total de saídas", formatCurrency(totalDespesaGeral), 0, true);
     }
-    rowDivider();
-    row("Saldo do mês", formatCurrency(totalReceita + totalEntradasMovimento - totalDespesaGeral), 0, true);
-    row("Saldo total do caixa", formatCurrency(totalCaixaAtual), 0, true);
     gap(10);
 
     // ── Mensalidades ──────────────────────────────────────────────────────────
     if (mensalidadePayments.length > 0) {
       sectionTitle("Mensalidades");
       row("Total de atletas cobrados", String(mensalidadePayments.length));
-      row("Pagamentos confirmados", String(mensalidadesPago));
-      row("Taxa de adimplência", `${Math.round((mensalidadesPago / mensalidadePayments.length) * 100)}%`);
+      row("Pagamentos confirmados", String(mensalidadesPago), 0, false, emerald);
       gap(10);
     }
 
     // ── Treinos ───────────────────────────────────────────────────────────────
     sectionTitle(`Treinos (${trainings.length})`);
     if (trainings.length === 0) {
-      doc.font("Helvetica").fontSize(9).fillColor(gray)
-        .text("Nenhum treino realizado no mês.", ML, y, { lineBreak: false });
-      y += 16;
+      emptyNote("Nenhum treino realizado no mês.");
     } else {
-      for (const t of trainings) {
-        row(formatDate(t.date), t.title, 8);
-      }
+      trainings.forEach((t, i) => zebraRow(formatDate(t.date), t.title, i));
     }
     gap(10);
 
     // ── Jogos ─────────────────────────────────────────────────────────────────
     sectionTitle(`Jogos (${games.length})`);
     if (games.length === 0) {
-      doc.font("Helvetica").fontSize(9).fillColor(gray)
-        .text("Nenhum jogo registrado no mês.", ML, y, { lineBreak: false });
-      y += 16;
+      emptyNote("Nenhum jogo registrado no mês.");
     } else {
-      for (const g of games) {
-        row(`${formatDate(g.date)} · vs ${g.opponent}`, `${g.scorePegasus} × ${g.scoreOpponent}`, 8);
-      }
+      games.forEach((g, i) => zebraRow(`${formatDate(g.date)} · vs ${g.opponent}`, `${g.scorePegasus} × ${g.scoreOpponent}`, i));
     }
     gap(10);
 
     // ── Atletas aprovados ────────────────────────────────────────────────────
     sectionTitle(`Atletas aprovados no mês (${athletes.length})`);
     if (athletes.length === 0) {
-      doc.font("Helvetica").fontSize(9).fillColor(gray)
-        .text("Nenhum atleta aprovado este mês.", ML, y, { lineBreak: false });
-      y += 16;
+      emptyNote("Nenhum atleta aprovado este mês.");
     } else {
-      for (const a of athletes) {
-        row(a.name, a.category ?? "—", 8);
-      }
+      athletes.forEach((a, i) => zebraRow(a.name, a.category ?? "—", i));
     }
 
     // ── Footer ────────────────────────────────────────────────────────────────
     const footerY = H - 28;
-    doc.rect(0, footerY, W, 28).fill(light);
+    doc.rect(0, footerY, W, 28).fill(surface);
     doc.font("Helvetica").fontSize(7.5).fillColor(gray)
       .text(
         `Gerado em ${new Date().toLocaleString("pt-BR")} · ${orgName}`,
