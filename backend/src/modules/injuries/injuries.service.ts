@@ -55,9 +55,9 @@ export const injuriesService = {
   async update(id: string, data: {
     returnedAt?: string | null;
     expectedReturn?: string | null;
-    notes?: string;
+    notes?: string | null;
     severity?: string;
-    description?: string;
+    description?: string | null;
   }) {
     const injury = await prisma.injury.findUnique({ where: { id } });
     if (!injury) throw new AppError("Lesão não encontrada.", 404);
@@ -70,9 +70,9 @@ export const injuriesService = {
       data: {
         returnedAt: data.returnedAt === null ? null : data.returnedAt ? new Date(data.returnedAt) : undefined,
         expectedReturn: data.expectedReturn === null ? null : data.expectedReturn ? new Date(data.expectedReturn) : undefined,
-        notes: data.notes !== undefined ? data.notes.trim() || null : undefined,
+        notes: data.notes === null ? null : data.notes !== undefined ? data.notes.trim() || null : undefined,
         severity: data.severity,
-        description: data.description !== undefined ? data.description.trim() || null : undefined,
+        description: data.description === null ? null : data.description !== undefined ? data.description.trim() || null : undefined,
       },
       include: { athlete: { select: { id: true, name: true } } },
     });

@@ -85,6 +85,7 @@ function formatRelativeTime(value: string): string {
 function typeLabel(type: Notification["type"]) {
   const labels: Record<Notification["type"], string> = {
     avaliacao: "Avaliação",
+    avaliacao_treino: "Avaliação de treino",
     financeiro: "Financeiro",
     frequencia: "Frequência",
     sistema: "Sistema",
@@ -100,6 +101,7 @@ function notificationHref(type: Notification["type"], isAthlete: boolean): strin
     financeiro: { athlete: "/app/atleta/mensalidades", staff: "/app/financeiro" },
     frequencia: { athlete: "/app/atleta/frequencia", staff: "/app/frequencia" },
     avaliacao: { athlete: "/app/meu-perfil", staff: "/app/avaliacoes" },
+    avaliacao_treino: { athlete: "/app/meu-perfil", staff: "/app/treinos" },
     sistema: null,
   };
 

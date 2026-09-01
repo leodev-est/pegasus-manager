@@ -4,6 +4,7 @@ import { useTour } from "../../tours/useTour";
 import { Button } from "../../components/ui/Button";
 import { PageHeader } from "../../components/ui/PageHeader";
 import { useToast } from "../../components/ui/Toast";
+import { calendarService } from "../../services/calendarService";
 import { getApiErrorMessage } from "../../services/api";
 import { trainingFeedbackService } from "../../services/trainingFeedbackService";
 import { trainingService, type Training } from "../../services/trainingService";
@@ -90,9 +91,14 @@ export function AvaliarTreinoPage() {
     async function load() {
       setIsLoading(true);
       try {
-        const all = await trainingService.getAll();
+        const [all, blockedDates] = await Promise.all([
+          trainingService.getAll(),
+          calendarService.getBlockedDates().catch(() => [] as string[]),
+        ]);
+        const blockedSet = new Set(blockedDates);
         const past = all
           .filter((t) => new Date(t.date) < new Date())
+          .filter((t) => !blockedSet.has(new Date(t.date).toISOString().slice(0, 10)))
           .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
           .slice(0, 20);
         setTrainings(past);

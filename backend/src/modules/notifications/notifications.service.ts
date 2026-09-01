@@ -2,7 +2,7 @@ import { prisma } from "../../config/prisma";
 import { AppError } from "../../middlewares/error.middleware";
 import { pushService } from "../push/push.service";
 
-const notificationTypes = ["treino", "financeiro", "frequencia", "avaliacao", "sistema"] as const;
+const notificationTypes = ["treino", "financeiro", "frequencia", "avaliacao", "avaliacao_treino", "sistema"] as const;
 
 type NotificationType = (typeof notificationTypes)[number];
 

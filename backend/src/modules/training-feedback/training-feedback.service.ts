@@ -1,5 +1,7 @@
 import { prisma } from "../../config/prisma";
 import { AppError } from "../../middlewares/error.middleware";
+import { isBlockedTrainingDate, loadBlockedDates } from "../../utils/trainingDates";
+import { notificationsService } from "../notifications/notifications.service";
 
 type CreatePayload = {
   trainingId: string;
@@ -17,7 +19,18 @@ export const trainingFeedbackService = {
       throw new AppError("Nota deve ser entre 1 e 5", 400);
     }
 
-    return prisma.trainingFeedback.upsert({
+    const training = await prisma.training.findUnique({
+      where: { id: payload.trainingId },
+      select: { title: true, date: true },
+    });
+    if (!training) throw new AppError("Treino não encontrado", 404);
+
+    const blockedDates = await loadBlockedDates();
+    if (isBlockedTrainingDate(training.date, blockedDates)) {
+      throw new AppError("Não é possível avaliar um treino cancelado.", 400);
+    }
+
+    const feedback = await prisma.trainingFeedback.upsert({
       where: { trainingId_athleteId: { trainingId: payload.trainingId, athleteId: payload.athleteId } },
       update: {
         rating: payload.rating,
@@ -29,7 +42,19 @@ export const trainingFeedbackService = {
         rating: payload.rating,
         comment: payload.comment?.trim() ?? null,
       },
+      include: { athlete: { select: { name: true } } },
     });
+
+    notificationsService
+      .notifyByRoles(["Diretor", "Tecnico"], {
+        title: "Treino avaliado",
+        message: `${feedback.athlete.name} avaliou "${training.title}" com nota ${payload.rating}.`,
+        type: "avaliacao_treino",
+        meta: JSON.stringify({ trainingId: payload.trainingId, athleteId: payload.athleteId }),
+      })
+      .catch(() => {});
+
+    return feedback;
   },
 
   async findByTraining(trainingId: string) {
