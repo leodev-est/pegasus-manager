@@ -21,7 +21,7 @@ async function generatePdfBuffer(month: string): Promise<Buffer> {
   const start = new Date(Date.UTC(year, m - 1, 1));
   const end = new Date(Date.UTC(year, m, 1));
 
-  const [payments, movements, trainings, games, athletes, allPaidPayments, allMoves] = await Promise.all([
+  const [payments, movements, trainings, games, athletes, allPaidPayments, allMoves, mensalidadePayments] = await Promise.all([
     prisma.payment.findMany({
       where: { createdAt: { gte: start, lt: end } },
       include: { athlete: { select: { name: true } } },
@@ -36,6 +36,20 @@ async function generatePdfBuffer(month: string): Promise<Buffer> {
     }),
     prisma.payment.findMany({ where: { status: "pago" }, select: { amount: true, type: true } }),
     prisma.cashMovement.findMany({ select: { amount: true, type: true } }),
+    // Mensalidades do mês de referência (não de quando a cobrança foi criada), contando só
+    // atletas ainda ativos e não isentos — mesmo critério usado no resumo do Financeiro.
+    prisma.payment.findMany({
+      where: {
+        referenceMonth: month,
+        status: { not: "isento" },
+        OR: [
+          { category: { equals: "mensalidade", mode: "insensitive" } },
+          { description: { contains: "mensalidade", mode: "insensitive" } },
+        ],
+        athlete: { is: { status: "ativo", monthlyPaymentStatus: { not: "isento" } } },
+      },
+      select: { status: true },
+    }),
   ]);
 
   const setting = await prisma.trainingSetting.findUnique({
@@ -58,8 +72,7 @@ async function generatePdfBuffer(month: string): Promise<Buffer> {
   const totalEntradasMovimento = entradasMovimento.reduce((s, mv) => s + Number(mv.amount), 0);
   const totalDespesaGeral = totalDespesaPayments + totalSaidasMovimento;
 
-  const mensalidades = payments.filter((p) => p.category === "mensalidade" || p.description?.toLowerCase().includes("mensalidade"));
-  const mensalidadesPago = mensalidades.filter((p) => p.status === "pago").length;
+  const mensalidadesPago = mensalidadePayments.filter((p) => p.status === "pago").length;
   const label = monthLabel(month);
 
   const W = 595.28;
@@ -146,11 +159,11 @@ async function generatePdfBuffer(month: string): Promise<Buffer> {
     gap(10);
 
     // ── Mensalidades ──────────────────────────────────────────────────────────
-    if (mensalidades.length > 0) {
+    if (mensalidadePayments.length > 0) {
       sectionTitle("Mensalidades");
-      row("Total de atletas cobrados", String(mensalidades.length));
+      row("Total de atletas cobrados", String(mensalidadePayments.length));
       row("Pagamentos confirmados", String(mensalidadesPago));
-      row("Taxa de adimplência", `${Math.round((mensalidadesPago / mensalidades.length) * 100)}%`);
+      row("Taxa de adimplência", `${Math.round((mensalidadesPago / mensalidadePayments.length) * 100)}%`);
       gap(10);
     }
 
