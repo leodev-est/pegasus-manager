@@ -409,7 +409,7 @@ export function FinancePage() {
     try {
       await reportsService.generate(reportMonth);
       await loadReports();
-      showToast("Relatório gerado com sucesso.", "success");
+      showToast("Demonstrativo gerado com sucesso.", "success");
     } catch (error) {
       showToast(getApiErrorMessage(error), "error");
     } finally {
@@ -692,7 +692,7 @@ export function FinancePage() {
           <div className="flex items-center gap-3">
             <FileText className="text-pegasus-primary" size={22} />
             <div>
-              <h2 className="text-xl font-bold text-pegasus-navy">Relatórios Mensais</h2>
+              <h2 className="text-xl font-bold text-pegasus-navy">Demonstrativos Mensais</h2>
               <p className="text-sm text-slate-500">PDF gerado automaticamente no 1º dia de cada mês.</p>
             </div>
           </div>
@@ -703,7 +703,7 @@ export function FinancePage() {
               onChange={(event) => setReportMonth(event.target.value)}
               disabled={isGeneratingReport}
               className="h-10 rounded-md border border-stone-200 bg-white px-3 text-sm text-stone-900 outline-none transition-all focus:border-pegasus-sky focus:ring-2 focus:ring-pegasus-sky/20 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
-              aria-label="Mês do relatório"
+              aria-label="Mês do demonstrativo"
             />
             <Button onClick={generateReport} disabled={isGeneratingReport} variant="secondary">
               {isGeneratingReport ? <Loader2 className="animate-spin" size={17} /> : <FileDown size={17} />}
@@ -714,11 +714,11 @@ export function FinancePage() {
         {isLoadingReports ? (
           <div className="flex items-center gap-3 p-6 text-sm font-bold text-pegasus-primary">
             <Loader2 className="animate-spin" size={18} />
-            Carregando relatórios...
+            Carregando demonstrativos...
           </div>
         ) : reports.length === 0 ? (
           <div className="p-6">
-            <EmptyState icon={FileText} title="Nenhum relatório gerado" description="Escolha o mês e clique em 'Gerar' para criar o relatório em PDF." />
+            <EmptyState icon={FileText} title="Nenhum demonstrativo gerado" description="Escolha o mês e clique em 'Gerar' para criar o demonstrativo em PDF." />
           </div>
         ) : (
           <div className="divide-y divide-stone-100">

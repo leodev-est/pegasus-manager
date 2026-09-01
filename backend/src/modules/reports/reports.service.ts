@@ -55,9 +55,10 @@ async function generatePdfBuffer(month: string): Promise<Buffer> {
 
   const setting = await prisma.trainingSetting.findUnique({
     where: { id: "singleton" },
-    select: { systemName: true },
+    select: { systemName: true, blockedDates: true },
   });
   const orgName = setting?.systemName ?? "Pegasus Manager";
+  const blockedDates = new Set(setting?.blockedDates ?? []);
 
   const saldoInicialDoMes =
     paymentsBefore.filter((p) => p.type === "receita").reduce((s, p) => s + Number(p.amount), 0) -
@@ -108,22 +109,28 @@ async function generatePdfBuffer(month: string): Promise<Buffer> {
     const rose = "#dc2626";
 
     // ── Header ──────────────────────────────────────────────────────────────
-    doc.rect(0, 0, W, 68).fill(ink);
-    doc.rect(0, 68, W, 3).fill(emerald);
-    doc.fillColor("white").fontSize(21).font("Helvetica-Bold").text(orgName, ML, 16, { lineBreak: false });
-    doc.fontSize(10.5).font("Helvetica").fillColor("#86efac")
-      .text(`Relatório Mensal · ${label}`, ML, 42, { lineBreak: false, characterSpacing: 0.2 });
+    doc.rect(0, 0, W, 72).fill(ink);
+    doc.rect(0, 72, W, 3).fill(emerald);
+    doc.fillColor("white").fontSize(22).font("Helvetica-Bold").text(orgName, ML, 16, { lineBreak: false });
+    const monthPillLabel = `DEMONSTRATIVO · ${label.toUpperCase()}`;
+    const monthPillW = doc.font("Helvetica-Bold").fontSize(8.5).widthOfString(monthPillLabel, { characterSpacing: 0.6 }) + 20;
+    doc.roundedRect(ML, 42, monthPillW, 18, 9).fill("#134e2f");
+    doc.fillColor("#86efac").font("Helvetica-Bold").fontSize(8.5)
+      .text(monthPillLabel, ML + 10, 47, { lineBreak: false, characterSpacing: 0.6 });
 
-    let y = 92;
+    let y = 100;
 
     // ── helpers ─────────────────────────────────────────────────────────────
     function sectionTitle(title: string) {
-      doc.rect(ML, y, 3, 12).fill(emerald);
+      const label2 = title.toUpperCase();
+      const textW = doc.font("Helvetica-Bold").fontSize(9.5).widthOfString(label2, { characterSpacing: 0.6 });
+      doc.roundedRect(ML, y, textW + 24, 21, 10.5).fill(surface);
+      doc.circle(ML + 12, y + 10.5, 3).fill(emerald);
       doc.fillColor(ink).font("Helvetica-Bold").fontSize(9.5)
-        .text(title.toUpperCase(), ML + 9, y, { lineBreak: false, characterSpacing: 0.6 });
-      y += 12;
-      doc.moveTo(ML, y + 6).lineTo(ML + contentW, y + 6).strokeColor(border).lineWidth(0.75).stroke();
-      y += 16;
+        .text(label2, ML + 20, y + 6, { lineBreak: false, characterSpacing: 0.6 });
+      y += 21;
+      doc.moveTo(ML, y + 7).lineTo(ML + contentW, y + 7).strokeColor(border).lineWidth(0.75).stroke();
+      y += 17;
     }
 
     function row(lbl: string, value: string, indent = 0, bold = false, valueColor = ink) {
@@ -138,11 +145,26 @@ async function generatePdfBuffer(month: string): Promise<Buffer> {
       y += 17;
     }
 
-    function zebraRow(lbl: string, value: string, index: number) {
+    function highlightRow(lbl: string, value: string, valueColor: string) {
+      doc.roundedRect(ML, y - 4, contentW, 21, 5).fillAndStroke(surface, border);
+      row(lbl, value, 8, true, valueColor);
+      y += 4;
+    }
+
+    function zebraRow(lbl: string, value: string, index: number, valueColor = ink) {
       if (index % 2 === 0) {
         doc.rect(ML, y - 3, contentW, 17).fill(surface);
       }
-      row(lbl, value, 8);
+      row(lbl, value, 8, false, valueColor);
+    }
+
+    function progressBar(pct: number, goodColor: string, badColor: string) {
+      const barH = 7;
+      const fillColor = pct >= 70 ? goodColor : badColor;
+      doc.roundedRect(ML, y, contentW, barH, 3.5).fill(border);
+      const fillW = Math.max((contentW * pct) / 100, barH);
+      doc.roundedRect(ML, y, fillW, barH, 3.5).fill(fillColor);
+      y += barH + 12;
     }
 
     function rowDivider() {
@@ -171,18 +193,22 @@ async function generatePdfBuffer(month: string): Promise<Buffer> {
     const kpiH = 46;
     kpis.forEach((kpi, i) => {
       const x = ML + i * (kpiW + kpiGap);
-      doc.roundedRect(x, y, kpiW, kpiH, 6).fillAndStroke(surface, border);
+      doc.roundedRect(x, y, kpiW, kpiH, 7).fillAndStroke(surface, border);
+      doc.save();
+      doc.roundedRect(x, y, kpiW, kpiH, 7).clip();
+      doc.rect(x, y, 4, kpiH).fill(kpi.color);
+      doc.restore();
       doc.font("Helvetica").fontSize(7.5).fillColor(gray)
-        .text(kpi.label.toUpperCase(), x + 10, y + 9, { width: kpiW - 20, lineBreak: false, characterSpacing: 0.4 });
+        .text(kpi.label.toUpperCase(), x + 14, y + 10, { width: kpiW - 24, lineBreak: false, characterSpacing: 0.4 });
       doc.font("Helvetica-Bold").fontSize(15).fillColor(kpi.color)
-        .text(kpi.value, x + 10, y + 22, { width: kpiW - 20, lineBreak: false });
+        .text(kpi.value, x + 14, y + 23, { width: kpiW - 24, lineBreak: false });
     });
     y += kpiH + 18;
 
     // ── Resumo Financeiro ────────────────────────────────────────────────────
     sectionTitle("Resumo Financeiro");
-    row("Saldo inicial do caixa (início do mês)", formatCurrency(saldoInicialDoMes), 0, true);
-    rowDivider();
+    highlightRow("Saldo inicial do caixa (início do mês)", formatCurrency(saldoInicialDoMes), ink);
+    gap(6);
     row("Receitas pagas (mensalidades e outros)", formatCurrency(totalReceita));
     if (totalEntradasMovimento > 0) {
       row("Entradas de caixa", formatCurrency(totalEntradasMovimento));
@@ -202,24 +228,40 @@ async function generatePdfBuffer(month: string): Promise<Buffer> {
       rowDivider();
       row("Total de saídas", formatCurrency(totalDespesaGeral), 0, true);
     }
-    rowDivider();
-    row("Saldo final do caixa (fim do mês)", formatCurrency(saldoFinalDoMes), 0, true, saldoFinalDoMes >= 0 ? emerald : rose);
-    gap(10);
+    gap(6);
+    highlightRow("Saldo final do caixa (fim do mês)", formatCurrency(saldoFinalDoMes), saldoFinalDoMes >= 0 ? emerald : rose);
+    gap(12);
 
     // ── Mensalidades ──────────────────────────────────────────────────────────
     if (mensalidadePayments.length > 0) {
       sectionTitle("Mensalidades");
       row("Total de atletas cobrados", String(mensalidadePayments.length));
       row("Pagamentos confirmados", String(mensalidadesPago), 0, false, emerald);
-      gap(10);
+      if (adimplenciaPct !== null) {
+        gap(6);
+        doc.font("Helvetica-Bold").fontSize(8.5).fillColor(gray)
+          .text(`${adimplenciaPct}% de adimplência`, ML, y, { lineBreak: false });
+        y += 12;
+        progressBar(adimplenciaPct, emerald, rose);
+      }
+      gap(4);
     }
 
     // ── Treinos ───────────────────────────────────────────────────────────────
-    sectionTitle(`Treinos (${trainings.length})`);
+    const cancelledCount = trainings.filter((t) => blockedDates.has(t.date.toISOString().slice(0, 10))).length;
+    sectionTitle(`Treinos (${trainings.length}${cancelledCount > 0 ? ` · ${cancelledCount} cancelado(s)` : ""})`);
     if (trainings.length === 0) {
       emptyNote("Nenhum treino realizado no mês.");
     } else {
-      trainings.forEach((t, i) => zebraRow(formatDate(t.date), t.title, i));
+      trainings.forEach((t, i) => {
+        const isCancelled = blockedDates.has(t.date.toISOString().slice(0, 10));
+        zebraRow(
+          formatDate(t.date),
+          isCancelled ? "Treino Cancelado" : t.title,
+          i,
+          isCancelled ? rose : ink,
+        );
+      });
     }
     gap(10);
 
@@ -263,7 +305,7 @@ export const reportsService = {
   async generate(month?: string) {
     const target = month ?? new Date().toISOString().slice(0, 7);
     const label = monthLabel(target);
-    const fileName = `relatorio-${target}.pdf`;
+    const fileName = `demonstrativo-${target}.pdf`;
 
     const pdfBuffer = await generatePdfBuffer(target);
 
@@ -297,8 +339,8 @@ export const reportsService = {
         try {
           await emailService.sendEmail(
             u.email,
-            `Relatório Mensal — ${label}`,
-            `<p>Olá,</p><p>Segue em anexo o relatório mensal do ${orgName} referente a <strong>${label}</strong>.</p>`,
+            `Demonstrativo Mensal — ${label}`,
+            `<p>Olá,</p><p>Segue em anexo o demonstrativo mensal do ${orgName} referente a <strong>${label}</strong>.</p>`,
           );
         } catch { /* Silently fail */ }
       }
@@ -313,7 +355,7 @@ export const reportsService = {
 
   async download(id: string) {
     const report = await prisma.monthlyReport.findUnique({ where: { id } });
-    if (!report) throw new Error("Relatório não encontrado.");
+    if (!report) throw new Error("Demonstrativo não encontrado.");
     await prisma.monthlyReport.delete({ where: { id } });
     return { content: report.content, fileName: report.fileName };
   },
