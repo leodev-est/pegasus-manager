@@ -7,18 +7,18 @@ export function InscricaoEnviadaPage() {
   return (
     <main className="min-h-screen bg-pegasus-surface">
       {/* Header */}
-      <header className="bg-pegasus-navy text-white">
+      <header className="bg-[#071428] text-white">
         <div className="mx-auto flex max-w-4xl items-center justify-between gap-4 px-4 py-4 sm:px-6">
           <Link to="/" className="flex items-center gap-3">
             <img src={ORG_LOGO_URL || logoFull} alt={`Projeto ${ORG_NAME}`} className="h-10 w-20 rounded-xl object-contain" />
             <div>
               <p className="font-bold leading-tight">Projeto {ORG_NAME}</p>
-              <p className="text-xs text-blue-200">Voleibol e comunidade</p>
+              <p className="text-xs text-[#42A5F5]">Voleibol e comunidade</p>
             </div>
           </Link>
           <Link
             to="/login"
-            className="inline-flex items-center gap-2 rounded-full bg-white px-4 py-2 text-sm font-semibold text-pegasus-primary"
+            className="inline-flex items-center gap-2 rounded-full bg-[#1565C0] px-4 py-2 text-sm font-bold text-white transition hover:bg-[#42A5F5] hover:text-[#071428]"
           >
             <LogIn size={16} />
             Sou Atleta
@@ -50,7 +50,7 @@ export function InscricaoEnviadaPage() {
               "Caso aprovado, passará por um período de teste no time.",
             ].map((step, i) => (
               <li key={i} className="flex items-start gap-3 text-sm text-slate-600">
-                <span className="mt-0.5 grid h-5 w-5 shrink-0 place-items-center rounded-full bg-pegasus-ice text-xs font-black text-pegasus-primary">
+                <span className="mt-0.5 grid h-5 w-5 shrink-0 place-items-center rounded-full bg-[#E3F2FD] text-xs font-black text-[#0D47A1]">
                   {i + 1}
                 </span>
                 {step}
@@ -62,13 +62,13 @@ export function InscricaoEnviadaPage() {
         <div className="mt-8 flex flex-col gap-3 sm:flex-row">
           <Link
             to="/"
-            className="inline-flex min-h-11 items-center justify-center gap-2 rounded-2xl bg-pegasus-primary px-6 font-bold text-white shadow-lg shadow-blue-900/20 hover:bg-pegasus-medium"
+            className="inline-flex min-h-11 items-center justify-center gap-2 rounded-2xl bg-[#1565C0] px-6 font-bold text-white shadow-lg shadow-blue-900/20 transition hover:bg-[#0D47A1]"
           >
             Voltar ao início
           </Link>
           <Link
             to="/inscricao"
-            className="inline-flex min-h-11 items-center justify-center gap-2 rounded-2xl border border-stone-200 bg-white px-6 font-bold text-pegasus-primary hover:bg-pegasus-ice"
+            className="inline-flex min-h-11 items-center justify-center gap-2 rounded-2xl border border-stone-200 bg-white px-6 font-bold text-[#1565C0] transition hover:bg-[#E3F2FD]"
           >
             <ArrowLeft size={17} />
             Nova inscrição

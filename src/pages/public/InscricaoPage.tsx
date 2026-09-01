@@ -1,5 +1,5 @@
 import { ArrowLeft, ArrowRight, CheckCircle2, Loader2, LogIn, Trophy } from "lucide-react";
-import { FormEvent, useEffect, useRef, useState } from "react";
+import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import logoFull from "../../assets/logo/logo-full.png";
 import { ORG_NAME, ORG_LOGO_URL } from "../../config/org";
@@ -100,7 +100,7 @@ function TextInput({
         className={`min-h-11 w-full rounded-2xl border bg-white px-4 py-3 text-sm text-pegasus-navy placeholder:text-slate-400 focus:outline-none focus:ring-2 disabled:opacity-60 ${
           error
             ? "border-rose-400 focus:border-rose-500 focus:ring-rose-100"
-            : "border-stone-200 focus:border-pegasus-sky focus:ring-blue-100"
+            : "border-stone-200 focus:border-[#42A5F5] focus:ring-[#42A5F5]/15"
         }`}
         disabled={disabled}
         onChange={(e) => onChange(e.target.value)}
@@ -142,7 +142,7 @@ function TextareaInput({
         className={`w-full resize-none rounded-2xl border bg-white px-4 py-3 text-sm text-pegasus-navy placeholder:text-slate-400 focus:outline-none focus:ring-2 disabled:opacity-60 ${
           error
             ? "border-rose-400 focus:border-rose-500 focus:ring-rose-100"
-            : "border-stone-200 focus:border-pegasus-sky focus:ring-blue-100"
+            : "border-stone-200 focus:border-[#42A5F5] focus:ring-[#42A5F5]/15"
         }`}
         disabled={disabled}
         onChange={(e) => onChange(e.target.value)}
@@ -183,10 +183,10 @@ function RadioGroup<T extends string>({
             key={opt.value}
             className={`flex cursor-pointer items-center gap-2.5 rounded-2xl border px-4 py-2.5 text-sm font-semibold transition-colors ${
               value === opt.value
-                ? "border-pegasus-primary bg-pegasus-ice text-pegasus-primary"
+                ? "border-[#1565C0] bg-[#E3F2FD] text-[#0D47A1]"
                 : error
                 ? "border-rose-300 bg-white text-slate-600 hover:border-rose-400"
-                : "border-stone-200 bg-white text-slate-600 hover:border-pegasus-sky hover:bg-pegasus-ice/50"
+                : "border-stone-200 bg-white text-slate-600 hover:border-[#42A5F5] hover:bg-[#E3F2FD]/50"
             } ${disabled ? "cursor-not-allowed opacity-60" : ""}`}
           >
             <input
@@ -201,7 +201,7 @@ function RadioGroup<T extends string>({
             />
             <span
               className={`h-4 w-4 shrink-0 rounded-full border-2 transition-colors ${
-                value === opt.value ? "border-pegasus-primary bg-pegasus-primary" : "border-slate-300"
+                value === opt.value ? "border-[#1565C0] bg-[#1565C0]" : "border-slate-300"
               }`}
             />
             {opt.label}
@@ -241,8 +241,8 @@ function ToggleGroup({
             onClick={() => toggle(opt)}
             className={`rounded-2xl border px-4 py-2.5 text-sm font-semibold transition-colors ${
               value.includes(opt)
-                ? "border-pegasus-primary bg-pegasus-ice text-pegasus-primary"
-                : "border-stone-200 bg-white text-slate-600 hover:border-pegasus-sky hover:bg-pegasus-ice/50"
+                ? "border-[#1565C0] bg-[#E3F2FD] text-[#0D47A1]"
+                : "border-stone-200 bg-white text-slate-600 hover:border-[#42A5F5] hover:bg-[#E3F2FD]/50"
             } ${disabled ? "cursor-not-allowed opacity-60" : "cursor-pointer"}`}
           >
             {opt}
@@ -256,7 +256,7 @@ function ToggleGroup({
 function SectionTitle({ step, title, description }: { step: number; title: string; description: string }) {
   return (
     <div className="flex items-start gap-4">
-      <span className="grid h-10 w-10 shrink-0 place-items-center rounded-2xl bg-pegasus-primary font-black text-white">
+      <span className="grid h-10 w-10 shrink-0 place-items-center rounded-2xl bg-[#1565C0] font-black text-white">
         {step}
       </span>
       <div>
@@ -268,6 +268,25 @@ function SectionTitle({ step, title, description }: { step: number; title: strin
 }
 
 // ── Validação ──────────────────────────────────────────────────────────────────
+
+const REQUIRED_FIELDS: (keyof FormData)[] = [
+  "name",
+  "birthDate",
+  "turmaId",
+  "availableSaturdays",
+  "position",
+  "currentTeam",
+  "experienceTime",
+  "level",
+  "willingToCompete",
+  "motivation",
+  "howFound",
+];
+
+function computeProgress(form: FormData): number {
+  const filled = REQUIRED_FIELDS.filter((key) => form[key]).length;
+  return Math.round((filled / REQUIRED_FIELDS.length) * 100);
+}
 
 type FieldErrors = Partial<Record<keyof FormData, string>>;
 
@@ -357,6 +376,7 @@ export function InscricaoPage() {
   }, []);
 
   const selectedTurma = turmas.find((t) => t.id === form.turmaId) ?? null;
+  const progress = useMemo(() => computeProgress(form), [form]);
 
   function set<K extends keyof FormData>(key: K, value: FormData[K]) {
     setForm((prev) => {
@@ -431,40 +451,59 @@ export function InscricaoPage() {
 
   return (
     <main className="min-h-screen bg-pegasus-surface">
-      {/* Header */}
-      <header className="bg-pegasus-navy text-white">
-        <div className="mx-auto flex max-w-4xl items-center justify-between gap-4 px-4 py-4 sm:px-6">
-          <Link to="/" className="flex items-center gap-3">
-            <img src={ORG_LOGO_URL || logoFull} alt={`Projeto ${ORG_NAME}`} className="h-10 w-20 rounded-xl object-contain" />
-            <div>
-              <p className="font-bold leading-tight">Projeto {ORG_NAME}</p>
-              <p className="text-xs text-blue-200">Caminho Para o Time</p>
-            </div>
-          </Link>
-          <Link
-            to="/login"
-            className="inline-flex items-center gap-2 rounded-full bg-white px-4 py-2 text-sm font-semibold text-pegasus-primary"
-          >
-            <LogIn size={16} />
-            Sou Atleta
-          </Link>
+      {/* Header + Hero */}
+      <div className="relative overflow-hidden bg-[#071428] text-white">
+        <div className="pointer-events-none absolute inset-0 overflow-hidden">
+          <div className="absolute left-1/2 top-0 h-[300px] w-[700px] -translate-x-1/2 rounded-full bg-[#1565C0]/20 blur-3xl" />
         </div>
-      </header>
 
-      {/* Hero */}
-      <section className="bg-pegasus-navy pb-8 pt-2 text-white">
-        <div className="mx-auto max-w-4xl px-4 sm:px-6">
-          <div className="inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/10 px-4 py-1.5 text-xs font-semibold text-blue-100">
-            <Trophy size={14} />
-            Inscrição gratuita
+        <header className="relative border-b border-white/10">
+          <div className="mx-auto flex max-w-4xl items-center justify-between gap-4 px-4 py-4 sm:px-6">
+            <Link to="/" className="flex items-center gap-3">
+              <img src={ORG_LOGO_URL || logoFull} alt={`Projeto ${ORG_NAME}`} className="h-10 w-20 rounded-xl object-contain" />
+              <div>
+                <p className="font-bold leading-tight">Projeto {ORG_NAME}</p>
+                <p className="text-xs text-[#42A5F5]">Caminho Para o Time</p>
+              </div>
+            </Link>
+            <Link
+              to="/login"
+              className="inline-flex items-center gap-2 rounded-full bg-[#1565C0] px-4 py-2 text-sm font-bold text-white transition hover:bg-[#42A5F5] hover:text-[#071428]"
+            >
+              <LogIn size={16} />
+              Sou Atleta
+            </Link>
           </div>
-          <h1 className="mt-4 text-3xl font-black sm:text-4xl">Caminho Para o Time</h1>
-          <p className="mt-3 max-w-xl text-base leading-7 text-blue-100">
-            Preencha o formulário abaixo para fazer sua inscrição no <strong className="text-white">Projeto {ORG_NAME}</strong>.
-            Nossa equipe analisará seu perfil e entrará em contato.
-          </p>
+        </header>
+
+        {/* Hero */}
+        <section className="relative pb-8 pt-2">
+          <div className="mx-auto max-w-4xl px-4 sm:px-6">
+            <div className="inline-flex items-center gap-2 rounded-full border border-[#42A5F5]/30 bg-[#42A5F5]/10 px-4 py-1.5 text-xs font-semibold text-[#42A5F5]">
+              <Trophy size={14} />
+              Inscrição gratuita
+            </div>
+            <h1 className="mt-4 text-3xl font-black sm:text-4xl">Caminho Para o Time</h1>
+            <p className="mt-3 max-w-xl text-base leading-7 text-blue-100">
+              Preencha o formulário abaixo para fazer sua inscrição no <strong className="text-white">Projeto {ORG_NAME}</strong>.
+              Nossa equipe analisará seu perfil e entrará em contato.
+            </p>
+          </div>
+        </section>
+      </div>
+
+      {/* Barra de progresso — fica visível enquanto a pessoa preenche */}
+      <div className="sticky top-0 z-20 border-b border-stone-200 bg-white/90 px-4 py-2.5 backdrop-blur sm:px-6">
+        <div className="mx-auto flex max-w-4xl items-center gap-3">
+          <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-stone-100">
+            <div
+              className="h-full rounded-full bg-[#1565C0] transition-all duration-300"
+              style={{ width: `${progress}%` }}
+            />
+          </div>
+          <span className="shrink-0 text-xs font-bold text-[#0D47A1]">{progress}% preenchido</span>
         </div>
-      </section>
+      </div>
 
       {/* Formulário */}
       <div className="mx-auto max-w-4xl px-4 py-8 sm:px-6">
@@ -743,7 +782,7 @@ export function InscricaoPage() {
           {/* Botões */}
           <div className="flex flex-col gap-3 sm:flex-row">
             <button
-              className="inline-flex min-h-12 flex-1 items-center justify-center gap-2 rounded-2xl bg-pegasus-primary px-6 font-bold text-white shadow-lg shadow-blue-900/20 hover:bg-pegasus-medium disabled:opacity-60"
+              className="inline-flex min-h-12 flex-1 items-center justify-center gap-2 rounded-2xl bg-[#1565C0] px-6 font-bold text-white shadow-lg shadow-blue-900/20 transition hover:bg-[#0D47A1] disabled:opacity-60"
               disabled={isSubmitting}
               type="submit"
             >
@@ -761,7 +800,7 @@ export function InscricaoPage() {
             </button>
             <Link
               to="/"
-              className="inline-flex min-h-12 items-center justify-center gap-2 rounded-2xl border border-stone-200 bg-white px-6 font-bold text-pegasus-primary hover:bg-pegasus-ice"
+              className="inline-flex min-h-12 items-center justify-center gap-2 rounded-2xl border border-stone-200 bg-white px-6 font-bold text-[#1565C0] transition hover:bg-[#E3F2FD]"
             >
               <ArrowLeft size={18} />
               Voltar
