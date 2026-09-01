@@ -99,7 +99,12 @@ export const meService = {
           })
         : [],
       prisma.training.findMany({
-        where: { date: { gte: startOfToday() } },
+        where: {
+          date: { gte: startOfToday() },
+          // Atleta com turma definida só vê os treinos da própria turma (+ treinos
+          // "legados" sem turma associada); sem turma, vê todos como antes.
+          ...(athlete?.turmaId ? { OR: [{ turmaId: athlete.turmaId }, { turmaId: null }] } : {}),
+        },
         orderBy: { date: "asc" },
         take: 5,
       }),
