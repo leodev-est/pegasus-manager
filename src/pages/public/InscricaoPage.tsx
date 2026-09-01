@@ -62,6 +62,15 @@ function FieldLabel({ children, required }: { children: React.ReactNode; require
   );
 }
 
+function FieldError({ message }: { message?: string }) {
+  if (!message) return null;
+  return (
+    <p role="alert" className="mt-1 text-xs font-semibold text-rose-600">
+      {message}
+    </p>
+  );
+}
+
 function TextInput({
   label,
   required,
@@ -70,6 +79,8 @@ function TextInput({
   placeholder,
   type = "text",
   disabled,
+  error,
+  id,
 }: {
   label: string;
   required?: boolean;
@@ -78,19 +89,26 @@ function TextInput({
   placeholder?: string;
   type?: string;
   disabled?: boolean;
+  error?: string;
+  id?: string;
 }) {
   return (
-    <label className="block space-y-1.5">
+    <label className="block space-y-1.5" id={id}>
       <FieldLabel required={required}>{label}</FieldLabel>
       <input
-        className="min-h-11 w-full rounded-2xl border border-stone-200 bg-white px-4 py-3 text-sm text-pegasus-navy placeholder:text-slate-400 focus:border-pegasus-sky focus:outline-none focus:ring-2 focus:ring-blue-100 disabled:opacity-60"
+        aria-invalid={error ? true : undefined}
+        className={`min-h-11 w-full rounded-2xl border bg-white px-4 py-3 text-sm text-pegasus-navy placeholder:text-slate-400 focus:outline-none focus:ring-2 disabled:opacity-60 ${
+          error
+            ? "border-rose-400 focus:border-rose-500 focus:ring-rose-100"
+            : "border-stone-200 focus:border-pegasus-sky focus:ring-blue-100"
+        }`}
         disabled={disabled}
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder}
-        required={required}
         type={type}
         value={value}
       />
+      <FieldError message={error} />
     </label>
   );
 }
@@ -103,6 +121,8 @@ function TextareaInput({
   placeholder,
   disabled,
   rows = 4,
+  error,
+  id,
 }: {
   label: string;
   required?: boolean;
@@ -111,19 +131,26 @@ function TextareaInput({
   placeholder?: string;
   disabled?: boolean;
   rows?: number;
+  error?: string;
+  id?: string;
 }) {
   return (
-    <label className="block space-y-1.5">
+    <label className="block space-y-1.5" id={id}>
       <FieldLabel required={required}>{label}</FieldLabel>
       <textarea
-        className="w-full resize-none rounded-2xl border border-stone-200 bg-white px-4 py-3 text-sm text-pegasus-navy placeholder:text-slate-400 focus:border-pegasus-sky focus:outline-none focus:ring-2 focus:ring-blue-100 disabled:opacity-60"
+        aria-invalid={error ? true : undefined}
+        className={`w-full resize-none rounded-2xl border bg-white px-4 py-3 text-sm text-pegasus-navy placeholder:text-slate-400 focus:outline-none focus:ring-2 disabled:opacity-60 ${
+          error
+            ? "border-rose-400 focus:border-rose-500 focus:ring-rose-100"
+            : "border-stone-200 focus:border-pegasus-sky focus:ring-blue-100"
+        }`}
         disabled={disabled}
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder}
-        required={required}
         rows={rows}
         value={value}
       />
+      <FieldError message={error} />
     </label>
   );
 }
@@ -135,6 +162,8 @@ function RadioGroup<T extends string>({
   onChange,
   options,
   disabled,
+  error,
+  id,
 }: {
   label: string;
   required?: boolean;
@@ -142,9 +171,11 @@ function RadioGroup<T extends string>({
   onChange: (v: T) => void;
   options: { label: string; value: T }[];
   disabled?: boolean;
+  error?: string;
+  id?: string;
 }) {
   return (
-    <fieldset className="space-y-2">
+    <fieldset className="space-y-2" id={id}>
       <FieldLabel required={required}>{label}</FieldLabel>
       <div className="flex flex-wrap gap-3">
         {options.map((opt) => (
@@ -153,6 +184,8 @@ function RadioGroup<T extends string>({
             className={`flex cursor-pointer items-center gap-2.5 rounded-2xl border px-4 py-2.5 text-sm font-semibold transition-colors ${
               value === opt.value
                 ? "border-pegasus-primary bg-pegasus-ice text-pegasus-primary"
+                : error
+                ? "border-rose-300 bg-white text-slate-600 hover:border-rose-400"
                 : "border-stone-200 bg-white text-slate-600 hover:border-pegasus-sky hover:bg-pegasus-ice/50"
             } ${disabled ? "cursor-not-allowed opacity-60" : ""}`}
           >
@@ -175,6 +208,7 @@ function RadioGroup<T extends string>({
           </label>
         ))}
       </div>
+      <FieldError message={error} />
     </fieldset>
   );
 }
@@ -235,20 +269,25 @@ function SectionTitle({ step, title, description }: { step: number; title: strin
 
 // ── Validação ──────────────────────────────────────────────────────────────────
 
-function validate(form: FormData): string | null {
-  if (!form.name.trim()) return "Por favor, informe seu nome.";
-  if (!form.birthDate) return "Por favor, informe sua data de nascimento.";
-  if (!form.turmaId) return "Selecione a turma que deseja se inscrever.";
-  if (!form.availableSaturdays) return "Informe sua disponibilidade aos sábados.";
-  if (!form.position) return "Selecione sua posição de jogo.";
-  if (!form.currentTeam) return "Informe se joga em algum time atualmente.";
-  if (form.currentTeam === "sim" && !form.currentTeamName.trim()) return "Informe o nome do time atual.";
-  if (!form.experienceTime.trim()) return "Informe seu tempo de experiência.";
-  if (!form.level) return "Selecione seu nível atual.";
-  if (!form.willingToCompete) return "Informe sua disponibilidade para campeonatos.";
-  if (!form.motivation.trim()) return "Conte seu motivo para entrar no time.";
-  if (!form.howFound.trim()) return `Informe como você descobriu o ${ORG_NAME}.`;
-  return null;
+type FieldErrors = Partial<Record<keyof FormData, string>>;
+
+function validate(form: FormData): FieldErrors {
+  const errors: FieldErrors = {};
+  if (!form.name.trim()) errors.name = "Informe seu nome.";
+  if (!form.birthDate) errors.birthDate = "Informe sua data de nascimento.";
+  if (!form.turmaId) errors.turmaId = "Selecione a turma que deseja se inscrever.";
+  if (!form.availableSaturdays) errors.availableSaturdays = "Informe sua disponibilidade.";
+  if (!form.position) errors.position = "Selecione sua posição de jogo.";
+  if (!form.currentTeam) errors.currentTeam = "Informe se joga em algum time atualmente.";
+  if (form.currentTeam === "sim" && !form.currentTeamName.trim()) {
+    errors.currentTeamName = "Informe o nome do time atual.";
+  }
+  if (!form.experienceTime.trim()) errors.experienceTime = "Informe seu tempo de experiência.";
+  if (!form.level) errors.level = "Selecione seu nível atual.";
+  if (!form.willingToCompete) errors.willingToCompete = "Informe sua disponibilidade para campeonatos.";
+  if (!form.motivation.trim()) errors.motivation = "Conte seu motivo para entrar no time.";
+  if (!form.howFound.trim()) errors.howFound = `Informe como você descobriu o ${ORG_NAME}.`;
+  return errors;
 }
 
 // ── Persistência local ─────────────────────────────────────────────────────────
@@ -305,6 +344,7 @@ export function InscricaoPage() {
   const [form, setForm] = useState<FormData>(loadDraft);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
   const [turmas, setTurmas] = useState<PublicTurma[]>([]);
   const [hasDraft] = useState(() => {
     const draft = loadDraft();
@@ -325,17 +365,27 @@ export function InscricaoPage() {
       return next;
     });
     setError(null);
+    setFieldErrors((prev) => {
+      if (!prev[key]) return prev;
+      const next = { ...prev };
+      delete next[key];
+      return next;
+    });
   }
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
-    const validationError = validate(form);
-    if (validationError) {
-      setError(validationError);
-      window.scrollTo({ top: 0, behavior: "smooth" });
+    const errors = validate(form);
+    const errorKeys = Object.keys(errors) as (keyof FormData)[];
+    if (errorKeys.length > 0) {
+      setFieldErrors(errors);
+      setError(`Você tem ${errorKeys.length} campo(s) obrigatório(s) pendente(s) — veja os destacados em vermelho abaixo.`);
+      const firstField = document.getElementById(errorKeys[0]);
+      (firstField ?? document.body).scrollIntoView({ behavior: "smooth", block: "center" });
       return;
     }
 
+    setFieldErrors({});
     setIsSubmitting(true);
     setError(null);
 
@@ -447,6 +497,8 @@ export function InscricaoPage() {
               <div className="sm:col-span-2">
                 <TextInput
                   disabled={isSubmitting}
+                  error={fieldErrors.name}
+                  id="name"
                   label="Nome completo"
                   onChange={(v) => set("name", v)}
                   placeholder="Ex: João da Silva"
@@ -456,6 +508,8 @@ export function InscricaoPage() {
               </div>
               <TextInput
                 disabled={isSubmitting}
+                error={fieldErrors.birthDate}
+                id="birthDate"
                 label="Data de nascimento"
                 onChange={(v) => set("birthDate", v)}
                 required
@@ -483,6 +537,8 @@ export function InscricaoPage() {
             <div className="mt-6 space-y-6">
               <RadioGroup
                 disabled={isSubmitting || turmas.length === 0}
+                error={fieldErrors.turmaId}
+                id="turmaId"
                 label="Qual a categoria deseja se inscrever?"
                 onChange={(v) => set("turmaId", v)}
                 options={turmas.map((t) => ({ label: t.name, value: t.id }))}
@@ -492,6 +548,8 @@ export function InscricaoPage() {
               {selectedTurma && (
                 <RadioGroup
                   disabled={isSubmitting}
+                  error={fieldErrors.availableSaturdays}
+                  id="availableSaturdays"
                   label={`Você tem disponibilidade para treinar${
                     selectedTurma.daysOfWeek.length > 0 ? "" : " aos sábados"
                   }, das ${selectedTurma.time}, em ${selectedTurma.location}${
@@ -508,6 +566,8 @@ export function InscricaoPage() {
               )}
               <RadioGroup
                 disabled={isSubmitting}
+                error={fieldErrors.willingToCompete}
+                id="willingToCompete"
                 label="Disposto a participar de campeonatos?"
                 onChange={(v) => set("willingToCompete", v)}
                 options={[
@@ -530,6 +590,8 @@ export function InscricaoPage() {
             <div className="mt-6 space-y-6">
               <RadioGroup
                 disabled={isSubmitting}
+                error={fieldErrors.position}
+                id="position"
                 label="Posição de jogo"
                 onChange={(v) => set("position", v)}
                 options={[
@@ -564,6 +626,8 @@ export function InscricaoPage() {
               />
               <RadioGroup
                 disabled={isSubmitting}
+                error={fieldErrors.level}
+                id="level"
                 label="Nível atual"
                 onChange={(v) => set("level", v)}
                 options={[
@@ -576,6 +640,8 @@ export function InscricaoPage() {
               />
               <TextInput
                 disabled={isSubmitting}
+                error={fieldErrors.experienceTime}
+                id="experienceTime"
                 label="Tempo de experiência com vôlei"
                 onChange={(v) => set("experienceTime", v)}
                 placeholder="Ex: 2 anos, 6 meses, nunca joguei..."
@@ -584,6 +650,8 @@ export function InscricaoPage() {
               />
               <RadioGroup
                 disabled={isSubmitting}
+                error={fieldErrors.currentTeam}
+                id="currentTeam"
                 label="Joga em algum time atualmente?"
                 onChange={(v) => set("currentTeam", v)}
                 options={[
@@ -596,6 +664,8 @@ export function InscricaoPage() {
               {form.currentTeam === "sim" && (
                 <TextInput
                   disabled={isSubmitting}
+                  error={fieldErrors.currentTeamName}
+                  id="currentTeamName"
                   label="Qual time?"
                   onChange={(v) => set("currentTeamName", v)}
                   placeholder="Nome do time atual"
@@ -616,6 +686,8 @@ export function InscricaoPage() {
             <div className="mt-6 space-y-5">
               <TextareaInput
                 disabled={isSubmitting}
+                error={fieldErrors.motivation}
+                id="motivation"
                 label="Por que você quer entrar no time?"
                 onChange={(v) => set("motivation", v)}
                 placeholder={`Conte sua motivação, objetivos e o que espera do Projeto ${ORG_NAME}...`}
@@ -625,6 +697,8 @@ export function InscricaoPage() {
               />
               <TextareaInput
                 disabled={isSubmitting}
+                error={fieldErrors.howFound}
+                id="howFound"
                 label={`Como você descobriu o Projeto ${ORG_NAME}?`}
                 onChange={(v) => set("howFound", v)}
                 placeholder="Instagram, indicação de amigo, evento..."
