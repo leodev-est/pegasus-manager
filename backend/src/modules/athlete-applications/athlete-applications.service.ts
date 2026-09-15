@@ -206,6 +206,24 @@ export const athleteApplicationsService = {
             monthlyPaymentStatus: "pendente",
           },
         });
+      } else {
+        // Esse atleta pode já estar vinculado a outra inscrição (ex.: uma inscrição
+        // anterior da mesma pessoa, recusada ou corrigida manualmente depois de
+        // aprovada por engano). O vínculo é 1-para-1, então libera o antigo antes
+        // de vincular à inscrição atual — evita erro de restrição única no banco.
+        await transaction.athleteApplication.updateMany({
+          where: { athleteId: athlete.id, id: { not: id } },
+          data: { athleteId: null },
+        });
+        // Reativa o cadastro pro período de testes, já que a pessoa está sendo
+        // aprovada de novo agora — mas nunca rebaixa quem já está ativo (pode ser
+        // um match por coincidência de e-mail/telefone, não a mesma pessoa).
+        if (athlete.status !== "ativo") {
+          athlete = await transaction.athlete.update({
+            where: { id: athlete.id },
+            data: { status: "teste" },
+          });
+        }
       }
 
       const updatedApplication = await transaction.athleteApplication.update({
