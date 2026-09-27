@@ -34,6 +34,8 @@ import { muralRoutes } from "./modules/mural/mural.routes";
 import { injuriesRoutes } from "./modules/injuries/injuries.routes";
 import { trainingPlansRoutes } from "./modules/training-plans/training-plans.routes";
 import { marketingCalendarRoutes } from "./modules/marketing-calendar/marketing-calendar.routes";
+import { contentItemsRoutes } from "./modules/content-items/content-items.routes";
+import { eventsRoutes } from "./modules/events/events.routes";
 
 export const routes = Router();
 
@@ -79,3 +81,5 @@ routes.use("/mural", muralRoutes);
 routes.use("/injuries", injuriesRoutes);
 routes.use("/training-plans", trainingPlansRoutes);
 routes.use("/marketing-calendar", marketingCalendarRoutes);
+routes.use("/content-items", contentItemsRoutes);
+routes.use("/events", eventsRoutes);

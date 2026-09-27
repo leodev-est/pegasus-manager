@@ -64,19 +64,36 @@ export const marketingCalendarService = {
 
   /**
    * Eventos marcados como "evento de time" (visíveis no calendário de treinos dos
-   * atletas). Sem restrição de permissão de marketing — qualquer usuário autenticado
-   * pode ver, igual ao calendário de treinos.
+   * atletas), mesclados com os Eventos "de verdade" cadastrados na tela de Eventos.
+   * Sem restrição de permissão de marketing — qualquer usuário autenticado pode ver,
+   * igual ao calendário de treinos.
    */
   async getTeamEventsForMonth(year: number, month: number) {
     const { start, end } = toDateRange(year, month);
 
-    const events = await prisma.marketingEvent.findMany({
-      where: { date: { gte: start, lt: end }, type: "evento_time" },
-      orderBy: [{ date: "asc" }, { time: "asc" }],
-      select: { id: true, title: true, description: true, date: true, time: true },
-    });
+    const [marketingEvents, events] = await Promise.all([
+      prisma.marketingEvent.findMany({
+        where: { date: { gte: start, lt: end }, type: "evento_time" },
+        orderBy: [{ date: "asc" }, { time: "asc" }],
+        select: { id: true, title: true, description: true, date: true, time: true },
+      }),
+      prisma.event.findMany({
+        where: { date: { gte: start, lt: end } },
+        orderBy: { date: "asc" },
+        select: { id: true, name: true, location: true, date: true },
+      }),
+    ]);
 
-    return events.map((e) => ({ ...e, date: toDateKey(e.date) }));
+    const mappedMarketingEvents = marketingEvents.map((e) => ({ ...e, date: toDateKey(e.date) }));
+    const mappedEvents = events.map((e) => ({
+      id: `evento-${e.id}`,
+      title: e.name,
+      description: e.location ? `Local: ${e.location}` : null,
+      date: toDateKey(e.date),
+      time: null as string | null,
+    }));
+
+    return [...mappedMarketingEvents, ...mappedEvents].sort((a, b) => a.date.localeCompare(b.date));
   },
 
   async createEvent(payload: MarketingEventPayload) {

@@ -578,6 +578,44 @@ model MarketingEvent {
   @@index([date])
 }
 
+// Pauta de conteúdo semanal do marketing: cada item é um post/produção planejado
+// pra um dia específico, com um funil de status até ser publicado.
+model ContentItem {
+  id          String   @id @default(uuid())
+  title       String
+  description String?
+  date        DateTime
+  // referencia | definido | gravado | editado | postado
+  status      String   @default("referencia")
+  assignedTo  String[] @default([])
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([date])
+  @@index([status])
+}
+
+// Eventos do time (torneios, confraternizações, sessões de fotos etc.), com
+// orçamento, fornecedores e um checklist de organização.
+model Event {
+  id        String   @id @default(uuid())
+  name      String
+  date      DateTime
+  location  String?
+  budget    Decimal? @db.Decimal(10, 2)
+  vendors   String?
+  // [{ id, text, done }]
+  checklist Json     @default("[]")
+  // planejamento | confirmado | realizado
+  status    String   @default("planejamento")
+  createdBy String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([date])
+  @@index([status])
+}
+
 model TrainingFeedback {
   id          String   @id @default(uuid())
   trainingId  String
