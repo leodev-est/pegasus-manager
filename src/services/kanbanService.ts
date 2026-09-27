@@ -22,7 +22,7 @@ export type ManagementTask = {
   description: string | null;
   status: TaskStatus;
   area: "management";
-  assignedTo: string | null;
+  assignedTo: string[];
   dueDate: string | null;
   priority: TaskPriority;
   labels: string[];
@@ -45,7 +45,7 @@ export type TaskPayload = {
   description?: string;
   status?: TaskStatus;
   area?: "management";
-  assignedTo?: string;
+  assignedTo?: string[];
   dueDate?: string;
   priority?: TaskPriority;
   labels?: string[];

@@ -73,7 +73,7 @@ export function ManagementKanbanPage() {
   useTour("management-kanban:v1", isLoading ? [] : TOUR_STEPS);
 
   const owners = useMemo(
-    () => Array.from(new Set(tasks.map((task) => task.assignedTo).filter(Boolean))) as string[],
+    () => Array.from(new Set(tasks.flatMap((task) => task.assignedTo))),
     [tasks],
   );
 

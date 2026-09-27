@@ -27,7 +27,7 @@ type TaskPayload = {
   description?: string | null;
   status?: string;
   area?: string;
-  assignedTo?: string | null;
+  assignedTo?: string[] | null;
   dueDate?: string | null;
   priority?: TaskPriority;
   channel?: string | null;
@@ -127,7 +127,7 @@ function buildWhere(filters: TaskFilters) {
   }
 
   if (filters.assignedTo) {
-    where.assignedTo = filters.assignedTo;
+    where.assignedTo = { has: filters.assignedTo };
   }
 
   if (filters.priority) {
@@ -173,7 +173,9 @@ function buildData(payload: TaskPayload, area: TaskArea, requireTitle: boolean) 
   if (payload.description !== undefined) data.description = normalizeOptional(payload.description);
   if (payload.status !== undefined) data.status = payload.status;
   if (payload.area !== undefined) data.area = area;
-  if (payload.assignedTo !== undefined) data.assignedTo = normalizeOptional(payload.assignedTo);
+  if (payload.assignedTo !== undefined) {
+    data.assignedTo = normalizeStringArray(payload.assignedTo ?? [], "Responsáveis") ?? [];
+  }
   if (payload.dueDate !== undefined) data.dueDate = parseDate(payload.dueDate, area !== "marketing");
   if (payload.priority !== undefined) data.priority = payload.priority;
   if (payload.channel !== undefined) data.channel = normalizeOptional(payload.channel);

@@ -197,7 +197,7 @@ model Task {
   description    String?
   status         String    @default("todo")
   area           String    @default("management")
-  assignedTo     String?
+  assignedTo     String[]  @default([])
   dueDate        DateTime?
   priority       String    @default("media")
   channel        String?

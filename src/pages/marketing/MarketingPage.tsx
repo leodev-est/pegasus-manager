@@ -27,6 +27,7 @@ const columns: Array<{ label: string; value: MarketingStatus }> = [
 ];
 
 const channels: MarketingChannel[] = ["Instagram", "WhatsApp", "Arte", "Captacao", "Evento"];
+const savedContentLabels = ["Vídeo de Treino", "Reels", "Fotos"];
 type MarketingTab = "kanban" | "identidade";
 
 const marketingTabs: Array<{ label: string; value: MarketingTab }> = [
@@ -118,7 +119,7 @@ export function MarketingPage() {
   const today = new Date().toISOString().slice(0, 10);
 
   const owners = useMemo(
-    () => Array.from(new Set(tasks.map((task) => task.assignedTo).filter(Boolean))) as string[],
+    () => Array.from(new Set(tasks.flatMap((task) => task.assignedTo))),
     [tasks],
   );
 
@@ -219,6 +220,7 @@ export function MarketingPage() {
         labelsAsTab
         minDueDate={today}
         responsibleOptions={marketingUsers}
+        savedLabels={savedContentLabels}
         filters={
           <FilterBar>
             <Select

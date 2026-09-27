@@ -21,7 +21,7 @@ export type MarketingTask = {
   description: string | null;
   status: MarketingStatus;
   area: "marketing";
-  assignedTo: string | null;
+  assignedTo: string[];
   dueDate: string | null;
   priority: MarketingPriority;
   channel: MarketingChannel | null;
@@ -45,7 +45,7 @@ export type MarketingTaskPayload = {
   description?: string;
   status?: MarketingStatus;
   area?: "marketing";
-  assignedTo?: string;
+  assignedTo?: string[];
   dueDate?: string;
   priority?: MarketingPriority;
   channel?: MarketingChannel;

@@ -57,7 +57,7 @@ export type KanbanTaskBase = {
   title: string;
   description: string | null;
   status: string;
-  assignedTo: string | null;
+  assignedTo: string[];
   dueDate: string | null;
   priority: "baixa" | "media" | "alta";
   channel?: string | null;
@@ -83,7 +83,7 @@ type ChannelOption = {
 type TaskForm<TStatus extends string> = {
   title: string;
   description: string;
-  assignedTo: string;
+  assignedTo: string[];
   dueDate: string;
   priority: "baixa" | "media" | "alta";
   status: TStatus;
@@ -109,6 +109,7 @@ type AdvancedKanbanProps<TTask extends KanbanTaskBase, TStatus extends string> =
   currentUserName?: string;
   channelOptions?: ChannelOption[];
   responsibleOptions?: ChannelOption[];
+  savedLabels?: string[];
   minDueDate?: string;
   labelsAsTab?: boolean;
   approvalColumn?: TStatus;
@@ -209,7 +210,7 @@ function taskToForm<TStatus extends string>(
   return {
     title: task.title,
     description: task.description ?? "",
-    assignedTo: task.assignedTo ?? "",
+    assignedTo: normalizeList(task.assignedTo),
     dueDate: toInputDate(task.dueDate),
     priority: task.priority,
     status: (task.status as TStatus) ?? fallbackStatus,
@@ -224,7 +225,7 @@ function emptyForm<TStatus extends string>(status: TStatus, channel?: string): T
   return {
     title: "",
     description: "",
-    assignedTo: "",
+    assignedTo: [],
     dueDate: "",
     priority: "media",
     status,
@@ -308,6 +309,38 @@ function initialsOf(value?: string | null) {
     .toUpperCase();
 }
 
+function AssigneeAvatars({ names }: { names: string[] }) {
+  if (names.length === 0) {
+    return (
+      <span className="grid h-5 w-5 shrink-0 place-items-center rounded-full bg-stone-200 text-[9px] font-bold text-stone-600">
+        ?
+      </span>
+    );
+  }
+
+  const visible = names.slice(0, 3);
+  const overflow = names.length - visible.length;
+
+  return (
+    <span className="flex shrink-0 -space-x-1.5">
+      {visible.map((name) => (
+        <span
+          className="grid h-5 w-5 place-items-center rounded-full border border-white bg-stone-200 text-[9px] font-bold text-stone-600"
+          key={name}
+          title={name}
+        >
+          {initialsOf(name)}
+        </span>
+      ))}
+      {overflow > 0 ? (
+        <span className="grid h-5 w-5 place-items-center rounded-full border border-white bg-stone-300 text-[9px] font-bold text-stone-700">
+          +{overflow}
+        </span>
+      ) : null}
+    </span>
+  );
+}
+
 function SortableTaskCard<TTask extends KanbanTaskBase>({
   canUpdate,
   statusLabel,
@@ -376,27 +409,31 @@ function TaskCard<TTask extends KanbanTaskBase>({
   const doneItems = checklist.filter((item) => item.done).length;
   const overdue = isOverdue(task.dueDate);
 
+  const assignees = normalizeList(task.assignedTo);
+
   return (
     <article
-      className={`focus-ring rounded-lg border border-stone-200 bg-white p-3 transition ${
-        isDragging ? "scale-[1.02] opacity-70 shadow-xl" : "hover:border-stone-300 hover:shadow-sm"
-      }`}
+      className={`card-interactive focus-ring rounded-lg border border-stone-200 bg-white p-3 ${
+        isDragging ? "scale-[1.02] opacity-70 shadow-xl" : ""
+      } ${dragListeners ? "cursor-grab active:cursor-grabbing" : ""}`}
+      onClick={() => onCardClick(task)}
+      onKeyDown={(event) => {
+        if (event.key === "Enter" || event.key === " ") {
+          event.preventDefault();
+          onCardClick(task);
+        }
+      }}
       ref={refCallback}
+      role="button"
       style={style}
+      tabIndex={0}
+      {...dragAttributes}
+      {...dragListeners}
     >
       <div className="flex items-start gap-2">
         <span className={`mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full ${priorityDot[task.priority] ?? "bg-stone-300"}`} />
-        <button
-          aria-label="Arrastar tarefa"
-          className="mt-0.5 grid h-5 w-5 shrink-0 cursor-grab place-items-center text-stone-300 hover:text-stone-500 active:cursor-grabbing disabled:cursor-not-allowed disabled:opacity-40"
-          disabled={!dragListeners}
-          type="button"
-          {...dragAttributes}
-          {...dragListeners}
-        >
-          <GripVertical size={13} />
-        </button>
-        <button className="min-w-0 flex-1 text-left" onClick={() => onCardClick(task)} type="button">
+        <GripVertical aria-hidden="true" className="mt-0.5 shrink-0 text-stone-300" size={13} />
+        <div className="min-w-0 flex-1">
           <h3 className="text-[13px] font-bold leading-snug text-pegasus-navy">{task.title}</h3>
           {task.description ? (
             <p className="mt-1 text-xs leading-5 text-slate-500">{truncate(task.description)}</p>
@@ -422,9 +459,7 @@ function TaskCard<TTask extends KanbanTaskBase>({
 
           <div className="mt-2.5 flex items-center justify-between gap-2">
             <div className="flex min-w-0 items-center gap-1.5">
-              <span className="grid h-5 w-5 shrink-0 place-items-center rounded-full bg-stone-200 text-[9px] font-bold text-stone-600">
-                {initialsOf(task.assignedTo)}
-              </span>
+              <AssigneeAvatars names={assignees} />
               <span className={`truncate text-[11px] font-semibold ${overdue ? "text-rose-600" : "text-stone-500"}`}>
                 {formatDate(task.dueDate)}
               </span>
@@ -444,7 +479,7 @@ function TaskCard<TTask extends KanbanTaskBase>({
               ) : null}
             </div>
           </div>
-        </button>
+        </div>
       </div>
 
       {task.scheduledAt && task.status === "scheduled" ? (
@@ -482,6 +517,7 @@ export function AdvancedKanban<TTask extends KanbanTaskBase, TStatus extends str
   onReject,
   onUpdate,
   responsibleOptions,
+  savedLabels,
   tasks,
   title,
 }: AdvancedKanbanProps<TTask, TStatus>) {
@@ -500,6 +536,7 @@ export function AdvancedKanban<TTask extends KanbanTaskBase, TStatus extends str
     emptyForm(emptyStatus, channelOptions?.[0]?.value),
   );
   const [labelInput, setLabelInput] = useState("");
+  const [assigneeInput, setAssigneeInput] = useState("");
   const [commentInput, setCommentInput] = useState("");
   const [checklistInput, setChecklistInput] = useState("");
   const sensors = useSensors(
@@ -577,6 +614,41 @@ export function AdvancedKanban<TTask extends KanbanTaskBase, TStatus extends str
     setViewTask(task);
   }
 
+  async function toggleViewChecklistItem(itemId: string, done: boolean) {
+    if (!viewTask) return;
+    const nextChecklist = normalizeList(viewTask.checklist).map((item) =>
+      item.id === itemId ? { ...item, done } : item,
+    );
+    setViewTask({ ...viewTask, checklist: nextChecklist } as TTask);
+    await onUpdate(viewTask, { ...taskToForm(viewTask, emptyStatus), checklist: nextChecklist });
+  }
+
+  function isMoveAllowed(currentStatus: string, nextStatus: string): boolean {
+    if (nextStatus === currentStatus) return false;
+
+    // Cards in (or waiting to reach) the scheduled column only move via the approve/publish flow.
+    if (scheduledColumn && currentStatus === scheduledColumn) return false;
+
+    if (approvalColumn) {
+      const approvalIdx = columns.findIndex((c) => c.value === approvalColumn);
+      const currentIdx = columns.findIndex((c) => c.value === currentStatus);
+      const nextIdx = columns.findIndex((c) => c.value === nextStatus);
+
+      // Cards in review only leave via the approve/reject buttons.
+      if (currentStatus === approvalColumn && nextIdx > approvalIdx) return false;
+      // Cards before review cannot jump past it.
+      if (currentIdx < approvalIdx && nextIdx > approvalIdx) return false;
+    }
+
+    return true;
+  }
+
+  async function handleMoveTo(task: TTask, status: TStatus) {
+    if (!isMoveAllowed(task.status, status)) return;
+    await onMove(task, status);
+    setViewTask((current) => (current && current.id === task.id ? ({ ...current, status } as TTask) : current));
+  }
+
   function handleDragStart(event: DragStartEvent) {
     setActiveTaskId(String(event.active.id));
   }
@@ -605,35 +677,40 @@ export function AdvancedKanban<TTask extends KanbanTaskBase, TStatus extends str
       ? overId.replace("column:", "")
       : tasks.find((task) => task.id === overId)?.status;
 
-    if (!nextStatus || nextStatus === active.status) return;
-
-    // Block dragging from the scheduled column entirely
-    if (scheduledColumn && active.status === scheduledColumn) return;
-
-    if (approvalColumn) {
-      const approvalIdx = columns.findIndex((c) => c.value === approvalColumn);
-      const activeIdx = columns.findIndex((c) => c.value === active.status);
-      const nextIdx = columns.findIndex((c) => c.value === nextStatus);
-
-      // Block dragging out of the approval column — must use the approve button
-      if (active.status === approvalColumn && nextIdx > approvalIdx) return;
-
-      // Block skipping approval — cards before review cannot jump past it
-      if (activeIdx < approvalIdx && nextIdx > approvalIdx) return;
-    }
+    if (!nextStatus || !isMoveAllowed(active.status, nextStatus)) return;
 
     await onMove(active, nextStatus as TStatus);
   }
 
-  function addLabel() {
-    const nextLabel = labelInput.trim();
+  function addLabelValue(value: string) {
+    const nextLabel = value.trim();
     if (!nextLabel || form.labels.includes(nextLabel)) return;
     setForm({ ...form, labels: [...form.labels, nextLabel] });
+  }
+
+  function addLabel() {
+    addLabelValue(labelInput);
     setLabelInput("");
   }
 
   function removeLabel(label: string) {
     setForm({ ...form, labels: form.labels.filter((item) => item !== label) });
+  }
+
+  function toggleAssignee(name: string) {
+    setForm((prev) => ({
+      ...prev,
+      assignedTo: prev.assignedTo.includes(name)
+        ? prev.assignedTo.filter((item) => item !== name)
+        : [...prev.assignedTo, name],
+    }));
+  }
+
+  function addAssigneeFreeText() {
+    const name = assigneeInput.trim();
+    if (!name || form.assignedTo.includes(name)) return;
+    setForm({ ...form, assignedTo: [...form.assignedTo, name] });
+    setAssigneeInput("");
   }
 
   function addComment() {
@@ -742,7 +819,7 @@ export function AdvancedKanban<TTask extends KanbanTaskBase, TStatus extends str
           </section>
           <DragOverlay>
             {activeTask ? (
-              <div className="w-80">
+              <div className="w-80 rotate-2 cursor-grabbing">
                 <TaskCard statusLabel={statusLabel} task={activeTask} onCardClick={() => undefined} />
               </div>
             ) : null}
@@ -759,7 +836,7 @@ export function AdvancedKanban<TTask extends KanbanTaskBase, TStatus extends str
           <div className="space-y-5">
             <div className="grid gap-3 text-sm text-slate-600 md:grid-cols-2">
               <p><strong className="text-pegasus-navy">Status:</strong> {statusLabel(viewTask.status)}</p>
-              <p><strong className="text-pegasus-navy">Responsável:</strong> {viewTask.assignedTo ?? "-"}</p>
+              <p><strong className="text-pegasus-navy">Responsável:</strong> {normalizeList(viewTask.assignedTo).join(", ") || "-"}</p>
               <p><strong className="text-pegasus-navy">Prazo:</strong> {formatDate(viewTask.dueDate)}</p>
               <p><strong className="text-pegasus-navy">Prioridade:</strong> {priorityLabel(viewTask.priority)}</p>
               {viewTask.channel ? (
@@ -787,16 +864,62 @@ export function AdvancedKanban<TTask extends KanbanTaskBase, TStatus extends str
             </section>
 
             <section className="rounded-2xl border border-stone-200 bg-white p-4">
-              <h3 className="font-black text-pegasus-navy">Checklist</h3>
-              <div className="mt-3 space-y-2">
+              <div className="flex items-center justify-between">
+                <h3 className="font-black text-pegasus-navy">Checklist</h3>
+                {normalizeList(viewTask.checklist).length > 0 ? (
+                  <span className="text-xs font-bold text-slate-400">
+                    {normalizeList(viewTask.checklist).filter((item) => item.done).length}/{normalizeList(viewTask.checklist).length}
+                  </span>
+                ) : null}
+              </div>
+              <div className="mt-3 space-y-1">
                 {normalizeList(viewTask.checklist).length > 0 ? normalizeList(viewTask.checklist).map((item) => (
-                  <p className="flex items-center gap-2 text-sm text-slate-600" key={item.id}>
-                    <span className={`h-4 w-4 rounded border ${item.done ? "border-emerald-500 bg-emerald-500" : "border-stone-300"}`} />
-                    <span className={item.done ? "line-through" : ""}>{item.text}</span>
-                  </p>
+                  <label
+                    className={`flex items-center gap-3 rounded-lg px-2 py-1.5 text-sm text-slate-600 ${canUpdate ? "cursor-pointer hover:bg-pegasus-surface" : ""}`}
+                    key={item.id}
+                  >
+                    <input
+                      checked={item.done}
+                      className="h-4 w-4 rounded border-stone-300 text-pegasus-primary"
+                      disabled={!canUpdate}
+                      onChange={(event) => toggleViewChecklistItem(item.id, event.target.checked)}
+                      type="checkbox"
+                    />
+                    <span className={item.done ? "text-slate-400 line-through" : ""}>{item.text}</span>
+                  </label>
                 )) : <p className="text-sm text-slate-500">Sem itens.</p>}
               </div>
             </section>
+
+            {columns.length > 1 ? (
+              <section className="rounded-2xl border border-stone-200 bg-white p-4">
+                <h3 className="font-black text-pegasus-navy">Mover para</h3>
+                <p className="mt-1 text-xs text-slate-500">
+                  Alternativa ao arrastar o card — útil no celular ou pelo teclado.
+                </p>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  {columns.map((column) => {
+                    const isCurrent = viewTask.status === column.value;
+                    const disabled = !canUpdate || isCurrent || !isMoveAllowed(viewTask.status, column.value);
+                    return (
+                      <button
+                        className={`rounded-full border px-3 py-1.5 text-xs font-bold transition ${
+                          isCurrent
+                            ? "border-pegasus-primary bg-pegasus-primary text-white"
+                            : "border-stone-200 text-slate-600 hover:border-pegasus-sky hover:bg-pegasus-surface"
+                        } ${disabled ? "cursor-not-allowed opacity-60" : ""}`}
+                        disabled={disabled}
+                        key={column.value}
+                        onClick={() => handleMoveTo(viewTask, column.value)}
+                        type="button"
+                      >
+                        {column.label}
+                      </button>
+                    );
+                  })}
+                </div>
+              </section>
+            ) : null}
 
             <section className="rounded-2xl border border-stone-200 bg-white p-4">
               <h3 className="font-black text-pegasus-navy">Histórico e comentários</h3>
@@ -905,23 +1028,63 @@ export function AdvancedKanban<TTask extends KanbanTaskBase, TStatus extends str
                 onChange={(event) => setForm({ ...form, description: event.target.value })}
                 value={form.description}
               />
-              <div className="grid gap-4 md:grid-cols-2">
+              <div>
+                <span className="mb-1.5 block text-sm font-semibold text-slate-700">Responsáveis</span>
                 {responsibleOptions ? (
-                  <Select
-                    disabled={isSaving}
-                    label="Responsável"
-                    onChange={(event) => setForm({ ...form, assignedTo: event.target.value })}
-                    options={[{ label: "Sem responsável", value: "" }, ...responsibleOptions]}
-                    value={form.assignedTo}
-                  />
+                  <div className="flex flex-wrap gap-2">
+                    {responsibleOptions.map((option) => (
+                      <button
+                        className={`rounded-full border px-3 py-1.5 text-xs font-bold transition ${
+                          form.assignedTo.includes(option.value)
+                            ? "border-pegasus-primary bg-pegasus-primary text-white"
+                            : "border-stone-200 text-slate-600 hover:border-pegasus-sky hover:bg-pegasus-surface"
+                        } ${isSaving ? "cursor-not-allowed opacity-60" : ""}`}
+                        disabled={isSaving}
+                        key={option.value}
+                        onClick={() => toggleAssignee(option.value)}
+                        type="button"
+                      >
+                        {option.label}
+                      </button>
+                    ))}
+                    {form.assignedTo.length === 0 ? (
+                      <p className="w-full text-xs text-slate-400">Ninguém selecionado ainda.</p>
+                    ) : null}
+                  </div>
                 ) : (
-                  <Input
-                    disabled={isSaving}
-                    label="Responsável"
-                    onChange={(event) => setForm({ ...form, assignedTo: event.target.value })}
-                    value={form.assignedTo}
-                  />
+                  <div className="space-y-2">
+                    {form.assignedTo.length > 0 ? (
+                      <div className="flex flex-wrap gap-2">
+                        {form.assignedTo.map((name) => (
+                          <button
+                            className="rounded-full border border-pegasus-primary bg-pegasus-ice px-3 py-1 text-xs font-bold text-pegasus-primary"
+                            key={name}
+                            onClick={() => toggleAssignee(name)}
+                            type="button"
+                          >
+                            {name} ×
+                          </button>
+                        ))}
+                      </div>
+                    ) : null}
+                    <div className="flex items-end gap-2">
+                      <div className="flex-1">
+                        <Input
+                          disabled={isSaving}
+                          label="Nome do responsável"
+                          onChange={(event) => setAssigneeInput(event.target.value)}
+                          placeholder="Digite e clique em Adicionar"
+                          value={assigneeInput}
+                        />
+                      </div>
+                      <Button disabled={isSaving} onClick={addAssigneeFreeText} type="button" variant="secondary">
+                        Adicionar
+                      </Button>
+                    </div>
+                  </div>
                 )}
+              </div>
+              <div className="grid gap-4 md:grid-cols-2">
                 <Input
                   disabled={isSaving}
                   label="Prazo"
@@ -965,6 +1128,20 @@ export function AdvancedKanban<TTask extends KanbanTaskBase, TStatus extends str
                     <Tag className="text-pegasus-primary" size={18} />
                     <h3 className="font-black text-pegasus-navy">Etiquetas</h3>
                   </div>
+                  {savedLabels && savedLabels.length > 0 ? (
+                    <div className="mt-3 flex flex-wrap gap-2">
+                      {savedLabels.filter((label) => !form.labels.includes(label)).map((label) => (
+                        <button
+                          className="rounded-full border border-dashed border-stone-300 px-3 py-1 text-xs font-bold text-slate-500 hover:border-pegasus-sky hover:text-pegasus-primary"
+                          key={label}
+                          onClick={() => addLabelValue(label)}
+                          type="button"
+                        >
+                          + {label}
+                        </button>
+                      ))}
+                    </div>
+                  ) : null}
                   <div className="mt-3 flex flex-wrap gap-2">
                     {form.labels.map((label) => (
                       <button
@@ -1057,6 +1234,21 @@ export function AdvancedKanban<TTask extends KanbanTaskBase, TStatus extends str
                 <Tag className="text-pegasus-primary" size={18} />
                 <h3 className="font-black text-pegasus-navy">Etiquetas</h3>
               </div>
+              {savedLabels && savedLabels.length > 0 ? (
+                <div className="mt-3 flex flex-wrap gap-2">
+                  <span className="w-full text-xs font-bold uppercase tracking-wide text-slate-400">Sugeridas</span>
+                  {savedLabels.filter((label) => !form.labels.includes(label)).map((label) => (
+                    <button
+                      className="rounded-full border border-dashed border-stone-300 px-3 py-1 text-xs font-bold text-slate-500 hover:border-pegasus-sky hover:text-pegasus-primary"
+                      key={label}
+                      onClick={() => addLabelValue(label)}
+                      type="button"
+                    >
+                      + {label}
+                    </button>
+                  ))}
+                </div>
+              ) : null}
               <div className="mt-3 flex flex-wrap gap-2">
                 {form.labels.map((label) => (
                   <button
