@@ -213,6 +213,9 @@ async function notifyOverduePayment(payment: ReturnType<typeof serializePayment>
 export const financeService = {
   async getSummary(month = new Date().toISOString().slice(0, 7)) {
     const monthRange = parseMonth(month) ?? parseMonth(new Date().toISOString().slice(0, 7))!;
+    // "Em aberto" só conta cobranças que já venceram ou vencem neste mês — nunca as de meses futuros.
+    const [currentYear, currentMonth] = getBrazilDateKey().slice(0, 7).split("-").map(Number);
+    const dueCutoff = new Date(Date.UTC(currentYear, currentMonth, 1));
 
     type AggRow = { value: Prisma.Decimal };
     type CountRow = { count: bigint };
@@ -265,10 +268,12 @@ export const financeService = {
       prisma.$queryRaw<CountRow[]>`
         SELECT COUNT(*) AS count FROM "Payment"
         WHERE "athleteId" IS NOT NULL AND status = 'pendente'
+          AND ("dueDate" IS NULL OR "dueDate" < ${dueCutoff})
       `,
       prisma.$queryRaw<CountRow[]>`
         SELECT COUNT(*) AS count FROM "Payment"
         WHERE "athleteId" IS NOT NULL AND status = 'atrasado'
+          AND ("dueDate" IS NULL OR "dueDate" < ${dueCutoff})
       `,
       prisma.$queryRaw<AggRow[]>`
         SELECT COALESCE(SUM(p.amount), 0) AS value FROM "Payment" p
