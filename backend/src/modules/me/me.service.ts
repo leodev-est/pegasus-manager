@@ -149,8 +149,13 @@ export const meService = {
       select: { athlete: { select: { id: true } } },
     });
     if (!user?.athlete) return [];
+    const nextMonthStart = new Date(Date.UTC(new Date().getUTCFullYear(), new Date().getUTCMonth() + 1, 1));
     const payments = await prisma.payment.findMany({
-      where: { athleteId: user.athlete.id, type: "receita" },
+      where: {
+        athleteId: user.athlete.id,
+        type: "receita",
+        OR: [{ dueDate: null }, { dueDate: { lt: nextMonthStart } }],
+      },
       orderBy: { dueDate: "desc" },
     });
     return payments.map((p) => ({ ...p, amount: Number(p.amount) }));

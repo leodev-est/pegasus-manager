@@ -3,6 +3,7 @@ import { randomUUID } from "crypto";
 import { prisma } from "../../config/prisma";
 import { AppError } from "../../middlewares/error.middleware";
 import { notificationsService } from "../notifications/notifications.service";
+import { getBrazilDateKey } from "../../utils/trainingDates";
 
 const paymentTypes = ["receita", "despesa"] as const;
 const movementTypes = ["entrada", "saida"] as const;
@@ -596,8 +597,12 @@ export const financeService = {
       await prisma.$executeRaw`UPDATE "Payment" SET "referenceMonth" = ${month} WHERE id = ${id}`;
     }
 
+    // Nunca gera cobrança de um mês que ainda não começou (ex.: navegar pro futuro no seletor)
+    const currentMonthKey = getBrazilDateKey().slice(0, 7);
+    const isFutureMonth = month > currentMonthKey;
+
     for (const athlete of athletes) {
-      if (!existingByAthleteId.has(athlete.id)) {
+      if (!existingByAthleteId.has(athlete.id) && !isFutureMonth) {
         // Só auto-cria registro se o atleta entrou até o último sábado do mês
         const joinDate = athlete.activatedAt ?? athlete.createdAt;
         if (joinDate > lastSaturdayEnd) continue;
