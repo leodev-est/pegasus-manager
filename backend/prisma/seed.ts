@@ -38,6 +38,10 @@ const permissions = [
   "operational:delete",
   "profile:read",
   "profile:update",
+  // Grupos/broadcast de WhatsApp (tela de Comunicados) -- exclusivo de RH, não usa
+  // athletes:* porque Gestao/Gestor/Operacional também têm athletes:* e não deveriam
+  // acessar essa tela.
+  "communications:manage",
 ];
 
 const rolePermissions: Record<string, string[]> = {
@@ -54,7 +58,7 @@ const rolePermissions: Record<string, string[]> = {
     "operational:update",
     "operational:delete",
   ],
-  RH: ["athletes:read", "athletes:create", "athletes:update", "athletes:delete", "management:read", "marketing:read"],
+  RH: ["athletes:read", "athletes:create", "athletes:update", "athletes:delete", "management:read", "marketing:read", "communications:manage"],
   Financeiro: ["finance:read", "finance:create", "finance:update", "finance:delete", "management:read"],
   Marketing: ["marketing:read", "marketing:create", "marketing:update", "marketing:delete", "management:read"],
   ChefeMarketing: ["marketing:read", "marketing:create", "marketing:update", "marketing:delete", "management:read"],

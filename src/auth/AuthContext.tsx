@@ -79,10 +79,10 @@ const permissionAliases: Record<string, Permission> = {
   "management:delete": "gestao",
   RH: "rh",
   rh: "rh",
-  "athletes:read": "rh",
-  "athletes:create": "rh",
-  "athletes:update": "rh",
-  "athletes:delete": "rh",
+  // Não mapear athletes:* -> "rh" aqui: Gestao/Gestor/Operacional também têm
+  // athletes:* no backend (pra gestão operacional de atletas), e isso dava a eles
+  // acesso às telas exclusivas de RH (lesões, ouvidoria, inscrições, comunicados).
+  // A tela de RH deve continuar só pra quem tem o papel RH de verdade.
   FINANCEIRO: "financeiro",
   financeiro: "financeiro",
   "finance:read": "financeiro",

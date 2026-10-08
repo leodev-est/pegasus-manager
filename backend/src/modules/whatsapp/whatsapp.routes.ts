@@ -17,7 +17,7 @@ whatsAppRoutes.post("/connect", permissionMiddleware("users:delete"), whatsAppCo
 whatsAppRoutes.post("/disconnect", permissionMiddleware("users:delete"), whatsAppController.disconnect);
 whatsAppRoutes.post("/pairing-code", permissionMiddleware("users:delete"), whatsAppController.pairingCode);
 
-// RH+: list groups and send broadcasts ("rh" não é uma chave real no banco — RH tem
-// "athletes:read" no seed, é essa a chave que de fato dá acesso à área de RH)
-whatsAppRoutes.get("/groups", permissionMiddleware("athletes:read"), whatsAppController.getGroups);
-whatsAppRoutes.post("/broadcast", permissionMiddleware("athletes:read"), whatsAppController.sendBroadcast);
+// RH only — "communications:manage" não é concedida a Gestao/Gestor/Operacional
+// (diferente de athletes:read, que esses papéis também têm).
+whatsAppRoutes.get("/groups", permissionMiddleware("communications:manage"), whatsAppController.getGroups);
+whatsAppRoutes.post("/broadcast", permissionMiddleware("communications:manage"), whatsAppController.sendBroadcast);
