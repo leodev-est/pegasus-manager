@@ -1,3 +1,4 @@
+import { randomUUID } from "crypto";
 import { google } from "googleapis";
 import { prisma } from "../../config/prisma";
 
@@ -9,6 +10,26 @@ const SCOPES = ["https://www.googleapis.com/auth/calendar"];
 
 function isConfigured() {
   return Boolean(CLIENT_ID && CLIENT_SECRET);
+}
+
+// Nonce de 1 uso pra validar o `state` do OAuth — sem isso, o callback (que não exige
+// login) aceitaria qualquer `code` de qualquer conta Google, permitindo sequestrar a
+// integração. TTL curto e Map em memória bastam aqui (processo único, fluxo é rápido).
+const OAUTH_STATE_TTL_MS = 10 * 60 * 1000;
+const pendingStates = new Map<string, { userId?: string; expiresAt: number }>();
+
+function createState(userId?: string) {
+  const state = randomUUID();
+  pendingStates.set(state, { userId, expiresAt: Date.now() + OAUTH_STATE_TTL_MS });
+  return state;
+}
+
+function consumeState(state: string | undefined) {
+  if (!state) return null;
+  const entry = pendingStates.get(state);
+  pendingStates.delete(state);
+  if (!entry || entry.expiresAt < Date.now()) return null;
+  return entry;
 }
 
 function makeOAuth2(redirectUri: string) {
@@ -70,7 +91,7 @@ export const googleCalendarService = {
       access_type: "offline",
       scope: SCOPES,
       prompt: "consent",
-      state: userId,
+      state: createState(userId),
     });
   },
 
@@ -81,10 +102,15 @@ export const googleCalendarService = {
       access_type: "offline",
       scope: SCOPES,
       prompt: "consent",
+      state: createState(),
     });
   },
 
-  async handleCallback(code: string, userId: string) {
+  async handleCallback(code: string, state: string | undefined) {
+    const entry = consumeState(state);
+    if (!entry?.userId) throw new Error("Sessão de autorização inválida ou expirada. Tente conectar novamente.");
+    const userId = entry.userId;
+
     const auth = makeOAuth2(REDIRECT_URI);
     const { tokens } = await auth.getToken(code);
     if (!tokens.refresh_token) throw new Error("Refresh token não recebido. Tente revogar e reconectar.");
@@ -103,7 +129,9 @@ export const googleCalendarService = {
     return { calendarId };
   },
 
-  async handleTeamCallback(code: string) {
+  async handleTeamCallback(code: string, state: string | undefined) {
+    if (!consumeState(state)) throw new Error("Sessão de autorização inválida ou expirada. Tente conectar novamente.");
+
     const auth = makeOAuth2(TEAM_REDIRECT_URI);
     const { tokens } = await auth.getToken(code);
     if (!tokens.refresh_token) throw new Error("Refresh token não recebido. Tente revogar e reconectar.");

@@ -22,6 +22,10 @@ export const trainingFeedbackController = {
 
   findByTraining: (async (req, res, next) => {
     try {
+      // Lista o feedback de TODOS os atletas naquele treino — só pra staff, nunca pra
+      // um atleta comum (que tem trainings:read e passaria no permissionMiddleware da rota).
+      const isStaff = req.user?.permissions.includes("athletes:read") ?? false;
+      if (!isStaff) throw new AppError("Permissão insuficiente", 403);
       res.json(await trainingFeedbackService.findByTraining(req.params.trainingId));
     } catch (error) {
       next(error);
@@ -30,7 +34,11 @@ export const trainingFeedbackController = {
 
   findByAthlete: (async (req, res, next) => {
     try {
-      res.json(await trainingFeedbackService.findByAthlete(req.params.athleteId));
+      const requestedAthleteId = req.params.athleteId;
+      const isSelf = req.user?.athleteId === requestedAthleteId;
+      const isStaff = req.user?.permissions.includes("athletes:read") ?? false;
+      if (!isSelf && !isStaff) throw new AppError("Permissão insuficiente", 403);
+      res.json(await trainingFeedbackService.findByAthlete(requestedAthleteId));
     } catch (error) {
       next(error);
     }

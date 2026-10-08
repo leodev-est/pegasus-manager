@@ -13,12 +13,12 @@ export const googleCalendarController = {
   },
 
   async callback(req: Request, res: Response) {
-    const { code, state: userId } = req.query as { code?: string; state?: string };
-    if (!code || !userId) {
+    const { code, state } = req.query as { code?: string; state?: string };
+    if (!code || !state) {
       return res.redirect(`${process.env.FRONTEND_URL || "http://localhost:5173"}/perfil?calendar=error`);
     }
     try {
-      await googleCalendarService.handleCallback(code, userId);
+      await googleCalendarService.handleCallback(code, state);
       res.redirect(`${process.env.FRONTEND_URL || "http://localhost:5173"}/perfil?calendar=success`);
     } catch {
       res.redirect(`${process.env.FRONTEND_URL || "http://localhost:5173"}/perfil?calendar=error`);
@@ -45,12 +45,12 @@ export const googleCalendarController = {
   },
 
   async teamCallback(req: Request, res: Response) {
-    const { code } = req.query as { code?: string };
-    if (!code) {
+    const { code, state } = req.query as { code?: string; state?: string };
+    if (!code || !state) {
       return res.redirect(`${process.env.FRONTEND_URL || "http://localhost:5173"}/configuracoes?calendar=error`);
     }
     try {
-      await googleCalendarService.handleTeamCallback(code);
+      await googleCalendarService.handleTeamCallback(code, state);
       res.redirect(`${process.env.FRONTEND_URL || "http://localhost:5173"}/configuracoes?calendar=success`);
     } catch {
       res.redirect(`${process.env.FRONTEND_URL || "http://localhost:5173"}/configuracoes?calendar=error`);

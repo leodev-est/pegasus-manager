@@ -6,4 +6,7 @@ import { auditController } from "./audit.controller";
 export const auditRoutes = Router();
 
 auditRoutes.use(authMiddleware);
-auditRoutes.get("/", permissionMiddleware("admin"), auditController.list);
+// "admin" não existe como chave real — hoje só restringe a Diretor por acidente (bypass
+// de role). Usa "users:read", que só Diretor tem de fato, pra manter o mesmo efeito
+// de forma explícita.
+auditRoutes.get("/", permissionMiddleware("users:read"), auditController.list);

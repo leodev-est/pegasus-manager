@@ -68,7 +68,17 @@ app.use(
     },
   }),
 );
-app.use(express.json({ limit: "1mb" }));
+app.use(
+  express.json({
+    limit: "1mb",
+    // Guarda o corpo bruto (bytes exatos recebidos) pra validar a assinatura HMAC do
+    // webhook do PIX — sem isso, o HMAC era calculado sobre JSON.stringify(req.body),
+    // que nunca reproduz os bytes originais, e a verificação de assinatura nunca batia.
+    verify: (req, _res, buf) => {
+      (req as express.Request & { rawBody?: string }).rawBody = buf.toString("utf8");
+    },
+  }),
+);
 app.get("/health", (_req, res) => res.json({ status: "ok" }));
 app.use(routes);
 app.use((_request, response) => {

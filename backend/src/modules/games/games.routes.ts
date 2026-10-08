@@ -7,11 +7,13 @@ export const gamesRoutes = Router();
 
 gamesRoutes.use(authMiddleware);
 
-gamesRoutes.get("/", permissionMiddleware("dashboard"), gamesController.getAll);
-gamesRoutes.get("/stats", permissionMiddleware("dashboard"), gamesController.getStats);
-gamesRoutes.get("/:id", permissionMiddleware("dashboard"), gamesController.getById);
-gamesRoutes.post("/", permissionMiddleware("gestao"), gamesController.create);
-gamesRoutes.patch("/:id", permissionMiddleware("gestao"), gamesController.update);
-gamesRoutes.delete("/:id", permissionMiddleware("gestao"), gamesController.delete);
-gamesRoutes.put("/:id/sets", permissionMiddleware("gestao"), gamesController.upsertSet);
-gamesRoutes.delete("/:id/sets/:setNumber", permissionMiddleware("gestao"), gamesController.deleteSet);
+// Leitura liberada pra qualquer usuário logado (inclusive Atleta) — resultados de jogos
+// não são dado sensível, e é assim que o frontend já trata (permissão "dashboard").
+gamesRoutes.get("/", gamesController.getAll);
+gamesRoutes.get("/stats", gamesController.getStats);
+gamesRoutes.get("/:id", gamesController.getById);
+gamesRoutes.post("/", permissionMiddleware("management:update"), gamesController.create);
+gamesRoutes.patch("/:id", permissionMiddleware("management:update"), gamesController.update);
+gamesRoutes.delete("/:id", permissionMiddleware("management:update"), gamesController.delete);
+gamesRoutes.put("/:id/sets", permissionMiddleware("management:update"), gamesController.upsertSet);
+gamesRoutes.delete("/:id/sets/:setNumber", permissionMiddleware("management:update"), gamesController.deleteSet);

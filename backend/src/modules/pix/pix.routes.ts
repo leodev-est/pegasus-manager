@@ -5,5 +5,5 @@ import { pixController } from "./pix.controller";
 
 export const pixRoutes = Router();
 
-pixRoutes.post("/payment/:paymentId/generate", authMiddleware, permissionMiddleware("financeiro:update"), pixController.generatePix);
+pixRoutes.post("/payment/:paymentId/generate", authMiddleware, permissionMiddleware("finance:update"), pixController.generatePix);
 pixRoutes.post("/webhook", pixController.webhook);

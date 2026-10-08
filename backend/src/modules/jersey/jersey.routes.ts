@@ -8,5 +8,5 @@ export const jerseyRoutes = Router();
 jerseyRoutes.use(authMiddleware);
 
 jerseyRoutes.get("/", jerseyController.findAll);
-jerseyRoutes.put("/:gender/:number", permissionMiddleware("gestao"), jerseyController.assign);
-jerseyRoutes.delete("/:gender/:number", permissionMiddleware("gestao"), jerseyController.unassign);
+jerseyRoutes.put("/:gender/:number", permissionMiddleware("management:update"), jerseyController.assign);
+jerseyRoutes.delete("/:gender/:number", permissionMiddleware("management:delete"), jerseyController.unassign);

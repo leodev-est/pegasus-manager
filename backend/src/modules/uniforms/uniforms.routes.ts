@@ -7,13 +7,13 @@ export const uniformsRoutes = Router();
 
 uniformsRoutes.use(authMiddleware);
 
-uniformsRoutes.get("/items", permissionMiddleware("gestao"), uniformsController.getAllItems);
-uniformsRoutes.get("/items/low-stock", permissionMiddleware("gestao"), uniformsController.getLowStock);
-uniformsRoutes.get("/items/:id", permissionMiddleware("gestao"), uniformsController.getItemById);
-uniformsRoutes.post("/items", permissionMiddleware("gestao"), uniformsController.createItem);
-uniformsRoutes.patch("/items/:id", permissionMiddleware("gestao"), uniformsController.updateItem);
-uniformsRoutes.delete("/items/:id", permissionMiddleware("gestao"), uniformsController.deleteItem);
+uniformsRoutes.get("/items", permissionMiddleware("management:read"), uniformsController.getAllItems);
+uniformsRoutes.get("/items/low-stock", permissionMiddleware("management:read"), uniformsController.getLowStock);
+uniformsRoutes.get("/items/:id", permissionMiddleware("management:read"), uniformsController.getItemById);
+uniformsRoutes.post("/items", permissionMiddleware("management:create"), uniformsController.createItem);
+uniformsRoutes.patch("/items/:id", permissionMiddleware("management:update"), uniformsController.updateItem);
+uniformsRoutes.delete("/items/:id", permissionMiddleware("management:delete"), uniformsController.deleteItem);
 
-uniformsRoutes.get("/deliveries", permissionMiddleware("gestao"), uniformsController.getDeliveries);
-uniformsRoutes.post("/deliveries", permissionMiddleware("gestao"), uniformsController.createDelivery);
-uniformsRoutes.delete("/deliveries/:id", permissionMiddleware("gestao"), uniformsController.deleteDelivery);
+uniformsRoutes.get("/deliveries", permissionMiddleware("management:read"), uniformsController.getDeliveries);
+uniformsRoutes.post("/deliveries", permissionMiddleware("management:create"), uniformsController.createDelivery);
+uniformsRoutes.delete("/deliveries/:id", permissionMiddleware("management:delete"), uniformsController.deleteDelivery);

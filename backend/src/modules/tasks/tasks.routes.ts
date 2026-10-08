@@ -7,12 +7,16 @@ export const tasksRoutes = Router();
 
 tasksRoutes.use(authMiddleware);
 
-tasksRoutes.get("/publish-scheduled", tasksController.publishScheduled);
-tasksRoutes.get("/", permissionMiddleware("management:read"), tasksController.findAll);
-tasksRoutes.get("/:id", permissionMiddleware("management:read"), tasksController.findById);
-tasksRoutes.post("/", permissionMiddleware("management:create"), tasksController.create);
-tasksRoutes.patch("/:id", permissionMiddleware("management:update"), tasksController.update);
-tasksRoutes.patch("/:id/status", permissionMiddleware("management:update"), tasksController.updateStatus);
-tasksRoutes.patch("/:id/approve", permissionMiddleware("management:update"), tasksController.approve);
-tasksRoutes.patch("/:id/reject", permissionMiddleware("management:update"), tasksController.reject);
-tasksRoutes.delete("/:id", permissionMiddleware("management:delete"), tasksController.delete);
+// A permissão de verdade é por área (management OU marketing, dependendo da task) e já é
+// checada dentro do controller via ensureAreaPermission/checagem de role — um gate fixo
+// de permissionMiddleware aqui bloquearia Marketing/ChefeMarketing nas próprias tasks
+// (eles têm marketing:*, não management:*) e o próprio ChefeMarketing em approve/reject.
+tasksRoutes.get("/publish-scheduled", permissionMiddleware(["management:read", "marketing:read"]), tasksController.publishScheduled);
+tasksRoutes.get("/", tasksController.findAll);
+tasksRoutes.get("/:id", tasksController.findById);
+tasksRoutes.post("/", tasksController.create);
+tasksRoutes.patch("/:id", tasksController.update);
+tasksRoutes.patch("/:id/status", tasksController.updateStatus);
+tasksRoutes.patch("/:id/approve", tasksController.approve);
+tasksRoutes.patch("/:id/reject", tasksController.reject);
+tasksRoutes.delete("/:id", tasksController.delete);
