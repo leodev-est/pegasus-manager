@@ -1,6 +1,6 @@
 ﻿import type { RequestHandler } from "express";
 import { AppError } from "../../middlewares/error.middleware";
-import { tasksService, type TaskArea } from "./tasks.service";
+import { TASK_RETENTION_DAYS, tasksService, type TaskArea } from "./tasks.service";
 
 function getParamId(id: string | string[]) {
   return Array.isArray(id) ? id[0] : id;
@@ -8,6 +8,10 @@ function getParamId(id: string | string[]) {
 
 function getQueryParam(value: unknown) {
   return typeof value === "string" ? value : undefined;
+}
+
+function actorOf(request: Parameters<RequestHandler>[0]) {
+  return request.user ? { id: request.user.id, name: request.user.name } : undefined;
 }
 
 type TaskAction = "read" | "create" | "update" | "delete";
@@ -60,7 +64,7 @@ export const tasksController = {
     try {
       const area = tasksService.resolveArea(request.body.area);
       ensureAreaPermission(request, area, "create");
-      const task = await tasksService.create(request.body);
+      const task = await tasksService.create(request.body, actorOf(request));
       response.status(201).json(task);
     } catch (error) {
       next(error);
@@ -72,7 +76,7 @@ export const tasksController = {
       const id = getParamId(request.params.id);
       const currentTask = await tasksService.findById(id);
       ensureAreaPermission(request, currentTask.area as TaskArea, "update");
-      const task = await tasksService.update(id, request.body);
+      const task = await tasksService.update(id, request.body, actorOf(request));
       response.json(task);
     } catch (error) {
       next(error);
@@ -84,8 +88,21 @@ export const tasksController = {
       const id = getParamId(request.params.id);
       const currentTask = await tasksService.findById(id);
       ensureAreaPermission(request, currentTask.area as TaskArea, "update");
-      const task = await tasksService.updateStatus(id, request.body.status);
+      const position = typeof request.body.position === "number" ? request.body.position : undefined;
+      const task = await tasksService.updateStatus(id, request.body.status, position, actorOf(request));
       response.json(task);
+    } catch (error) {
+      next(error);
+    }
+  }) satisfies RequestHandler,
+
+  history: (async (request, response, next) => {
+    try {
+      const id = getParamId(request.params.id);
+      const currentTask = await tasksService.findById(id);
+      ensureAreaPermission(request, currentTask.area as TaskArea, "read");
+      const entries = await tasksService.history(id);
+      response.json(entries);
     } catch (error) {
       next(error);
     }
@@ -138,6 +155,28 @@ export const tasksController = {
     try {
       await tasksService.publishScheduled();
       response.json({ ok: true });
+    } catch (error) {
+      next(error);
+    }
+  }) satisfies RequestHandler,
+
+  cleanupPreview: (async (request, response, next) => {
+    try {
+      const area = tasksService.resolveArea(getQueryParam(request.query.area));
+      ensureAreaPermission(request, area, "delete");
+      const count = await tasksService.countFinishedOlderThan(area);
+      response.json({ count, retentionDays: TASK_RETENTION_DAYS });
+    } catch (error) {
+      next(error);
+    }
+  }) satisfies RequestHandler,
+
+  cleanup: (async (request, response, next) => {
+    try {
+      const area = tasksService.resolveArea(request.body.area);
+      ensureAreaPermission(request, area, "delete");
+      const deleted = await tasksService.deleteFinishedOlderThan(area);
+      response.json({ deleted });
     } catch (error) {
       next(error);
     }

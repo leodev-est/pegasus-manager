@@ -13,6 +13,7 @@
   MessageSquarePlus,
   PartyPopper,
   Radio,
+  Bookmark,
   Settings,
   ShieldCheck,
   Shirt,
@@ -30,6 +31,7 @@ import { NavLink } from "react-router-dom";
 import { useAuth } from "../../auth/AuthContext";
 import logoIcon from "../../assets/logo/logo-icon.png";
 import { ORG_NAME, ORG_LOGO_URL } from "../../config/org";
+import { getActiveSeason } from "../../utils/season";
 
 export type MenuItem = {
   label: string;
@@ -239,9 +241,15 @@ export const menuGroups: MenuGroup[] = [
         permissions: ["marketing"],
       },
       {
-        label: "Pauta de Conteúdo",
+        label: "Calendário",
         path: "/app/marketing/pauta",
         icon: CalendarDays,
+        permissions: ["marketing"],
+      },
+      {
+        label: "Curadoria",
+        path: "/app/marketing/curadoria",
+        icon: Bookmark,
         permissions: ["marketing"],
       },
       {
@@ -290,6 +298,7 @@ type SidebarProps = {
 export function Sidebar({ isMobileOpen = false, isDesktopCollapsed = false, onNavigate, onOpenTour }: SidebarProps) {
   const { hasPermission } = useAuth();
   const [isHovering, setIsHovering] = useState(false);
+  const season = getActiveSeason();
   const visibleGroups = menuGroups
     .map((group) => ({
       ...group,
@@ -322,7 +331,10 @@ export function Sidebar({ isMobileOpen = false, isDesktopCollapsed = false, onNa
           />
         </div>
         <div className={`min-w-0 ${hideAtLg}`}>
-          <p className="truncate text-[15px] font-bold tracking-tight text-stone-900 dark:text-slate-100">{ORG_NAME}</p>
+          <p className="truncate text-[15px] font-bold tracking-tight text-stone-900 dark:text-slate-100">
+            {ORG_NAME}
+            {season ? ` ${season.emoji}` : ""}
+          </p>
           <p className="truncate text-[11px] text-stone-400">Projeto esportivo</p>
         </div>
       </div>

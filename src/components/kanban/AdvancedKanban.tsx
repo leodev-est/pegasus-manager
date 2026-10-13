@@ -17,18 +17,33 @@ import {
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import {
+  Camera,
   CheckSquare,
   Clock,
+  Copy,
+  FolderOpen,
   GripVertical,
+  HardDrive,
+  Instagram,
+  Link2,
   Loader2,
+  MessageCircle,
   MessageSquare,
+  MoreVertical,
+  Palette,
   Plus,
+  Search,
   Tag,
   Trash2,
+  Trophy,
+  UserPlus,
+  Video,
+  X,
+  Youtube,
   type LucideIcon,
 } from "lucide-react";
 import type { CSSProperties, FormEvent, ReactNode } from "react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Button } from "../ui/Button";
 import { ConfirmDialog } from "../ui/ConfirmDialog";
 import { EmptyState } from "../ui/EmptyState";
@@ -38,6 +53,8 @@ import { PageHeader } from "../ui/PageHeader";
 import { Select } from "../ui/Select";
 import { StatusBadge, type StatusTone } from "../ui/StatusBadge";
 import { Textarea } from "../ui/Textarea";
+import { LinksEditor, type EditableLink } from "../marketing/LinksEditor";
+import { normalizeStatusForFormat, pipelineFor, STEP_LABEL, type ContentFormat, type ContentStatus } from "../../utils/contentPipeline";
 
 export type KanbanComment = {
   id: string;
@@ -64,8 +81,15 @@ export type KanbanTaskBase = {
   labels?: string[];
   comments?: KanbanComment[];
   checklist?: KanbanChecklistItem[];
+  links?: EditableLink[];
   approvalStatus?: string | null;
   scheduledAt?: string | null;
+  statusChangedAt?: string;
+  position?: number;
+  /** video | video_arte | so_arte | foto | evento — null = tarefa solta, sem esteira de produção. */
+  contentFormat?: ContentFormat | null;
+  /** Etapa atual dentro da esteira do contentFormat. */
+  contentStep?: ContentStatus | null;
   createdAt: string;
   updatedAt: string;
 };
@@ -91,6 +115,9 @@ type TaskForm<TStatus extends string> = {
   labels: string[];
   comments: KanbanComment[];
   checklist: KanbanChecklistItem[];
+  links: EditableLink[];
+  contentFormat: ContentFormat | "";
+  contentStep: ContentStatus | "";
 };
 
 type AdvancedKanbanProps<TTask extends KanbanTaskBase, TStatus extends string> = {
@@ -115,14 +142,107 @@ type AdvancedKanbanProps<TTask extends KanbanTaskBase, TStatus extends string> =
   approvalColumn?: TStatus;
   scheduledColumn?: TStatus;
   canApprove?: boolean;
+  /** Checklist padrão por canal — só preenche em tarefa nova com checklist ainda vazio. */
+  channelChecklistTemplates?: Record<string, string[]>;
+  /** Liga o seletor de Formato + a esteira de produção no card. Omitido = kanban sem esse recurso (ex.: Gestão). */
+  contentFormatOptions?: Array<{ label: string; value: ContentFormat }>;
   emptyStatus: TStatus;
+  /** Rótulo da coluna final, usado no texto do diálogo de limpeza (ex: "Publicado", "Concluído"). */
+  finishedColumnLabel?: string;
+  /** Prefixo pra salvar o filtro rápido no localStorage (ex: "kanban:marketing"). */
+  storageKey?: string;
+  /** Abre o modal de detalhes desse card assim que ele aparecer na lista (deep link, ex.: do Calendário). */
+  openTaskId?: string;
+  /** Chamado depois que openTaskId foi consumido, pra o pai limpar o parâmetro da URL. */
+  onOpenTaskIdHandled?: () => void;
+  /** Recarrega as tarefas sem mostrar o spinner de carregamento (polling em segundo plano). */
+  onRefresh?: () => Promise<void> | void;
+  /** Conta quantas tarefas finalizadas já passaram do prazo de retenção, pro diálogo de confirmação. */
+  onCleanupPreview?: () => Promise<{ count: number; retentionDays: number }>;
+  /** Busca o histórico (quem moveu/mudou o prazo e quando) de um card, pro modal de detalhes. */
+  onFetchHistory?: (taskId: string) => Promise<Array<{ id: string; action: string; userName: string | null; meta: unknown; createdAt: string }>>;
+  /** Apaga de vez as tarefas finalizadas antigas. Deve rejeitar (e já ter avisado o erro) se falhar. */
+  onCleanup?: () => Promise<number>;
   onCreate: (payload: TaskForm<TStatus>) => Promise<void>;
   onUpdate: (task: TTask, payload: TaskForm<TStatus>) => Promise<void>;
   onDelete: (task: TTask) => Promise<void>;
-  onMove: (task: TTask, status: TStatus) => Promise<void>;
+  /** Deve rejeitar a Promise se a API falhar, para a UI otimista desfazer o movimento. */
+  onMove: (task: TTask, status: TStatus, position?: number) => Promise<void>;
   onApprove?: (task: TTask, action: "schedule" | "publish", scheduledAt?: string) => Promise<void>;
   onReject?: (task: TTask) => Promise<void>;
 };
+
+const BACKGROUND_REFRESH_INTERVAL_MS = 30_000;
+const CARD_UPDATED_HIGHLIGHT_MS = 2200;
+const MIN_TIME_BETWEEN_REFRESHES_MS = 5_000;
+// A partir de quantos dias parado na mesma coluna o card ganha o destaque de "travado".
+// Fácil de ajustar se o ritmo do time mudar.
+const STUCK_IN_COLUMN_DAYS = 4;
+
+type ChannelMeta = { icon: LucideIcon; bar: string; chip: string };
+
+const CHANNEL_META: Record<string, ChannelMeta> = {
+  Instagram: { icon: Instagram, bar: "bg-fuchsia-500", chip: "bg-fuchsia-50 text-fuchsia-700" },
+  WhatsApp: { icon: MessageCircle, bar: "bg-emerald-500", chip: "bg-emerald-50 text-emerald-700" },
+  Arte: { icon: Palette, bar: "bg-violet-500", chip: "bg-violet-50 text-violet-700" },
+  Captacao: { icon: Camera, bar: "bg-sky-500", chip: "bg-sky-50 text-sky-700" },
+  Evento: { icon: Trophy, bar: "bg-amber-500", chip: "bg-amber-50 text-amber-700" },
+  Video: { icon: Video, bar: "bg-rose-500", chip: "bg-rose-50 text-rose-700" },
+  YouTube: { icon: Youtube, bar: "bg-red-600", chip: "bg-red-50 text-red-700" },
+};
+
+function channelMeta(channel?: string | null): ChannelMeta | null {
+  if (!channel) return null;
+  return CHANNEL_META[channel] ?? null;
+}
+
+function linkIconFor(url: string): LucideIcon {
+  const lower = url.toLowerCase();
+  if (lower.includes("canva.com")) return Palette;
+  if (lower.includes("drive.google") || lower.includes("docs.google")) return HardDrive;
+  if (lower.includes("youtube.com") || lower.includes("youtu.be")) return Youtube;
+  if (lower.includes("instagram.com")) return Instagram;
+  if (/\.(mp4|mov|webm)(\?|$)/.test(lower)) return Video;
+  return FolderOpen;
+}
+
+/** Prazo em linguagem natural — "Hoje", "Amanhã", "Atrasado há 3 dias"... */
+function humanDueDate(value?: string | null): { label: string; overdue: boolean } {
+  if (!value) return { label: "Sem prazo", overdue: false };
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const due = new Date(`${value.slice(0, 10)}T00:00:00.000`);
+  const diffDays = Math.round((due.getTime() - today.getTime()) / 86_400_000);
+
+  if (diffDays === 0) return { label: "Hoje", overdue: false };
+  if (diffDays === 1) return { label: "Amanhã", overdue: false };
+  if (diffDays === -1) return { label: "Atrasado há 1 dia", overdue: true };
+  if (diffDays < -1) return { label: `Atrasado há ${Math.abs(diffDays)} dias`, overdue: true };
+  if (diffDays > 1 && diffDays <= 6) return { label: `Em ${diffDays} dias`, overdue: false };
+  return { label: formatDate(value), overdue: false };
+}
+
+/** Há quantos dias o card está na coluna atual, com base em statusChangedAt. */
+function daysInColumn(statusChangedAt?: string): number {
+  if (!statusChangedAt) return 0;
+  const changed = new Date(statusChangedAt);
+  if (Number.isNaN(changed.getTime())) return 0;
+  return Math.max(0, Math.floor((Date.now() - changed.getTime()) / 86_400_000));
+}
+
+/** Destaca @Nome dentro de um comentário (só visual — a notificação real é checada no backend). */
+function renderMentions(text: string): ReactNode {
+  const parts = text.split(/(@[\p{L}\d_]+(?:\s[\p{L}\d_]+)?)/gu);
+  return parts.map((part, index) =>
+    part.startsWith("@") ? (
+      <span className="font-bold text-pegasus-primary" key={index}>
+        {part}
+      </span>
+    ) : (
+      <span key={index}>{part}</span>
+    ),
+  );
+}
 
 const labelPalette = [
   "bg-blue-50 text-blue-700 ring-blue-200",
@@ -218,6 +338,9 @@ function taskToForm<TStatus extends string>(
     labels: normalizeList(task.labels),
     comments: normalizeList(task.comments),
     checklist: normalizeList(task.checklist),
+    links: normalizeList(task.links),
+    contentFormat: task.contentFormat ?? "",
+    contentStep: task.contentStep ?? "",
   };
 }
 
@@ -233,29 +356,62 @@ function emptyForm<TStatus extends string>(status: TStatus, channel?: string): T
     labels: [],
     comments: [],
     checklist: [],
+    links: [],
+    contentFormat: "",
+    contentStep: "",
   };
 }
 
 function Column<TTask extends KanbanTaskBase, TStatus extends string>({
+  actions,
+  canCreate,
   canUpdate,
   column,
+  currentUserName,
   icon: Icon,
   isOver,
   locked,
+  recentlyUpdatedIds,
+  showApprovalBadge,
   statusLabel,
   tasks,
   onCardClick,
+  onQuickCreate,
 }: {
+  actions: CardActions<TTask, TStatus>;
+  canCreate: boolean;
   canUpdate: boolean;
   column: ColumnConfig<TStatus>;
+  currentUserName?: string;
   icon: LucideIcon;
   isOver: boolean;
   locked?: boolean;
+  recentlyUpdatedIds: Set<string>;
+  showApprovalBadge: boolean;
   statusLabel: (status: string) => string;
   tasks: TTask[];
   onCardClick: (task: TTask) => void;
+  onQuickCreate: (status: TStatus, title: string) => void;
 }) {
   const { setNodeRef } = useDroppable({ id: `column:${column.value}` });
+  const [countBumped, setCountBumped] = useState(false);
+  const [quickTitle, setQuickTitle] = useState("");
+  const prevCountRef = useRef(tasks.length);
+
+  useEffect(() => {
+    if (prevCountRef.current === tasks.length) return;
+    prevCountRef.current = tasks.length;
+    setCountBumped(true);
+    const timeout = setTimeout(() => setCountBumped(false), 300);
+    return () => clearTimeout(timeout);
+  }, [tasks.length]);
+
+  function submitQuickCreate() {
+    const title = quickTitle.trim();
+    if (!title) return;
+    onQuickCreate(column.value, title);
+    setQuickTitle("");
+  }
 
   return (
     <div
@@ -269,15 +425,43 @@ function Column<TTask extends KanbanTaskBase, TStatus extends string>({
           <Icon className="text-stone-500" size={16} />
           <h2 className="text-[13px] font-bold text-pegasus-navy">{column.label}</h2>
         </div>
-        <span className="text-xs font-bold text-stone-400">{tasks.length}</span>
+        <span
+          className={`text-xs font-bold text-stone-400 transition-transform duration-200 ${
+            countBumped ? "scale-125 text-pegasus-primary" : ""
+          }`}
+        >
+          {tasks.length}
+        </span>
       </div>
+
+      {canCreate && !locked ? (
+        <div className="mb-2 flex items-center gap-1.5">
+          <input
+            className="h-8 flex-1 rounded-md border border-dashed border-stone-300 bg-transparent px-2 text-xs text-stone-600 placeholder:text-stone-400 focus:border-pegasus-sky focus:outline-none dark:border-slate-600 dark:text-slate-200"
+            onChange={(event) => setQuickTitle(event.target.value)}
+            onKeyDown={(event) => {
+              if (event.key === "Enter") {
+                event.preventDefault();
+                submitQuickCreate();
+              }
+            }}
+            placeholder="+ Adicionar rápido"
+            value={quickTitle}
+          />
+        </div>
+      ) : null}
+
       <SortableContext items={tasks.map((task) => task.id)} strategy={verticalListSortingStrategy}>
         <div className="min-h-36 space-y-2">
           {tasks.length > 0 ? (
             tasks.map((task) => (
               <SortableTaskCard
+                actions={actions}
                 canUpdate={canUpdate && !locked}
+                currentUserName={currentUserName}
+                highlighted={recentlyUpdatedIds.has(task.id)}
                 key={task.id}
+                showApprovalBadge={showApprovalBadge}
                 statusLabel={statusLabel}
                 task={task}
                 onCardClick={onCardClick}
@@ -341,13 +525,123 @@ function AssigneeAvatars({ names }: { names: string[] }) {
   );
 }
 
-function SortableTaskCard<TTask extends KanbanTaskBase>({
+type CardMenuItem = { label: string; icon: LucideIcon; onClick: () => void; danger?: boolean };
+
+/** Menu "⋯" leve, sem biblioteca nova — fecha ao clicar fora. */
+function CardMenu({ items }: { items: CardMenuItem[] }) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    function handleOutside(event: MouseEvent) {
+      if (ref.current && !ref.current.contains(event.target as Node)) setOpen(false);
+    }
+    document.addEventListener("mousedown", handleOutside);
+    return () => document.removeEventListener("mousedown", handleOutside);
+  }, [open]);
+
+  return (
+    <div className="relative shrink-0" ref={ref}>
+      <button
+        aria-label="Mais ações"
+        className="rounded p-0.5 text-stone-300 hover:bg-stone-100 hover:text-stone-600"
+        onClick={(event) => {
+          event.stopPropagation();
+          setOpen((v) => !v);
+        }}
+        type="button"
+      >
+        <MoreVertical size={14} />
+      </button>
+      {open ? (
+        <div
+          className="absolute right-0 top-full z-20 mt-1 w-52 rounded-lg border border-stone-200 bg-white py-1 shadow-lg dark:border-slate-700 dark:bg-slate-800"
+          onClick={(event) => event.stopPropagation()}
+        >
+          {items.map((item) => (
+            <button
+              className={`flex w-full items-center gap-2 px-3 py-1.5 text-left text-xs font-semibold hover:bg-stone-50 dark:hover:bg-slate-700 ${
+                item.danger ? "text-rose-600" : "text-stone-700 dark:text-slate-200"
+              }`}
+              key={item.label}
+              onClick={() => {
+                item.onClick();
+                setOpen(false);
+              }}
+              type="button"
+            >
+              <item.icon size={13} />
+              {item.label}
+            </button>
+          ))}
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+/** Esteira de produção do card (pontinhos clicáveis) — só aparece quando o card tem um contentFormat. */
+function ContentPipelineDots<TTask extends KanbanTaskBase>({
+  actions,
+  task,
+}: {
+  actions?: { onSetContentStep: (task: TTask, step: ContentStatus) => void };
+  task: TTask;
+}) {
+  if (!task.contentFormat) return null;
+  const pipeline = pipelineFor(task.contentFormat);
+  const currentIdx = pipeline.indexOf(task.contentStep ?? "referencia");
+
+  return (
+    <div className="mt-2" onClick={(event) => event.stopPropagation()}>
+      <div className="flex gap-0.5">
+        {pipeline.map((step, stepIdx) => (
+          <button
+            aria-label={`Marcar como ${STEP_LABEL[step]}`}
+            className={`h-1.5 flex-1 rounded-full transition ${
+              stepIdx <= currentIdx ? "bg-emerald-500" : "bg-stone-200 hover:bg-stone-300 dark:bg-slate-700"
+            } ${actions ? "" : "cursor-not-allowed"}`}
+            disabled={!actions}
+            key={step}
+            onClick={() => actions?.onSetContentStep(task, step)}
+            title={STEP_LABEL[step]}
+            type="button"
+          />
+        ))}
+      </div>
+      <p className="mt-1 text-[10px] font-semibold text-slate-400">{STEP_LABEL[task.contentStep ?? "referencia"]}</p>
+    </div>
+  );
+}
+
+type CardMoveList<TStatus extends string> = Array<{ label: string; value: TStatus; disabled: boolean }>;
+
+type CardActions<TTask extends KanbanTaskBase, TStatus extends string> = {
+  canDelete: boolean;
+  moveOptions: (task: TTask) => CardMoveList<TStatus>;
+  onAssignToMe: (task: TTask) => void;
+  onMoveTo: (task: TTask, status: TStatus) => void;
+  onDuplicate: (task: TTask) => void;
+  onDelete: (task: TTask) => void;
+  onSetContentStep: (task: TTask, step: ContentStatus) => void;
+};
+
+function SortableTaskCard<TTask extends KanbanTaskBase, TStatus extends string>({
+  actions,
   canUpdate,
+  currentUserName,
+  highlighted,
+  showApprovalBadge,
   statusLabel,
   task,
   onCardClick,
 }: {
+  actions: CardActions<TTask, TStatus>;
   canUpdate: boolean;
+  currentUserName?: string;
+  highlighted?: boolean;
+  showApprovalBadge: boolean;
   statusLabel: (status: string) => string;
   task: TTask;
   onCardClick: (task: TTask) => void;
@@ -372,10 +666,14 @@ function SortableTaskCard<TTask extends KanbanTaskBase>({
 
   return (
     <TaskCard
+      actions={actions}
+      currentUserName={currentUserName}
       dragAttributes={attributes as unknown as Record<string, unknown>}
       dragListeners={listeners as unknown as Record<string, (...event: unknown[]) => void>}
+      highlighted={highlighted}
       isDragging={isDragging}
       refCallback={setNodeRef}
+      showApprovalBadge={showApprovalBadge}
       statusLabel={statusLabel}
       style={style}
       task={task}
@@ -384,20 +682,28 @@ function SortableTaskCard<TTask extends KanbanTaskBase>({
   );
 }
 
-function TaskCard<TTask extends KanbanTaskBase>({
+function TaskCard<TTask extends KanbanTaskBase, TStatus extends string = string>({
+  actions,
+  currentUserName,
   dragAttributes,
   dragListeners,
+  highlighted = false,
   isDragging = false,
   refCallback,
+  showApprovalBadge = false,
   statusLabel,
   style,
   task,
   onCardClick,
 }: {
+  actions?: CardActions<TTask, TStatus>;
+  currentUserName?: string;
   dragAttributes?: Record<string, unknown>;
   dragListeners?: Record<string, (...event: unknown[]) => void>;
+  highlighted?: boolean;
   isDragging?: boolean;
   refCallback?: (node: HTMLElement | null) => void;
+  showApprovalBadge?: boolean;
   statusLabel: (status: string) => string;
   style?: CSSProperties;
   task: TTask;
@@ -406,16 +712,24 @@ function TaskCard<TTask extends KanbanTaskBase>({
   const labels = normalizeList(task.labels);
   const checklist = normalizeList(task.checklist);
   const comments = normalizeList(task.comments);
+  const links = normalizeList(task.links);
   const doneItems = checklist.filter((item) => item.done).length;
-  const overdue = isOverdue(task.dueDate);
+  const checklistProgress = checklist.length > 0 ? Math.round((doneItems / checklist.length) * 100) : 0;
+  const due = humanDueDate(task.dueDate);
+  const stuckDays = daysInColumn(task.statusChangedAt);
+  const isStuck = stuckDays >= STUCK_IN_COLUMN_DAYS;
+  const meta = channelMeta(task.channel);
 
   const assignees = normalizeList(task.assignedTo);
+  const isMine = currentUserName ? assignees.some((n) => n.toLowerCase() === currentUserName.toLowerCase()) : false;
 
   return (
     <article
-      className={`card-interactive focus-ring rounded-lg border border-stone-200 bg-white p-3 ${
-        isDragging ? "scale-[1.02] opacity-70 shadow-xl" : ""
-      } ${dragListeners ? "cursor-grab active:cursor-grabbing" : ""}`}
+      className={`card-interactive focus-ring relative rounded-lg border bg-white p-3 pl-3.5 dark:bg-slate-800 ${
+        meta ? `border-l-[3px] ${meta.bar} border-y-stone-200 border-r-stone-200 dark:border-y-slate-700 dark:border-r-slate-700` : "border-stone-200 dark:border-slate-700"
+      } ${isDragging ? "scale-[1.04] rotate-1 opacity-70 shadow-xl" : ""} ${
+        dragListeners ? "cursor-grab active:cursor-grabbing" : ""
+      } ${highlighted ? "card-updated" : ""} ${isMine ? "ring-1 ring-pegasus-primary/40" : ""}`}
       onClick={() => onCardClick(task)}
       onKeyDown={(event) => {
         if (event.key === "Enter" || event.key === " ") {
@@ -434,15 +748,49 @@ function TaskCard<TTask extends KanbanTaskBase>({
         <span className={`mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full ${priorityDot[task.priority] ?? "bg-stone-300"}`} />
         <GripVertical aria-hidden="true" className="mt-0.5 shrink-0 text-stone-300" size={13} />
         <div className="min-w-0 flex-1">
-          <h3 className="text-[13px] font-bold leading-snug text-pegasus-navy">{task.title}</h3>
+          <div className="flex items-start justify-between gap-1.5">
+            <h3 className="min-w-0 text-[13px] font-bold leading-snug text-pegasus-navy">{task.title}</h3>
+            {actions ? (
+              <CardMenu
+                items={[
+                  {
+                    label: isMine ? "Já é meu" : "Atribuir a mim",
+                    icon: UserPlus,
+                    onClick: () => actions.onAssignToMe(task),
+                  },
+                  ...actions.moveOptions(task).map((option) => ({
+                    label: `Mover para ${option.label}`,
+                    icon: FolderOpen,
+                    onClick: () => actions.onMoveTo(task, option.value),
+                  })),
+                  { label: "Duplicar", icon: Copy, onClick: () => actions.onDuplicate(task) },
+                  ...(actions.canDelete
+                    ? [{ label: "Excluir", icon: Trash2, onClick: () => actions.onDelete(task), danger: true }]
+                    : []),
+                ]}
+              />
+            ) : null}
+          </div>
           {task.description ? (
             <p className="mt-1 text-xs leading-5 text-slate-500">{truncate(task.description)}</p>
           ) : null}
 
-          {labels.length > 0 || task.channel ? (
+          {showApprovalBadge ? (
+            <span className="mt-2 inline-flex items-center gap-1 rounded-full bg-amber-50 px-2 py-0.5 text-[10px] font-bold text-amber-700 ring-1 ring-amber-200">
+              <Clock size={10} />
+              Aguardando aprovação
+            </span>
+          ) : null}
+
+          {task.contentFormat ? (
+            <ContentPipelineDots actions={actions} task={task} />
+          ) : null}
+
+          {labels.length > 0 || meta ? (
             <div className="mt-2 flex flex-wrap gap-1.5">
-              {task.channel ? (
-                <span className="inline-flex rounded-full bg-stone-100 px-2 py-0.5 text-[10px] font-bold text-stone-600">
+              {meta ? (
+                <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-bold ${meta.chip}`}>
+                  <meta.icon size={10} />
                   {task.channel}
                 </span>
               ) : null}
@@ -457,11 +805,35 @@ function TaskCard<TTask extends KanbanTaskBase>({
             </div>
           ) : null}
 
+          {links.length > 0 ? (
+            <div className="mt-2 flex flex-wrap gap-1.5" onClick={(event) => event.stopPropagation()}>
+              {links.slice(0, 3).map((link) => {
+                const LinkIcon = linkIconFor(link.url);
+                return (
+                  <a
+                    className="inline-flex items-center gap-1 rounded-full bg-pegasus-ice px-2 py-0.5 text-[10px] font-bold text-pegasus-primary hover:underline"
+                    href={link.url}
+                    key={link.id}
+                    rel="noopener noreferrer"
+                    target="_blank"
+                    title={link.label || link.url}
+                  >
+                    <LinkIcon size={10} />
+                    {link.label || "Link"}
+                  </a>
+                );
+              })}
+              {links.length > 3 ? (
+                <span className="text-[10px] font-bold text-stone-400">+{links.length - 3}</span>
+              ) : null}
+            </div>
+          ) : null}
+
           <div className="mt-2.5 flex items-center justify-between gap-2">
             <div className="flex min-w-0 items-center gap-1.5">
               <AssigneeAvatars names={assignees} />
-              <span className={`truncate text-[11px] font-semibold ${overdue ? "text-rose-600" : "text-stone-500"}`}>
-                {formatDate(task.dueDate)}
+              <span className={`truncate text-[11px] font-semibold ${due.overdue ? "text-rose-600" : "text-stone-500"}`}>
+                {due.label}
               </span>
             </div>
             <div className="flex shrink-0 items-center gap-2 text-[11px] font-bold text-stone-400">
@@ -479,6 +851,23 @@ function TaskCard<TTask extends KanbanTaskBase>({
               ) : null}
             </div>
           </div>
+
+          {isStuck ? (
+            <p className="mt-1.5 text-[10px] font-bold text-amber-600">
+              Há {stuckDays} dias em {statusLabel(task.status)}
+            </p>
+          ) : null}
+
+          {checklist.length > 0 ? (
+            <div className="mt-1.5 h-1 w-full overflow-hidden rounded-full bg-stone-100">
+              <div
+                className={`h-full rounded-full transition-all duration-300 ${
+                  checklistProgress === 100 ? "bg-emerald-500" : "bg-pegasus-sky"
+                }`}
+                style={{ width: `${checklistProgress}%` }}
+              />
+            </div>
+          ) : null}
         </div>
       </div>
 
@@ -499,21 +888,31 @@ export function AdvancedKanban<TTask extends KanbanTaskBase, TStatus extends str
   canCreate,
   canDelete,
   canUpdate,
+  channelChecklistTemplates,
   channelOptions,
+  contentFormatOptions,
   columns,
   currentUserName,
   description,
   emptyStatus,
   filters,
+  finishedColumnLabel,
   icon,
   isLoading,
   isSaving,
   labelsAsTab,
   minDueDate,
   onApprove,
+  onCleanup,
+  onCleanupPreview,
+  onFetchHistory,
+  onOpenTaskIdHandled,
+  openTaskId,
+  storageKey,
   onCreate,
   onDelete,
   onMove,
+  onRefresh,
   onReject,
   onUpdate,
   responsibleOptions,
@@ -539,26 +938,231 @@ export function AdvancedKanban<TTask extends KanbanTaskBase, TStatus extends str
   const [assigneeInput, setAssigneeInput] = useState("");
   const [commentInput, setCommentInput] = useState("");
   const [checklistInput, setChecklistInput] = useState("");
+  const [cardOverrides, setCardOverrides] = useState<Record<string, { status: TStatus; position: number }>>({});
+  const [recentlyUpdated, setRecentlyUpdated] = useState<Record<string, number>>({});
+  const [isCleanupOpen, setIsCleanupOpen] = useState(false);
+  const [isCleaningUp, setIsCleaningUp] = useState(false);
+  const [cleanupPreview, setCleanupPreview] = useState<{ count: number; retentionDays: number } | null>(null);
+  const [quickFilter, setQuickFilter] = useState<"todos" | "meus" | "atrasados" | "semana">(() => {
+    if (!storageKey) return "todos";
+    try {
+      const saved = window.localStorage.getItem(`${storageKey}:quickFilter`);
+      return saved === "meus" || saved === "atrasados" || saved === "semana" ? saved : "todos";
+    } catch {
+      return "todos";
+    }
+  });
+  const [quickSearch, setQuickSearch] = useState("");
+  const quickSearchRef = useRef<HTMLInputElement>(null);
+  const [historyEntries, setHistoryEntries] = useState<
+    Array<{ id: string; action: string; userName: string | null; meta: unknown; createdAt: string }>
+  >([]);
+  const [isHistoryLoading, setIsHistoryLoading] = useState(false);
+
+  useEffect(() => {
+    if (!storageKey) return;
+    try {
+      window.localStorage.setItem(`${storageKey}:quickFilter`, quickFilter);
+    } catch {
+      // localStorage pode estar bloqueado (modo privado); não é crítico.
+    }
+  }, [quickFilter, storageKey]);
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
     useSensor(TouchSensor, { activationConstraint: { delay: 160, tolerance: 8 } }),
   );
+
+  // Aplica o movimento/reordenação otimista por cima da lista "oficial" até o servidor confirmar.
+  const displayTasks = useMemo(() => {
+    if (Object.keys(cardOverrides).length === 0) return tasks;
+    return tasks
+      .map((task) => {
+        const override = cardOverrides[task.id];
+        if (!override) return task;
+        if (override.status === task.status && override.position === task.position) return task;
+        return { ...task, status: override.status, position: override.position } as TTask;
+      })
+      .sort((a, b) => (a.position ?? 0) - (b.position ?? 0));
+  }, [tasks, cardOverrides]);
+
   const activeTask = useMemo(
-    () => tasks.find((task) => task.id === activeTaskId) ?? null,
-    [activeTaskId, tasks],
+    () => displayTasks.find((task) => task.id === activeTaskId) ?? null,
+    [activeTaskId, displayTasks],
   );
+
+  // Filtros rápidos (Meus / Atrasados / Esta semana) + busca por texto, por cima da lista oficial.
+  const visibleTasks = useMemo(() => {
+    const term = quickSearch.trim().toLowerCase();
+    const weekFromNow = new Date();
+    weekFromNow.setHours(23, 59, 59, 999);
+    weekFromNow.setDate(weekFromNow.getDate() + 7);
+
+    return displayTasks.filter((task) => {
+      if (term) {
+        const haystack = `${task.title} ${task.description ?? ""}`.toLowerCase();
+        if (!haystack.includes(term)) return false;
+      }
+      if (quickFilter === "meus") {
+        if (!currentUserName) return true;
+        return normalizeList(task.assignedTo).some((n) => n.toLowerCase() === currentUserName.toLowerCase());
+      }
+      if (quickFilter === "atrasados") {
+        return isOverdue(task.dueDate);
+      }
+      if (quickFilter === "semana") {
+        if (!task.dueDate) return false;
+        const due = new Date(`${task.dueDate.slice(0, 10)}T12:00:00.000`);
+        return due <= weekFromNow;
+      }
+      return true;
+    });
+  }, [displayTasks, quickFilter, quickSearch, currentUserName]);
+
+  const prevTasksRef = useRef<Map<string, string>>(new Map());
+  const hasLoadedOnceRef = useRef(false);
+  const selfMovedRef = useRef<Map<string, number>>(new Map());
+  const highlightTimeoutsRef = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
+
+  // Detecta cards alterados (updatedAt mudou) por outra pessoa e acende o destaque suave,
+  // e "assenta" o override otimista assim que o servidor confirma o novo status.
+  useEffect(() => {
+    if (hasLoadedOnceRef.current) {
+      const now = Date.now();
+      const changedIds: string[] = [];
+      for (const task of tasks) {
+        const prevUpdatedAt = prevTasksRef.current.get(task.id);
+        const movedBySelfAt = selfMovedRef.current.get(task.id);
+        const wasSelfMove = movedBySelfAt !== undefined && now - movedBySelfAt < MIN_TIME_BETWEEN_REFRESHES_MS;
+        if (prevUpdatedAt && prevUpdatedAt !== task.updatedAt && !wasSelfMove) {
+          changedIds.push(task.id);
+        }
+      }
+      if (changedIds.length > 0) {
+        setRecentlyUpdated((current) => {
+          const next = { ...current };
+          for (const id of changedIds) next[id] = now;
+          return next;
+        });
+        for (const id of changedIds) {
+          clearTimeout(highlightTimeoutsRef.current[id]);
+          highlightTimeoutsRef.current[id] = setTimeout(() => {
+            setRecentlyUpdated((current) => {
+              if (!(id in current)) return current;
+              const next = { ...current };
+              delete next[id];
+              return next;
+            });
+          }, CARD_UPDATED_HIGHLIGHT_MS);
+        }
+      }
+    } else {
+      hasLoadedOnceRef.current = true;
+    }
+
+    setCardOverrides((current) => {
+      if (Object.keys(current).length === 0) return current;
+      let changed = false;
+      const next = { ...current };
+      for (const task of tasks) {
+        const override = next[task.id];
+        if (override && override.status === task.status && override.position === task.position) {
+          delete next[task.id];
+          changed = true;
+        }
+      }
+      return changed ? next : current;
+    });
+
+    const nextMap = new Map<string, string>();
+    for (const task of tasks) nextMap.set(task.id, task.updatedAt);
+    prevTasksRef.current = nextMap;
+  }, [tasks]);
+
+  useEffect(() => {
+    return () => {
+      for (const timeout of Object.values(highlightTimeoutsRef.current)) clearTimeout(timeout);
+    };
+  }, []);
+
+  const isBusy = Boolean(activeTaskId || isFormOpen || viewTask || deleteTarget || approvalTask);
+  const isBusyRef = useRef(isBusy);
+  isBusyRef.current = isBusy;
+
+  // Atualização automática em segundo plano: a cada 30s e ao voltar o foco da aba,
+  // mas nunca enquanto a pessoa está arrastando um card ou com algum modal aberto.
+  useEffect(() => {
+    if (!onRefresh) return;
+    const refresh: () => Promise<void> | void = onRefresh;
+
+    const lastRefreshRef = { current: Date.now() };
+
+    function refreshIfIdle() {
+      if (isBusyRef.current) return;
+      lastRefreshRef.current = Date.now();
+      void refresh();
+    }
+
+    function handleWake() {
+      if (document.visibilityState === "hidden") return;
+      if (Date.now() - lastRefreshRef.current < MIN_TIME_BETWEEN_REFRESHES_MS) return;
+      refreshIfIdle();
+    }
+
+    const interval = setInterval(refreshIfIdle, BACKGROUND_REFRESH_INTERVAL_MS);
+    window.addEventListener("focus", handleWake);
+    document.addEventListener("visibilitychange", handleWake);
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener("focus", handleWake);
+      document.removeEventListener("visibilitychange", handleWake);
+    };
+  }, [onRefresh]);
 
   // Auto-close view modal when a scheduled task gets published by the cron job
   useEffect(() => {
     if (!viewTask) return;
-    const updated = tasks.find((t) => t.id === viewTask.id);
+    const updated = displayTasks.find((t) => t.id === viewTask.id);
     if (updated && updated.status === "published" && viewTask.status !== "published") {
       setViewTask(null);
     }
-  }, [tasks, viewTask]);
+  }, [displayTasks, viewTask]);
+
+  // Atalhos: N cria uma tarefa, / foca a busca — só quando a pessoa não está digitando em outro campo.
+  useEffect(() => {
+    function isTypingTarget(target: EventTarget | null) {
+      const el = target as HTMLElement | null;
+      return Boolean(el && (el.tagName === "INPUT" || el.tagName === "TEXTAREA" || el.isContentEditable));
+    }
+
+    function handleKeyDown(event: KeyboardEvent) {
+      if (isBusyRef.current || isTypingTarget(event.target) || event.metaKey || event.ctrlKey || event.altKey) return;
+      if (event.key === "n" || event.key === "N") {
+        if (!canCreate) return;
+        event.preventDefault();
+        openCreateModal();
+      } else if (event.key === "/") {
+        event.preventDefault();
+        quickSearchRef.current?.focus();
+      }
+    }
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [canCreate]);
 
   function statusLabel(status: string) {
     return columns.find((column) => column.value === status)?.label ?? status;
+  }
+
+  function describeHistoryAction(entry: { action: string; meta: unknown }): string {
+    const meta = (entry.meta ?? {}) as { from?: string | null; to?: string | null };
+    if (entry.action === "task.create") return "criou o card";
+    if (entry.action === "task.move") return `moveu de ${statusLabel(meta.from ?? "")} para ${statusLabel(meta.to ?? "")}`;
+    if (entry.action === "task.dueDate") {
+      return meta.to ? `mudou o prazo para ${formatDate(meta.to)}` : "removeu o prazo";
+    }
+    return entry.action;
   }
 
   function openCreateModal() {
@@ -612,7 +1216,25 @@ export function AdvancedKanban<TTask extends KanbanTaskBase, TStatus extends str
 
   function openViewModal(task: TTask) {
     setViewTask(task);
+    setHistoryEntries([]);
+    if (!onFetchHistory) return;
+    setIsHistoryLoading(true);
+    onFetchHistory(task.id)
+      .then(setHistoryEntries)
+      .catch(() => setHistoryEntries([]))
+      .finally(() => setIsHistoryLoading(false));
   }
+
+  // Link direto pra um card (ex.: vindo do Calendário) — abre o modal de detalhes assim que o
+  // card em questão aparecer na lista, e avisa o pai pra limpar o parâmetro da URL.
+  useEffect(() => {
+    if (!openTaskId) return;
+    const target = tasks.find((t) => t.id === openTaskId);
+    if (!target) return;
+    openViewModal(target);
+    onOpenTaskIdHandled?.();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [openTaskId, tasks]);
 
   async function toggleViewChecklistItem(itemId: string, done: boolean) {
     if (!viewTask) return;
@@ -643,10 +1265,50 @@ export function AdvancedKanban<TTask extends KanbanTaskBase, TStatus extends str
     return true;
   }
 
+  /** Posição de fim de coluna, com base no que já está sendo exibido (inclui overrides em voo). */
+  function endOfColumnPosition(status: string, excludeId?: string) {
+    const columnTasks = displayTasks.filter((t) => t.status === status && t.id !== excludeId);
+    const last = columnTasks[columnTasks.length - 1];
+    return (last?.position ?? 0) + 1;
+  }
+
+  /** Posição pra inserir o card imediatamente antes do que está sob o cursor (fim da coluna, se solto na coluna vazia/no espaço). */
+  function computeDropPosition(overId: string, status: string, activeId: string): number {
+    if (overId.startsWith("column:")) return endOfColumnPosition(status, activeId);
+
+    const columnTasks = displayTasks
+      .filter((t) => t.status === status && t.id !== activeId)
+      .sort((a, b) => (a.position ?? 0) - (b.position ?? 0));
+    const overIndex = columnTasks.findIndex((t) => t.id === overId);
+    if (overIndex === -1) return endOfColumnPosition(status, activeId);
+
+    const before = columnTasks[overIndex - 1];
+    const over = columnTasks[overIndex];
+    return before ? (before.position! + over.position!) / 2 : over.position! - 1;
+  }
+
+  async function moveTaskTo(task: TTask, status: TStatus, position: number) {
+    const previous = { status: task.status as TStatus, position: task.position ?? 0 };
+    selfMovedRef.current.set(task.id, Date.now());
+    setCardOverrides((current) => ({ ...current, [task.id]: { status, position } }));
+    setViewTask((current) => (current && current.id === task.id ? ({ ...current, status } as TTask) : current));
+    try {
+      await onMove(task, status, position);
+    } catch {
+      setCardOverrides((current) => {
+        const next = { ...current };
+        delete next[task.id];
+        return next;
+      });
+      setViewTask((current) =>
+        current && current.id === task.id ? ({ ...current, status: previous.status } as TTask) : current,
+      );
+    }
+  }
+
   async function handleMoveTo(task: TTask, status: TStatus) {
     if (!isMoveAllowed(task.status, status)) return;
-    await onMove(task, status);
-    setViewTask((current) => (current && current.id === task.id ? ({ ...current, status } as TTask) : current));
+    await moveTaskTo(task, status, endOfColumnPosition(status));
   }
 
   function handleDragStart(event: DragStartEvent) {
@@ -657,7 +1319,7 @@ export function AdvancedKanban<TTask extends KanbanTaskBase, TStatus extends str
     const overId = event.over?.id ? String(event.over.id) : null;
     const nextColumn = overId?.startsWith("column:")
       ? overId.replace("column:", "")
-      : tasks.find((task) => task.id === overId)?.status ?? null;
+      : displayTasks.find((task) => task.id === overId)?.status ?? null;
 
     setOverColumn(nextColumn);
   }
@@ -668,19 +1330,67 @@ export function AdvancedKanban<TTask extends KanbanTaskBase, TStatus extends str
 
     if (!canUpdate) return;
 
-    const active = tasks.find((task) => task.id === String(event.active.id));
+    const active = displayTasks.find((task) => task.id === String(event.active.id));
     const overId = event.over?.id ? String(event.over.id) : "";
 
     if (!active || !overId) return;
 
-    const nextStatus = overId.startsWith("column:")
-      ? overId.replace("column:", "")
-      : tasks.find((task) => task.id === overId)?.status;
+    const nextStatus = (
+      overId.startsWith("column:") ? overId.replace("column:", "") : displayTasks.find((task) => task.id === overId)?.status
+    ) as TStatus | undefined;
 
-    if (!nextStatus || !isMoveAllowed(active.status, nextStatus)) return;
+    if (!nextStatus) return;
 
-    await onMove(active, nextStatus as TStatus);
+    const isColumnChange = nextStatus !== active.status;
+    if (isColumnChange && !isMoveAllowed(active.status, nextStatus)) return;
+    if (!isColumnChange && overId === active.id) return;
+
+    const position = computeDropPosition(overId, nextStatus, active.id);
+    await moveTaskTo(active, nextStatus, position);
   }
+
+  function moveOptionsFor(task: TTask): CardMoveList<TStatus> {
+    return columns
+      .filter((column) => column.value !== task.status)
+      .map((column) => ({ label: column.label, value: column.value, disabled: !isMoveAllowed(task.status, column.value) }))
+      .filter((option) => !option.disabled);
+  }
+
+  async function handleAssignToMe(task: TTask) {
+    if (!currentUserName) return;
+    const already = normalizeList(task.assignedTo).some((n) => n.toLowerCase() === currentUserName.toLowerCase());
+    if (already) return;
+    await onUpdate(task, { ...taskToForm(task, emptyStatus), assignedTo: [...normalizeList(task.assignedTo), currentUserName] });
+  }
+
+  async function handleQuickCreate(status: TStatus, title: string) {
+    await onCreate({ ...emptyForm(status, channelOptions?.[0]?.value), title });
+  }
+
+  async function handleDuplicate(task: TTask) {
+    const base = taskToForm(task, emptyStatus);
+    await onCreate({
+      ...base,
+      title: `${task.title} (cópia)`,
+      checklist: base.checklist.map((item) => ({ ...item, id: makeId("check"), done: false })),
+      comments: [],
+      contentStep: base.contentFormat ? pipelineFor(base.contentFormat)[0] : "",
+    });
+  }
+
+  async function handleSetContentStep(task: TTask, step: ContentStatus) {
+    await onUpdate(task, { ...taskToForm(task, emptyStatus), contentStep: step });
+  }
+
+  const cardActions: CardActions<TTask, TStatus> = {
+    canDelete,
+    moveOptions: moveOptionsFor,
+    onAssignToMe: (task) => void handleAssignToMe(task),
+    onMoveTo: (task, status) => void handleMoveTo(task, status),
+    onDuplicate: (task) => void handleDuplicate(task),
+    onDelete: (task) => setDeleteTarget(task),
+    onSetContentStep: (task, step) => void handleSetContentStep(task, step),
+  };
 
   function addLabelValue(value: string) {
     const nextLabel = value.trim();
@@ -753,6 +1463,31 @@ export function AdvancedKanban<TTask extends KanbanTaskBase, TStatus extends str
     setIsFormOpen(false);
   }
 
+  async function openCleanupDialog() {
+    setIsCleanupOpen(true);
+    setCleanupPreview(null);
+    if (!onCleanupPreview) return;
+    try {
+      setCleanupPreview(await onCleanupPreview());
+    } catch {
+      setCleanupPreview({ count: 0, retentionDays: 0 });
+    }
+  }
+
+  async function handleCleanupConfirm() {
+    if (!onCleanup) return;
+    setIsCleaningUp(true);
+    try {
+      await onCleanup();
+      setIsCleanupOpen(false);
+      setCleanupPreview(null);
+    } catch {
+      // o pai já mostrou o erro (toast); mantém o diálogo aberto pra tentar de novo
+    } finally {
+      setIsCleaningUp(false);
+    }
+  }
+
   async function confirmDelete() {
     if (!deleteTarget) return;
     await onDelete(deleteTarget);
@@ -761,6 +1496,11 @@ export function AdvancedKanban<TTask extends KanbanTaskBase, TStatus extends str
   }
 
   const Icon = icon;
+  const recentlyUpdatedSet = useMemo(() => new Set(Object.keys(recentlyUpdated)), [recentlyUpdated]);
+  const dropAnimation = useMemo(
+    () => (typeof window !== "undefined" && window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ? null : undefined),
+    [],
+  );
 
   return (
     <div className="space-y-8">
@@ -768,22 +1508,98 @@ export function AdvancedKanban<TTask extends KanbanTaskBase, TStatus extends str
         title={title}
         description={description}
         action={
-          canCreate ? (
-            <Button onClick={openCreateModal} className="w-full sm:w-auto">
-              <Plus size={17} />
-              Nova tarefa
-            </Button>
+          canCreate || (onCleanup && canDelete) ? (
+            <div className="flex flex-col gap-2 sm:flex-row">
+              {onCleanup && canDelete ? (
+                <Button className="w-full sm:w-auto" onClick={openCleanupDialog} variant="secondary">
+                  <Trash2 size={16} />
+                  Limpar antigos
+                </Button>
+              ) : null}
+              {canCreate ? (
+                <Button onClick={openCreateModal} className="w-full sm:w-auto">
+                  <Plus size={17} />
+                  Nova tarefa
+                </Button>
+              ) : null}
+            </div>
           ) : null
         }
       />
 
       {filters}
 
+      <div className="flex flex-wrap items-center gap-2">
+        {([
+          { value: "todos", label: "Todos" },
+          { value: "meus", label: "Meus" },
+          { value: "atrasados", label: "Atrasados" },
+          { value: "semana", label: "Esta semana" },
+        ] as const).map((option) => (
+          <button
+            className={`rounded-full border px-3 py-1.5 text-xs font-bold transition ${
+              quickFilter === option.value
+                ? "border-pegasus-primary bg-pegasus-primary text-white"
+                : "border-stone-200 bg-white text-slate-600 hover:border-pegasus-primary hover:text-pegasus-primary dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300"
+            }`}
+            key={option.value}
+            onClick={() => setQuickFilter(option.value)}
+            type="button"
+          >
+            {option.label}
+          </button>
+        ))}
+        <span className="relative ml-auto w-full max-w-xs">
+          <Search className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-stone-400" size={14} />
+          <input
+            className="h-9 w-full rounded-md border border-stone-200 bg-white pl-8 pr-7 text-xs text-slate-700 focus:border-pegasus-sky focus:outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
+            onChange={(event) => setQuickSearch(event.target.value)}
+            placeholder="Buscar (/)"
+            ref={quickSearchRef}
+            value={quickSearch}
+          />
+          {quickSearch ? (
+            <button
+              aria-label="Limpar busca"
+              className="absolute right-2 top-1/2 -translate-y-1/2 text-stone-400 hover:text-stone-600"
+              onClick={() => setQuickSearch("")}
+              type="button"
+            >
+              <X size={14} />
+            </button>
+          ) : null}
+        </span>
+      </div>
+
       {isLoading ? (
-        <div className="panel flex items-center gap-3 p-6 text-sm font-bold text-pegasus-primary">
-          <Loader2 className="animate-spin" size={18} />
-          Carregando {areaLabel}
-        </div>
+        <section className="-mx-4 overflow-x-auto px-4 pb-2 sm:mx-0 sm:px-0 xl:overflow-visible">
+          <div
+            className={`flex min-w-max gap-4 xl:grid xl:min-w-0 xl:gap-4 ${
+              columns.length >= 5 ? "xl:grid-cols-5" : columns.length === 4 ? "xl:grid-cols-4" : "xl:grid-cols-3"
+            }`}
+          >
+            {columns.map((column) => (
+              <div className="w-[84vw] max-w-sm shrink-0 rounded-xl p-2 sm:w-80 xl:w-auto xl:max-w-none" key={column.value}>
+                <div className="mb-3 flex items-center justify-between border-b-2 border-stone-900 px-1 pb-2.5 dark:border-slate-200">
+                  <div className="h-4 w-24 rounded bg-stone-200 motion-safe:animate-pulse dark:bg-slate-700" />
+                  <div className="h-4 w-5 rounded bg-stone-200 motion-safe:animate-pulse dark:bg-slate-700" />
+                </div>
+                <div className="space-y-2">
+                  {[0, 1, 2].map((i) => (
+                    <div
+                      className="rounded-lg border border-stone-200 bg-white p-3 motion-safe:animate-pulse dark:border-slate-700 dark:bg-slate-800"
+                      key={i}
+                    >
+                      <div className="h-3 w-3/4 rounded bg-stone-200 dark:bg-slate-700" />
+                      <div className="mt-2 h-3 w-1/2 rounded bg-stone-100 dark:bg-slate-700" />
+                      <div className="mt-4 h-2 w-full rounded bg-stone-100 dark:bg-slate-700" />
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
       ) : (
         <DndContext
           collisionDetection={closestCenter}
@@ -804,22 +1620,28 @@ export function AdvancedKanban<TTask extends KanbanTaskBase, TStatus extends str
             >
               {columns.map((column) => (
                 <Column
+                  actions={cardActions}
+                  canCreate={canCreate}
                   canUpdate={canUpdate}
                   column={column}
+                  currentUserName={currentUserName}
                   icon={Icon}
                   isOver={overColumn === column.value}
                   key={column.value}
                   locked={scheduledColumn === column.value}
+                  recentlyUpdatedIds={recentlyUpdatedSet}
+                  showApprovalBadge={approvalColumn === column.value}
                   statusLabel={statusLabel}
-                  tasks={tasks.filter((task) => task.status === column.value)}
+                  tasks={visibleTasks.filter((task) => task.status === column.value)}
                   onCardClick={openViewModal}
+                  onQuickCreate={(status, title) => void handleQuickCreate(status, title)}
                 />
               ))}
             </div>
           </section>
-          <DragOverlay>
+          <DragOverlay dropAnimation={dropAnimation}>
             {activeTask ? (
-              <div className="w-80 rotate-2 cursor-grabbing">
+              <div className="w-80 rotate-3 scale-105 cursor-grabbing drop-shadow-2xl">
                 <TaskCard statusLabel={statusLabel} task={activeTask} onCardClick={() => undefined} />
               </div>
             ) : null}
@@ -862,6 +1684,21 @@ export function AdvancedKanban<TTask extends KanbanTaskBase, TStatus extends str
                 )) : <p className="text-sm text-slate-500">Sem etiquetas.</p>}
               </div>
             </section>
+
+            {normalizeList(viewTask.links).length > 0 ? (
+              <section className="rounded-2xl border border-stone-200 bg-white p-4">
+                <h3 className="font-black text-pegasus-navy">Links</h3>
+                <ul className="mt-2 space-y-1">
+                  {normalizeList(viewTask.links).map((link) => (
+                    <li key={link.id}>
+                      <a className="text-sm font-bold text-pegasus-primary underline" href={link.url} rel="noopener noreferrer" target="_blank">
+                        {link.label || link.url}
+                      </a>
+                    </li>
+                  ))}
+                </ul>
+              </section>
+            ) : null}
 
             <section className="rounded-2xl border border-stone-200 bg-white p-4">
               <div className="flex items-center justify-between">
@@ -927,10 +1764,24 @@ export function AdvancedKanban<TTask extends KanbanTaskBase, TStatus extends str
                 <p className="text-sm text-slate-500">
                   Criada em {formatDate(viewTask.createdAt)}. Última atualização em {formatDate(viewTask.updatedAt)}.
                 </p>
+                {onFetchHistory ? (
+                  isHistoryLoading ? (
+                    <p className="text-xs text-slate-400">Carregando histórico...</p>
+                  ) : historyEntries.length > 0 ? (
+                    <ul className="space-y-1.5 border-l-2 border-stone-100 pl-3">
+                      {historyEntries.map((entry) => (
+                        <li className="text-xs text-slate-500" key={entry.id}>
+                          <span className="font-semibold text-slate-600">{entry.userName ?? "Alguém"}</span>{" "}
+                          {describeHistoryAction(entry)} · {formatDate(entry.createdAt)}
+                        </li>
+                      ))}
+                    </ul>
+                  ) : null
+                ) : null}
                 {normalizeList(viewTask.comments).map((comment) => (
                   <div className="rounded-2xl bg-pegasus-surface p-3 text-sm" key={comment.id}>
                     <p className="font-bold text-pegasus-navy">{comment.author || "Pegasus"}</p>
-                    <p className="mt-1 text-slate-600">{comment.text}</p>
+                    <p className="mt-1 whitespace-pre-wrap text-slate-600">{renderMentions(comment.text)}</p>
                     <p className="mt-2 text-xs text-slate-400">{formatDate(comment.createdAt)}</p>
                   </div>
                 ))}
@@ -1084,6 +1935,35 @@ export function AdvancedKanban<TTask extends KanbanTaskBase, TStatus extends str
                   </div>
                 )}
               </div>
+              {contentFormatOptions ? (
+                <div className="grid gap-4 md:grid-cols-2">
+                  <Select
+                    disabled={isSaving}
+                    label="Formato"
+                    onChange={(event) => {
+                      const format = event.target.value as ContentFormat | "";
+                      const contentStep = format
+                        ? form.contentStep
+                          ? normalizeStatusForFormat(format, form.contentStep)
+                          : pipelineFor(format)[0]
+                        : "";
+                      setForm({ ...form, contentFormat: format, contentStep });
+                    }}
+                    options={[{ label: "Tarefa solta (sem esteira)", value: "" }, ...contentFormatOptions]}
+                    value={form.contentFormat}
+                  />
+                  {form.contentFormat ? (
+                    <Select
+                      disabled={isSaving}
+                      label="Etapa atual"
+                      onChange={(event) => setForm({ ...form, contentStep: event.target.value as ContentStatus })}
+                      options={pipelineFor(form.contentFormat).map((step) => ({ label: STEP_LABEL[step], value: step }))}
+                      value={form.contentStep}
+                    />
+                  ) : null}
+                </div>
+              ) : null}
+
               <div className="grid gap-4 md:grid-cols-2">
                 <Input
                   disabled={isSaving}
@@ -1097,7 +1977,16 @@ export function AdvancedKanban<TTask extends KanbanTaskBase, TStatus extends str
                   <Select
                     disabled={isSaving}
                     label="Canal"
-                    onChange={(event) => setForm({ ...form, channel: event.target.value })}
+                    onChange={(event) => {
+                      const channel = event.target.value;
+                      const template = channelChecklistTemplates?.[channel];
+                      // Só aplica o modelo em tarefa nova e com checklist ainda vazio, pra não sobrescrever nada.
+                      const checklist =
+                        !editingTask && template && form.checklist.length === 0
+                          ? template.map((text) => ({ id: makeId("check"), text, done: false }))
+                          : form.checklist;
+                      setForm({ ...form, channel, checklist });
+                    }}
                     options={channelOptions}
                     value={form.channel}
                   />
@@ -1183,6 +2072,8 @@ export function AdvancedKanban<TTask extends KanbanTaskBase, TStatus extends str
                   </Button>
                 </div>
               </section>
+
+              <LinksEditor onChange={(links) => setForm({ ...form, links })} value={form.links} />
 
               <section className="rounded-2xl border border-stone-200 p-4">
                 <div className="flex items-center gap-2">
@@ -1352,6 +2243,26 @@ export function AdvancedKanban<TTask extends KanbanTaskBase, TStatus extends str
         onClose={() => setDeleteTarget(null)}
         onConfirm={confirmDelete}
         title="Confirmar exclusão"
+      />
+
+      <ConfirmDialog
+        confirmLabel={isCleaningUp ? "Excluindo..." : "Excluir para sempre"}
+        description={
+          !cleanupPreview
+            ? "Calculando..."
+            : cleanupPreview.count > 0
+              ? `${cleanupPreview.count} tarefa${cleanupPreview.count > 1 ? "s" : ""} em "${
+                  finishedColumnLabel ?? "finalizado"
+                }" há mais de ${cleanupPreview.retentionDays} dias ${
+                  cleanupPreview.count > 1 ? "serão excluídas" : "será excluída"
+                } para sempre. Essa ação não pode ser desfeita.`
+              : `Nenhuma tarefa em "${finishedColumnLabel ?? "finalizado"}" passou de ${cleanupPreview.retentionDays} dias ainda.`
+        }
+        isOpen={isCleanupOpen}
+        onClose={() => setIsCleanupOpen(false)}
+        onConfirm={handleCleanupConfirm}
+        title="Limpar tarefas antigas"
+        confirmDisabled={!cleanupPreview || cleanupPreview.count === 0 || isCleaningUp}
       />
     </div>
   );

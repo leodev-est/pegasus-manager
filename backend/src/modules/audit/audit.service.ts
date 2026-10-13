@@ -28,10 +28,11 @@ export const auditService = {
     }
   },
 
-  async list(filters?: { entity?: string; userId?: string; limit?: number }) {
+  async list(filters?: { entity?: string; entityId?: string; userId?: string; limit?: number }) {
     return prisma.auditLog.findMany({
       where: {
         ...(filters?.entity ? { entity: filters.entity } : {}),
+        ...(filters?.entityId ? { entityId: filters.entityId } : {}),
         ...(filters?.userId ? { userId: filters.userId } : {}),
       },
       orderBy: { createdAt: "desc" },

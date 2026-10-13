@@ -23,6 +23,7 @@ function buildUserResponse(user: NonNullable<UserWithRoles>) {
     email: user.email,
     active: user.active,
     mustChangePassword: user.mustChangePassword,
+    marketingFunctions: user.marketingFunctions ?? [],
     roles,
     permissions,
   };

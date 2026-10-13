@@ -1161,8 +1161,8 @@ export function FinancePage() {
                     <Tooltip
                       contentStyle={{ backgroundColor: "var(--chart-tooltip-bg)", border: "1px solid var(--chart-tooltip-border)", borderRadius: 10 }}
                       labelStyle={{ color: "var(--chart-tooltip-text)", fontWeight: 700 }}
-                      formatter={(value: number) => formatCurrency(value)}
-                      labelFormatter={formatChartMonth}
+                      formatter={(value) => formatCurrency(Number(value))}
+                      labelFormatter={(label) => formatChartMonth(String(label))}
                     />
                     <Legend />
                     <Bar dataKey="expected" fill="#94a3b8" name="Esperado" radius={[4, 4, 0, 0]} />
@@ -1181,7 +1181,7 @@ export function FinancePage() {
                     <Tooltip
                       contentStyle={{ backgroundColor: "var(--chart-tooltip-bg)", border: "1px solid var(--chart-tooltip-border)", borderRadius: 10 }}
                       labelStyle={{ color: "var(--chart-tooltip-text)", fontWeight: 700 }}
-                      labelFormatter={formatChartMonth}
+                      labelFormatter={(label) => formatChartMonth(String(label))}
                     />
                     <Line dataKey="overdueCount" dot={{ r: 4 }} name="Em atraso" stroke="#ef4444" strokeWidth={2} />
                   </LineChart>
@@ -1198,8 +1198,8 @@ export function FinancePage() {
                     <Tooltip
                       contentStyle={{ backgroundColor: "var(--chart-tooltip-bg)", border: "1px solid var(--chart-tooltip-border)", borderRadius: 10 }}
                       labelStyle={{ color: "var(--chart-tooltip-text)", fontWeight: 700 }}
-                      formatter={(value: number) => formatCurrency(value)}
-                      labelFormatter={formatChartMonth}
+                      formatter={(value) => formatCurrency(Number(value))}
+                      labelFormatter={(label) => formatChartMonth(String(label))}
                     />
                     <Legend />
                     <Bar dataKey="paid" fill="#22c55e" name="Pago" stackId="a" />

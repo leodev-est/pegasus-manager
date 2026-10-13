@@ -1,6 +1,7 @@
 ﻿import { Pencil, ShieldCheck, Users } from "lucide-react";
 import { FormEvent, useEffect, useState } from "react";
 import { useTour } from "../../tours/useTour";
+import { FUNCTION_OPTIONS } from "../../utils/contentPipeline";
 
 const TOUR_STEPS = [
   {
@@ -120,6 +121,56 @@ export function AccessControlPage() {
     }
   }
 
+  async function toggleFunction(user: AuthUser, fn: string) {
+    const current = user.marketingFunctions ?? [];
+    const next = current.includes(fn) ? current.filter((item) => item !== fn) : [...current, fn];
+
+    setSavingUserId(user.id);
+
+    try {
+      const updatedUser = await userService.updateUser(user.id, { marketingFunctions: next });
+      setUsers((currentUsers) =>
+        currentUsers.map((currentUser) =>
+          currentUser.id === user.id ? { ...currentUser, marketingFunctions: updatedUser.marketingFunctions ?? next } : currentUser,
+        ),
+      );
+      showToast("Função atualizada.", "success");
+    } catch (functionError) {
+      showToast(getApiErrorMessage(functionError), "error");
+    } finally {
+      setSavingUserId("");
+    }
+  }
+
+  /** Funções no time de marketing — só aparece para quem tem perfil de marketing. */
+  function renderFunctions(user: AuthUser) {
+    const isMarketing = user.roles.some((role) => role === "Marketing" || role === "ChefeMarketing");
+    if (!isMarketing) return null;
+    const selected = user.marketingFunctions ?? [];
+    return (
+      <div className="mt-3">
+        <p className="mb-1.5 text-[11px] font-bold uppercase tracking-wide text-slate-400">Função no marketing</p>
+        <div className="flex flex-wrap gap-2">
+          {FUNCTION_OPTIONS.map((option) => (
+            <button
+              className={`rounded-full px-3 py-1 text-xs font-bold ring-1 transition ${
+                selected.includes(option.value)
+                  ? "bg-emerald-600 text-white ring-emerald-600"
+                  : "bg-white text-slate-600 ring-emerald-100 hover:bg-emerald-50"
+              }`}
+              disabled={savingUserId === user.id}
+              key={option.value}
+              onClick={() => toggleFunction(user, option.value)}
+              type="button"
+            >
+              {option.label}
+            </button>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
   function openEditUsername(user: AuthUser) {
     setEditingUsernameFor(user);
     setUsernameInput(user.username);
@@ -218,6 +269,7 @@ export function AccessControlPage() {
                         </button>
                       ))}
                     </div>
+                    {renderFunctions(user)}
                   </article>
                 ))}
               </div>
@@ -288,6 +340,7 @@ export function AccessControlPage() {
                             </button>
                           ))}
                         </div>
+                        {renderFunctions(user)}
                       </td>
                     </tr>
                   ))

@@ -1,6 +1,8 @@
-import { CalendarDays, CheckSquare, Loader2, MapPin, Plus, Wallet } from "lucide-react";
+import { CalendarDays, CheckSquare, Link2, Loader2, MapPin, Plus, Users, Wallet } from "lucide-react";
 import { FormEvent, useCallback, useEffect, useState } from "react";
 import { useAuth } from "../../auth/AuthContext";
+import { LinksEditor } from "../../components/marketing/LinksEditor";
+import { ShareToGroupButton, buildEventMessage } from "../../components/marketing/ShareToGroupButton";
 import { ActionButtons } from "../../components/ui/ActionButtons";
 import { Button } from "../../components/ui/Button";
 import { ConfirmDialog } from "../../components/ui/ConfirmDialog";
@@ -13,10 +15,12 @@ import { StatusBadge, type StatusTone } from "../../components/ui/StatusBadge";
 import { Textarea } from "../../components/ui/Textarea";
 import { useToast } from "../../components/ui/Toast";
 import { getApiErrorMessage } from "../../services/api";
+import { userService } from "../../services/userService";
 import {
   eventService,
   type ClubEvent,
   type EventChecklistItem,
+  type EventLink,
   type EventStatus,
 } from "../../services/eventService";
 
@@ -59,6 +63,8 @@ type EventForm = {
   vendors: string;
   status: EventStatus;
   checklist: EventChecklistItem[];
+  assignedTo: string[];
+  links: EventLink[];
 };
 
 const emptyForm: EventForm = {
@@ -69,6 +75,8 @@ const emptyForm: EventForm = {
   vendors: "",
   status: "planejamento",
   checklist: [],
+  assignedTo: [],
+  links: [],
 };
 
 function eventToForm(event: ClubEvent): EventForm {
@@ -80,6 +88,8 @@ function eventToForm(event: ClubEvent): EventForm {
     vendors: event.vendors ?? "",
     status: event.status,
     checklist: event.checklist,
+    assignedTo: event.assignedTo ?? [],
+    links: event.links ?? [],
   };
 }
 
@@ -98,6 +108,8 @@ export function EventsPage() {
   const [deleteTarget, setDeleteTarget] = useState<ClubEvent | null>(null);
   const [form, setForm] = useState<EventForm>(emptyForm);
   const [checklistInput, setChecklistInput] = useState("");
+  const [assigneeInput, setAssigneeInput] = useState("");
+  const [marketingNames, setMarketingNames] = useState<string[]>([]);
   const [formErrors, setFormErrors] = useState<Partial<Record<"name" | "date", string>>>({});
 
   const loadEvents = useCallback(async () => {
@@ -115,11 +127,29 @@ export function EventsPage() {
     loadEvents();
   }, [loadEvents]);
 
+  useEffect(() => {
+    Promise.all([userService.getUsersByRole("Marketing"), userService.getUsersByRole("ChefeMarketing")])
+      .then(([marketing, chefe]) => setMarketingNames(Array.from(new Set([...marketing, ...chefe].map((u) => u.name))).sort()))
+      .catch(() => setMarketingNames([]));
+  }, []);
+
+  function addAssignee() {
+    const name = assigneeInput.trim();
+    if (!name || form.assignedTo.some((n) => n.toLowerCase() === name.toLowerCase())) return;
+    setForm({ ...form, assignedTo: [...form.assignedTo, name] });
+    setAssigneeInput("");
+  }
+
+  function updateChecklistItem(id: string, patch: Partial<EventChecklistItem>) {
+    setForm({ ...form, checklist: form.checklist.map((item) => (item.id === id ? { ...item, ...patch } : item)) });
+  }
+
   function openCreateModal() {
     setEditingEvent(null);
     setForm(emptyForm);
     setFormErrors({});
     setChecklistInput("");
+    setAssigneeInput("");
     setIsModalOpen(true);
   }
 
@@ -128,6 +158,7 @@ export function EventsPage() {
     setForm(eventToForm(event));
     setFormErrors({});
     setChecklistInput("");
+    setAssigneeInput("");
     setIsModalOpen(true);
   }
 
@@ -168,6 +199,8 @@ export function EventsPage() {
         vendors: form.vendors || undefined,
         status: form.status,
         checklist: form.checklist,
+        assignedTo: form.assignedTo,
+        links: form.links,
       };
 
       if (editingEvent) {
@@ -205,7 +238,7 @@ export function EventsPage() {
     <div className="space-y-6">
       <PageHeader
         title="Eventos"
-        description="Torneios, confraternizações e sessões de fotos do time — orçamento, fornecedores e checklist em um só lugar. Todo evento aparece automaticamente no calendário de treinos e na pauta de conteúdo."
+        description="Torneios, confraternizações e sessões de fotos do time — orçamento, fornecedores e checklist em um só lugar. Todo evento aparece automaticamente no calendário de treinos e no Calendário de Marketing."
         action={
           canCreate ? (
             <Button onClick={openCreateModal} className="w-full sm:w-auto">
@@ -256,6 +289,18 @@ export function EventsPage() {
                       <span className="flex items-center gap-1.5">
                         <CheckSquare size={13} />
                         {doneCount}/{event.checklist.length}
+                      </span>
+                    ) : null}
+                    {(event.links?.length ?? 0) > 0 ? (
+                      <span className="flex items-center gap-1.5">
+                        <Link2 size={13} />
+                        {event.links.length}
+                      </span>
+                    ) : null}
+                    {(event.assignedTo?.length ?? 0) > 0 ? (
+                      <span className="flex items-center gap-1.5">
+                        <Users size={13} />
+                        {event.assignedTo.join(", ")}
                       </span>
                     ) : null}
                   </div>
@@ -343,6 +388,57 @@ export function EventsPage() {
             value={form.vendors}
           />
 
+          <div>
+            <span className="mb-1.5 block text-sm font-semibold text-slate-700">Responsáveis pelo evento</span>
+            {form.assignedTo.length > 0 ? (
+              <div className="mb-2 flex flex-wrap gap-2">
+                {form.assignedTo.map((name) => (
+                  <button
+                    className="rounded-full border border-pegasus-primary bg-pegasus-ice px-3 py-1 text-xs font-bold text-pegasus-primary"
+                    key={name}
+                    onClick={() => setForm({ ...form, assignedTo: form.assignedTo.filter((n) => n !== name) })}
+                    type="button"
+                  >
+                    {name} ×
+                  </button>
+                ))}
+              </div>
+            ) : null}
+            <div className="flex items-end gap-2">
+              <div className="flex-1">
+                <Input
+                  disabled={isSaving}
+                  label="Nome"
+                  list="event-marketing-users"
+                  onChange={(e) => setAssigneeInput(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      e.preventDefault();
+                      addAssignee();
+                    }
+                  }}
+                  placeholder="Escolha ou digite"
+                  value={assigneeInput}
+                />
+                <datalist id="event-marketing-users">
+                  {marketingNames.map((name) => (
+                    <option key={name} value={name} />
+                  ))}
+                </datalist>
+              </div>
+              <Button disabled={isSaving} onClick={addAssignee} type="button" variant="secondary">
+                Adicionar
+              </Button>
+            </div>
+          </div>
+
+          <LinksEditor
+            disabled={isSaving}
+            hint="Arte do evento no Canva, pasta de fotos, planilha de inscrições..."
+            onChange={(links) => setForm({ ...form, links })}
+            value={form.links}
+          />
+
           <section className="rounded-2xl border border-stone-200 p-4">
             <div className="flex items-center gap-2">
               <CheckSquare className="text-pegasus-primary" size={18} />
@@ -350,22 +446,48 @@ export function EventsPage() {
             </div>
             <div className="mt-3 space-y-2">
               {form.checklist.map((item) => (
-                <label className="flex items-center gap-3 text-sm text-slate-600" key={item.id}>
-                  <input
-                    checked={item.done}
-                    className="h-5 w-5 rounded border-stone-300 text-pegasus-primary"
-                    onChange={() => toggleChecklistItem(item.id)}
-                    type="checkbox"
-                  />
-                  <span className={item.done ? "text-slate-400 line-through" : ""}>{item.text}</span>
-                  <button
-                    className="ml-auto text-xs font-bold text-rose-600"
-                    onClick={() => removeChecklistItem(item.id)}
-                    type="button"
-                  >
-                    Remover
-                  </button>
-                </label>
+                <div className="rounded-lg border border-stone-100 p-2" key={item.id}>
+                  <label className="flex items-center gap-3 text-sm text-slate-600">
+                    <input
+                      checked={item.done}
+                      className="h-5 w-5 rounded border-stone-300 text-pegasus-primary"
+                      onChange={() => toggleChecklistItem(item.id)}
+                      type="checkbox"
+                    />
+                    <span className={item.done ? "text-slate-400 line-through" : ""}>{item.text}</span>
+                    <button
+                      className="ml-auto text-xs font-bold text-rose-600"
+                      onClick={() => removeChecklistItem(item.id)}
+                      type="button"
+                    >
+                      Remover
+                    </button>
+                  </label>
+                  <div className="mt-2 grid gap-2 sm:grid-cols-2">
+                    <select
+                      aria-label="Quem cuida deste item"
+                      className="h-9 rounded-md border border-stone-200 bg-white px-2 text-xs text-slate-700"
+                      disabled={isSaving}
+                      onChange={(e) => updateChecklistItem(item.id, { assignee: e.target.value || null })}
+                      value={item.assignee ?? ""}
+                    >
+                      <option value="">Sem responsável</option>
+                      {Array.from(new Set([...marketingNames, ...(item.assignee ? [item.assignee] : [])])).map((name) => (
+                        <option key={name} value={name}>
+                          {name}
+                        </option>
+                      ))}
+                    </select>
+                    <input
+                      aria-label="Prazo deste item"
+                      className="h-9 rounded-md border border-stone-200 bg-white px-2 text-xs text-slate-700"
+                      disabled={isSaving}
+                      onChange={(e) => updateChecklistItem(item.id, { dueDate: e.target.value || null })}
+                      type="date"
+                      value={item.dueDate ?? ""}
+                    />
+                  </div>
+                </div>
               ))}
             </div>
             <div className="mt-3 flex flex-col gap-2 sm:flex-row">
@@ -381,6 +503,18 @@ export function EventsPage() {
               {isSaving ? <Loader2 className="animate-spin" size={17} /> : null}
               {editingEvent ? "Salvar alterações" : "Criar evento"}
             </Button>
+            {editingEvent ? (
+              <ShareToGroupButton
+                disabled={isSaving}
+                text={buildEventMessage({
+                  name: form.name,
+                  date: form.date,
+                  location: form.location,
+                  assignedTo: form.assignedTo,
+                  links: form.links,
+                })}
+              />
+            ) : null}
             <Button disabled={isSaving} onClick={() => setIsModalOpen(false)} type="button" variant="secondary">
               Cancelar
             </Button>

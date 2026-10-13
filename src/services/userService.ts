@@ -27,7 +27,7 @@ export const userService = {
   },
 
   async getUsersByRole(role: string) {
-    const { data } = await api.get<Array<{ id: string; name: string }>>(`/users/by-role/${role}`);
+    const { data } = await api.get<Array<{ id: string; name: string; marketingFunctions?: string[] }>>(`/users/by-role/${role}`);
     return data;
   },
 };

@@ -35,6 +35,7 @@ import { gamesService, type Game } from "../../services/gamesService";
 import { kanbanService, type ManagementTask } from "../../services/kanbanService";
 import { marketingService, type MarketingTask } from "../../services/marketingService";
 import { trainingService, type Training } from "../../services/trainingService";
+import { getActiveSeason } from "../../utils/season";
 
 type DashboardData = {
   applications: AthleteApplication[];
@@ -146,6 +147,7 @@ const TOUR_STEPS = [
 export function DashboardPage() {
   const { hasPermission, user } = useAuth();
   const { showToast } = useToast();
+  const season = getActiveSeason();
   const [data, setData] = useState<DashboardData>(emptyDashboardData);
   const [isLoading, setIsLoading] = useState(true);
   const [monthlyBirthdays, setMonthlyBirthdays] = useState<MonthlyBirthday[]>([]);
@@ -333,7 +335,7 @@ export function DashboardPage() {
   return (
     <div className="w-full max-w-full space-y-6 overflow-hidden">
       <div className="flex items-baseline gap-2.5">
-        <h1 className="text-2xl font-black text-pegasus-navy">Dashboard</h1>
+        <h1 className="text-2xl font-black text-pegasus-navy">Dashboard {season?.emoji}</h1>
         <span className="text-sm text-stone-400">Bem-vindo, {user?.name?.split(" ")[0]}</span>
       </div>
 

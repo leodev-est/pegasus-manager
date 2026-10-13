@@ -12,8 +12,11 @@ tasksRoutes.use(authMiddleware);
 // de permissionMiddleware aqui bloquearia Marketing/ChefeMarketing nas próprias tasks
 // (eles têm marketing:*, não management:*) e o próprio ChefeMarketing em approve/reject.
 tasksRoutes.get("/publish-scheduled", permissionMiddleware(["management:read", "marketing:read"]), tasksController.publishScheduled);
+tasksRoutes.get("/cleanup-preview", tasksController.cleanupPreview);
+tasksRoutes.post("/cleanup", tasksController.cleanup);
 tasksRoutes.get("/", tasksController.findAll);
 tasksRoutes.get("/:id", tasksController.findById);
+tasksRoutes.get("/:id/history", tasksController.history);
 tasksRoutes.post("/", tasksController.create);
 tasksRoutes.patch("/:id", tasksController.update);
 tasksRoutes.patch("/:id/status", tasksController.updateStatus);

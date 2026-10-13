@@ -7,11 +7,13 @@ type ConfirmDialogProps = {
   title: string;
   description: string;
   confirmLabel?: string;
+  confirmDisabled?: boolean;
   onConfirm: () => void;
   onClose: () => void;
 };
 
 export function ConfirmDialog({
+  confirmDisabled = false,
   confirmLabel = "Confirmar",
   description,
   isOpen,
@@ -28,7 +30,7 @@ export function ConfirmDialog({
         <div>
           <p className="text-sm leading-6 text-slate-600">{description}</p>
           <div className="mt-6 flex flex-col gap-3 sm:flex-row">
-            <Button onClick={onConfirm} variant="danger">
+            <Button disabled={confirmDisabled} onClick={onConfirm} variant="danger">
               {confirmLabel}
             </Button>
             <Button onClick={onClose} variant="secondary">

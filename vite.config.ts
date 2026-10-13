@@ -35,6 +35,13 @@ export default defineConfig(({ mode }) => {
         start_url: "/",
         scope: "/",
         orientation: "portrait",
+        // Permite "Compartilhar → Pegasus" direto do Instagram/YouTube (Android, app instalado).
+        // O link chega preenchido na Curadoria. No iPhone o recurso não existe: copiar e colar.
+        share_target: {
+          action: "/app/marketing/curadoria",
+          method: "GET",
+          params: { title: "title", text: "text", url: "url" },
+        },
         icons: [
           {
             src: "/icons/icon-192x192.png",

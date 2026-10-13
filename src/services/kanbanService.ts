@@ -28,6 +28,8 @@ export type ManagementTask = {
   labels: string[];
   comments: TaskComment[];
   checklist: TaskChecklistItem[];
+  statusChangedAt: string;
+  position: number;
   createdAt: string;
   updatedAt: string;
 };
@@ -83,11 +85,30 @@ export const kanbanService = {
     const { data } = await api.patch<ManagementTask>(`/tasks/${id}`, payload);
     return data;
   },
-  async updateTaskStatus(id: string, status: TaskStatus) {
-    const { data } = await api.patch<ManagementTask>(`/tasks/${id}/status`, { status });
+  async updateTaskStatus(id: string, status: TaskStatus, position?: number) {
+    const { data } = await api.patch<ManagementTask>(`/tasks/${id}/status`, { status, position });
     return data;
   },
   async deleteTask(id: string) {
     await api.delete(`/tasks/${id}`);
+  },
+
+  async getCleanupPreview() {
+    const { data } = await api.get<{ count: number; retentionDays: number }>("/tasks/cleanup-preview", {
+      params: { area: "management" },
+    });
+    return data;
+  },
+
+  async cleanupOldTasks() {
+    const { data } = await api.post<{ deleted: number }>("/tasks/cleanup", { area: "management" });
+    return data;
+  },
+
+  async getHistory(id: string) {
+    const { data } = await api.get<Array<{ id: string; action: string; userName: string | null; meta: unknown; createdAt: string }>>(
+      `/tasks/${id}/history`,
+    );
+    return data;
   },
 };

@@ -155,7 +155,7 @@ export function AvaliarTreinoPage() {
   }
 
   const history = Array.from(feedbackMap.entries())
-    .map(([trainingId, fb]) => ({ trainingId, ...fb }))
+    .map(([trainingId, fb]) => ({ ...fb, trainingId }))
     .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 
   return (

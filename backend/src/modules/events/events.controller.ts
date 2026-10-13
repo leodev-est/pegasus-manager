@@ -18,7 +18,7 @@ export const eventsController = {
   create: (async (request, response, next) => {
     try {
       const user = (request as { user?: { name?: string } }).user;
-      const event = await eventsService.create({ ...request.body, createdBy: user?.name ?? null });
+      const event = await eventsService.create({ ...request.body, createdBy: user?.name ?? null }, request.user?.id);
       response.status(201).json(event);
     } catch (error) {
       next(error);
@@ -27,7 +27,7 @@ export const eventsController = {
 
   update: (async (request, response, next) => {
     try {
-      const event = await eventsService.update(getParamId(request.params.id), request.body);
+      const event = await eventsService.update(getParamId(request.params.id), request.body, request.user?.id);
       response.json(event);
     } catch (error) {
       next(error);

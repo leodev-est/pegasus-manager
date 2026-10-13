@@ -1,5 +1,6 @@
 import { ExternalLink, Lightbulb, Megaphone, Palette, ShieldCheck } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import { useAuth } from "../../auth/AuthContext";
 import { useTour } from "../../tours/useTour";
 import { AdvancedKanban } from "../../components/kanban/AdvancedKanban";
@@ -17,6 +18,7 @@ import {
 } from "../../services/marketingService";
 import { userService } from "../../services/userService";
 import { ORG_NAME } from "../../config/org";
+import { FORMAT_OPTIONS, FUNCTION_LABEL } from "../../utils/contentPipeline";
 
 const columns: Array<{ label: string; value: MarketingStatus }> = [
   { label: "Ideias", value: "ideas" },
@@ -26,8 +28,17 @@ const columns: Array<{ label: string; value: MarketingStatus }> = [
   { label: "Publicado", value: "published" },
 ];
 
-const channels: MarketingChannel[] = ["Instagram", "WhatsApp", "Arte", "Captacao", "Evento"];
+const channels: MarketingChannel[] = ["Instagram", "WhatsApp", "Arte", "Captacao", "Evento", "Video", "YouTube"];
 const savedContentLabels = ["Vídeo de Treino", "Reels", "Fotos"];
+
+// Checklist que já nasce com o card, de acordo com o canal — ponto de partida, não camisa de força.
+const channelChecklistTemplates: Record<string, string[]> = {
+  Video: ["Roteiro", "Gravar", "Editar", "Thumbnail", "Legenda"],
+  YouTube: ["Roteiro", "Gravar", "Editar", "Thumbnail", "Título e descrição"],
+  Instagram: ["Arte ou vídeo pronto", "Legenda", "Publicar"],
+  Arte: ["Referência", "Arte", "Aprovação"],
+  Evento: ["Convite/arte", "Divulgação", "Cobertura no dia"],
+};
 type MarketingTab = "kanban" | "identidade";
 
 const marketingTabs: Array<{ label: string; value: MarketingTab }> = [
@@ -75,6 +86,7 @@ type MarketingForm = Required<Omit<MarketingTaskPayload, "area">>;
 function label(value: string) {
   const labels: Record<string, string> = {
     Captacao: "Captação",
+    Video: "Vídeo",
     media: "Média",
     baixa: "Baixa",
     alta: "Alta",
@@ -95,6 +107,9 @@ function buildPayload(form: MarketingForm): MarketingTaskPayload {
     labels: form.labels,
     comments: form.comments,
     checklist: form.checklist,
+    links: form.links,
+    contentFormat: form.contentFormat || null,
+    contentStep: form.contentStep || null,
     area: "marketing",
   };
 }
@@ -102,6 +117,8 @@ function buildPayload(form: MarketingForm): MarketingTaskPayload {
 export function MarketingPage() {
   const { hasPermission, user } = useAuth();
   const { showToast } = useToast();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const openTaskId = searchParams.get("task") ?? undefined;
   const canCreate = hasPermission(["marketing:create"]);
   const canUpdate = hasPermission(["marketing:update"]);
   const canDelete = hasPermission(["marketing:delete"]);
@@ -123,32 +140,35 @@ export function MarketingPage() {
     [tasks],
   );
 
-  const loadTasks = useCallback(async () => {
-    setIsLoading(true);
+  const loadTasks = useCallback(
+    async (options?: { silent?: boolean }) => {
+      if (!options?.silent) setIsLoading(true);
 
-    try {
-      const data = await marketingService.getTasks({
-        channel: channel as MarketingChannel | "todos",
-        assignedTo,
-        priority: priority as MarketingPriority | "todos",
-      });
-      setTasks(data);
-    } catch (error) {
-      showToast(getApiErrorMessage(error), "error");
-    } finally {
-      setIsLoading(false);
-    }
-  }, [assignedTo, channel, priority, showToast]);
+      try {
+        const data = await marketingService.getTasks({
+          channel: channel as MarketingChannel | "todos",
+          assignedTo,
+          priority: priority as MarketingPriority | "todos",
+        });
+        setTasks(data);
+      } catch (error) {
+        if (!options?.silent) showToast(getApiErrorMessage(error), "error");
+      } finally {
+        if (!options?.silent) setIsLoading(false);
+      }
+    },
+    [assignedTo, channel, priority, showToast],
+  );
 
   useEffect(() => {
-    loadTasks();
+    void loadTasks();
   }, [loadTasks]);
 
   // Auto-reload every 60s when any task is in the scheduled column
   useEffect(() => {
     const hasPending = tasks.some((t) => t.status === "scheduled");
     if (!hasPending) return;
-    const id = setInterval(loadTasks, 60_000);
+    const id = setInterval(() => void loadTasks({ silent: true }), 60_000);
     return () => clearInterval(id);
   }, [tasks, loadTasks]);
 
@@ -164,7 +184,12 @@ export function MarketingPage() {
           seen.add(u.id);
           return true;
         });
-        setMarketingUsers(merged.map((u) => ({ label: u.name, value: u.name })));
+        setMarketingUsers(
+          merged.map((u) => {
+            const functionLabels = (u.marketingFunctions ?? []).map((fn) => FUNCTION_LABEL[fn]).filter(Boolean);
+            return { label: functionLabels.length > 0 ? `${u.name} — ${functionLabels.join(", ")}` : u.name, value: u.name };
+          }),
+        );
       })
       .catch(() => setMarketingUsers([]));
   }, []);
@@ -180,6 +205,18 @@ export function MarketingPage() {
       showToast(getApiErrorMessage(error), "error");
     } finally {
       setIsSaving(false);
+    }
+  }
+
+  // O card já muda de coluna na hora (otimista, dentro do AdvancedKanban); aqui só confirmamos
+  // no servidor e, se falhar, relançamos o erro pra UI desfazer o movimento.
+  async function moveWithFeedback(action: () => Promise<void>) {
+    try {
+      await action();
+      void loadTasks({ silent: true });
+    } catch (error) {
+      showToast(getApiErrorMessage(error), "error");
+      throw error;
     }
   }
 
@@ -259,6 +296,28 @@ export function MarketingPage() {
         isSaving={isSaving}
         tasks={tasks}
         title="Marketing"
+        channelChecklistTemplates={channelChecklistTemplates}
+        contentFormatOptions={FORMAT_OPTIONS}
+        finishedColumnLabel="Publicado"
+        openTaskId={openTaskId}
+        storageKey="kanban:marketing"
+        onFetchHistory={(id) => marketingService.getHistory(id)}
+        onOpenTaskIdHandled={() => setSearchParams({}, { replace: true })}
+        onRefresh={() => loadTasks({ silent: true })}
+        onCleanupPreview={() => marketingService.getCleanupPreview()}
+        onCleanup={() =>
+          marketingService
+            .cleanupOldTasks()
+            .then((result) => {
+              showToast(`${result.deleted} tarefa(s) publicada(s) antiga(s) excluída(s).`, "success");
+              void loadTasks({ silent: true });
+              return result.deleted;
+            })
+            .catch((error) => {
+              showToast(getApiErrorMessage(error), "error");
+              throw error;
+            })
+        }
         onCreate={(form) =>
           saveWithFeedback(
             () => marketingService.createTask(buildPayload(form as MarketingForm)).then(() => undefined),
@@ -271,11 +330,8 @@ export function MarketingPage() {
             "Tarefa excluída com sucesso.",
           )
         }
-        onMove={(task, status) =>
-          saveWithFeedback(
-            () => marketingService.updateTaskStatus(task.id, status).then(() => undefined),
-            "Tarefa movida com sucesso.",
-          )
+        onMove={(task, status, position) =>
+          moveWithFeedback(() => marketingService.updateTaskStatus(task.id, status, position).then(() => undefined))
         }
         onUpdate={(task, form) =>
           saveWithFeedback(

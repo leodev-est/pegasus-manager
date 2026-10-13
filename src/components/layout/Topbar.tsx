@@ -88,6 +88,7 @@ function typeLabel(type: Notification["type"]) {
     avaliacao_treino: "Avaliação de treino",
     financeiro: "Financeiro",
     frequencia: "Frequência",
+    marketing: "Marketing",
     sistema: "Sistema",
     treino: "Treino",
   };
@@ -102,6 +103,7 @@ function notificationHref(type: Notification["type"], isAthlete: boolean): strin
     frequencia: { athlete: "/app/atleta/frequencia", staff: "/app/frequencia" },
     avaliacao: { athlete: "/app/meu-perfil", staff: "/app/avaliacoes" },
     avaliacao_treino: { athlete: "/app/meu-perfil", staff: "/app/treinos" },
+    marketing: { athlete: "/app/meu-perfil", staff: "/app/marketing" },
     sistema: null,
   };
 

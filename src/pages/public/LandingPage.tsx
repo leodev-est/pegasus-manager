@@ -20,6 +20,7 @@ import { Link } from "react-router-dom";
 import logoHero from "../../assets/logo/logo-hero.png";
 import logoIcon from "../../assets/logo/logo-icon.png";
 import { ORG_SHORT_NAME, ORG_LOGO_URL } from "../../config/org";
+import { getActiveSeason } from "../../utils/season";
 
 // ── Scroll Reveal ─────────────────────────────────────────────────────────────
 function Reveal({
@@ -216,6 +217,7 @@ export function LandingPage() {
   const [scrolled, setScrolled] = useState(false);
   const [showScrollTop, setShowScrollTop] = useState(false);
   const [activeSection, setActiveSection] = useState<string>("");
+  const season = getActiveSeason();
 
   function scrollTo(id: string) {
     document.getElementById(id)?.scrollIntoView({ behavior: "smooth" });
@@ -271,7 +273,10 @@ export function LandingPage() {
           {/* Logo / brand — clicking goes to top */}
           <button onClick={scrollToTop} className="flex items-center gap-2.5 transition hover:opacity-80">
             <img src={ORG_LOGO_URL || logoIcon} alt={ORG_SHORT_NAME} className="h-8 w-8 rounded-lg object-contain" />
-            <span className="font-black text-white">Projeto {ORG_SHORT_NAME}</span>
+            <span className="font-black text-white">
+              Projeto {ORG_SHORT_NAME}
+              {season ? ` ${season.emoji}` : ""}
+            </span>
           </button>
 
           <div className="flex items-center gap-3">

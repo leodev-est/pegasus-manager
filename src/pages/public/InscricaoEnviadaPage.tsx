@@ -2,8 +2,10 @@ import { ArrowLeft, CheckCircle2, LogIn } from "lucide-react";
 import { Link } from "react-router-dom";
 import logoFull from "../../assets/logo/logo-full.png";
 import { ORG_SHORT_NAME, ORG_LOGO_URL } from "../../config/org";
+import { getActiveSeason } from "../../utils/season";
 
 export function InscricaoEnviadaPage() {
+  const season = getActiveSeason();
   return (
     <main className="min-h-screen bg-pegasus-surface">
       {/* Header */}
@@ -12,7 +14,10 @@ export function InscricaoEnviadaPage() {
           <Link to="/" className="flex items-center gap-3">
             <img src={ORG_LOGO_URL || logoFull} alt={`Projeto ${ORG_SHORT_NAME}`} className="h-10 w-20 rounded-xl object-contain" />
             <div>
-              <p className="font-bold leading-tight">Projeto {ORG_SHORT_NAME}</p>
+              <p className="font-bold leading-tight">
+                Projeto {ORG_SHORT_NAME}
+                {season ? ` ${season.emoji}` : ""}
+              </p>
               <p className="text-xs text-[#42A5F5]">Voleibol e comunidade</p>
             </div>
           </Link>

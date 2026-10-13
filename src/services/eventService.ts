@@ -6,7 +6,13 @@ export type EventChecklistItem = {
   id: string;
   text: string;
   done: boolean;
+  /** Quem cuida desse item. */
+  assignee?: string | null;
+  /** Prazo do item (YYYY-MM-DD). */
+  dueDate?: string | null;
 };
+
+export type EventLink = { id: string; label: string; url: string };
 
 export type ClubEvent = {
   id: string;
@@ -16,6 +22,8 @@ export type ClubEvent = {
   budget: number | null;
   vendors: string | null;
   checklist: EventChecklistItem[];
+  assignedTo: string[];
+  links: EventLink[];
   status: EventStatus;
   createdBy: string | null;
   createdAt: string;
@@ -29,6 +37,8 @@ export type EventPayload = {
   budget?: number | null;
   vendors?: string;
   checklist?: EventChecklistItem[];
+  assignedTo?: string[];
+  links?: EventLink[];
   status?: EventStatus;
 };
 

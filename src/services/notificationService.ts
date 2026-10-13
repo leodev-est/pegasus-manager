@@ -1,6 +1,6 @@
 import { api } from "./api";
 
-export type NotificationType = "treino" | "financeiro" | "frequencia" | "avaliacao" | "avaliacao_treino" | "sistema";
+export type NotificationType = "treino" | "financeiro" | "frequencia" | "avaliacao" | "avaliacao_treino" | "sistema" | "marketing";
 
 export type Notification = {
   id: string;

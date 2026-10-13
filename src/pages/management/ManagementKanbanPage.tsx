@@ -77,26 +77,29 @@ export function ManagementKanbanPage() {
     [tasks],
   );
 
-  const loadTasks = useCallback(async () => {
-    setIsLoading(true);
+  const loadTasks = useCallback(
+    async (options?: { silent?: boolean }) => {
+      if (!options?.silent) setIsLoading(true);
 
-    try {
-      const data = await kanbanService.getTasks({
-        area: "management",
-        assignedTo,
-        priority: priority as TaskPriority | "todos",
-        search,
-      });
-      setTasks(data);
-    } catch (error) {
-      showToast(getApiErrorMessage(error), "error");
-    } finally {
-      setIsLoading(false);
-    }
-  }, [assignedTo, priority, search, showToast]);
+      try {
+        const data = await kanbanService.getTasks({
+          area: "management",
+          assignedTo,
+          priority: priority as TaskPriority | "todos",
+          search,
+        });
+        setTasks(data);
+      } catch (error) {
+        if (!options?.silent) showToast(getApiErrorMessage(error), "error");
+      } finally {
+        if (!options?.silent) setIsLoading(false);
+      }
+    },
+    [assignedTo, priority, search, showToast],
+  );
 
   useEffect(() => {
-    loadTasks();
+    void loadTasks();
   }, [loadTasks]);
 
   async function saveWithFeedback(action: () => Promise<void>, message: string) {
@@ -110,6 +113,18 @@ export function ManagementKanbanPage() {
       showToast(getApiErrorMessage(error), "error");
     } finally {
       setIsSaving(false);
+    }
+  }
+
+  // O card já muda de coluna na hora (otimista, dentro do AdvancedKanban); aqui só confirmamos
+  // no servidor e, se falhar, relançamos o erro pra UI desfazer o movimento.
+  async function moveWithFeedback(action: () => Promise<void>) {
+    try {
+      await action();
+      void loadTasks({ silent: true });
+    } catch (error) {
+      showToast(getApiErrorMessage(error), "error");
+      throw error;
     }
   }
 
@@ -155,6 +170,24 @@ export function ManagementKanbanPage() {
       isSaving={isSaving}
       tasks={tasks}
       title="Kanban de Gestão"
+      finishedColumnLabel="Concluído"
+      storageKey="kanban:management"
+      onFetchHistory={(id) => kanbanService.getHistory(id)}
+      onRefresh={() => loadTasks({ silent: true })}
+      onCleanupPreview={() => kanbanService.getCleanupPreview()}
+      onCleanup={() =>
+        kanbanService
+          .cleanupOldTasks()
+          .then((result) => {
+            showToast(`${result.deleted} tarefa(s) concluída(s) antiga(s) excluída(s).`, "success");
+            void loadTasks({ silent: true });
+            return result.deleted;
+          })
+          .catch((error) => {
+            showToast(getApiErrorMessage(error), "error");
+            throw error;
+          })
+      }
       onCreate={(form) =>
         saveWithFeedback(
           () => kanbanService.createTask(buildPayload(form as ManagementForm)).then(() => undefined),
@@ -167,11 +200,8 @@ export function ManagementKanbanPage() {
           "Tarefa excluída com sucesso.",
         )
       }
-      onMove={(task, status) =>
-        saveWithFeedback(
-          () => kanbanService.updateTaskStatus(task.id, status).then(() => undefined),
-          "Tarefa movida com sucesso.",
-        )
+      onMove={(task, status, position) =>
+        moveWithFeedback(() => kanbanService.updateTaskStatus(task.id, status, position).then(() => undefined))
       }
       onUpdate={(task, form) =>
         saveWithFeedback(

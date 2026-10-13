@@ -133,7 +133,9 @@ export function ConfiguracoesPage() {
     event.preventDefault();
     setIsSaving(true);
     try {
-      const payload: Parameters<typeof settingsService.updateTrainingConfig>[0] = { ...form };
+      const { emailPassword: _storedPassword, ...formWithoutPassword } = form;
+      void _storedPassword;
+      const payload: Parameters<typeof settingsService.updateTrainingConfig>[0] = { ...formWithoutPassword };
       if (emailPassword) payload.emailPassword = emailPassword;
       const updated = await settingsService.updateTrainingConfig(payload);
       setForm({ ...defaultConfig, ...updated });
@@ -327,7 +329,7 @@ export function ConfiguracoesPage() {
                         <p className="mt-0.5 text-xs text-slate-500">{teamCalendar.calendarId}</p>
                       )}
                     </div>
-                    <Button type="button" variant="outline" onClick={handleDisconnectTeamCalendar} disabled={isConnectingCalendar}>
+                    <Button type="button" variant="secondary" onClick={handleDisconnectTeamCalendar} disabled={isConnectingCalendar}>
                       {isConnectingCalendar ? <Loader2 size={14} className="animate-spin" /> : null}
                       Desconectar
                     </Button>

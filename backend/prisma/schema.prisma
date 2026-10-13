@@ -17,6 +17,9 @@ model User {
   mustChangePassword  Boolean    @default(false)
   athleteId           String?    @unique
   avatarUrl           String?
+  // Funções no time de marketing (chefe, social, arte, edicao, curadoria, eventos).
+  // Define de quais etapas da pauta a pessoa cuida (filtros "Na minha fila" / "Vindo aí").
+  marketingFunctions  String[]   @default([])
   googleRefreshToken  String?
   googleCalendarId    String?
   createdAt           DateTime   @default(now())
@@ -206,8 +209,21 @@ model Task {
   checklist      Json      @default("[]")
   approvalStatus String?
   scheduledAt    DateTime?
+  // [{ id, label, url }] — links de Canva, Drive, vídeo etc.
+  links          Json      @default("[]")
+  // Quando o status mudou por último — base pro "há X dias em Produção" no card
+  // (diferente de updatedAt, que muda em qualquer edição, não só ao mover).
+  statusChangedAt DateTime @default(now())
+  // Posição manual dentro da coluna (arrastar e soltar pra reordenar).
+  position       Float     @default(0)
+  // Formato de produção de conteúdo (video | video_arte | so_arte | foto | evento),
+  // null = tarefa solta sem esteira. Define a esteira em contentStep (ver marketing.shared.ts).
+  contentFormat  String?
+  // Etapa atual dentro da esteira do contentFormat (referencia | definido | arte | ... | postado).
+  contentStep    String?
   createdAt      DateTime  @default(now())
   updatedAt      DateTime  @updatedAt
+  references     ReferenceVideo[]
 }
 
 model TrainingSetting {
@@ -578,21 +594,35 @@ model MarketingEvent {
   @@index([date])
 }
 
-// Pauta de conteúdo semanal do marketing: cada item é um post/produção planejado
-// pra um dia específico, com um funil de status até ser publicado.
-model ContentItem {
-  id          String   @id @default(uuid())
-  title       String
-  description String?
-  date        DateTime
-  // referencia | definido | gravado | editado | postado
-  status      String   @default("referencia")
-  assignedTo  String[] @default([])
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+// NOTA: a Pauta de Conteúdo (model ContentItem) foi unificada com o Kanban de
+// marketing (Task.contentFormat/contentStep) — ver migration 20261014.
+// A tabela "ContentItem" continua existindo no banco (os dados antigos foram
+// copiados pra "Task" com o mesmo id), mas não é mais mapeada aqui porque as
+// migrations deste projeto são só aditivas (não apagamos a tabela).
 
-  @@index([date])
+// Curadoria: vídeos de referência achados no Instagram/YouTube/TikTok que o time
+// quer gravar. Guarda o LINK (a API do Instagram não expõe os "Salvos" do perfil).
+model ReferenceVideo {
+  id        String   @id @default(uuid())
+  url       String
+  // instagram | youtube | tiktok | outro
+  platform  String   @default("instagram")
+  title     String
+  // por que é bom / o que copiar (gancho, áudio, formato...)
+  note      String?
+  tags      String[] @default([])
+  // nova | aprovada | gravada | descartada
+  status    String   @default("nova")
+  addedBy   String
+  // card de produção (Task) criado a partir desta referência, se algum.
+  taskId    String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  task      Task?    @relation(fields: [taskId], references: [id], onDelete: SetNull)
+
   @@index([status])
+  @@index([createdAt])
+  @@index([taskId])
 }
 
 // Eventos do time (torneios, confraternizações, sessões de fotos etc.), com
@@ -604,10 +634,14 @@ model Event {
   location  String?
   budget    Decimal? @db.Decimal(10, 2)
   vendors   String?
-  // [{ id, text, done }]
+  // [{ id, text, done, assignee?, dueDate? }]
   checklist Json     @default("[]")
   // planejamento | confirmado | realizado
   status    String   @default("planejamento")
+  // Responsáveis pelo evento (nomes dos usuários de marketing)
+  assignedTo String[] @default([])
+  // [{ id, label, url }]
+  links     Json     @default("[]")
   createdBy String?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

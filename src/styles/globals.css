@@ -124,6 +124,21 @@ textarea {
   }
 }
 
+/* Kanban: destaque temporário num card que acabou de ser alterado por outra pessoa. */
+@keyframes card-update-flash {
+  0% {
+    box-shadow: 0 0 0 2px rgba(34, 197, 94, 0.55);
+    background-color: rgba(34, 197, 94, 0.1);
+  }
+  100% {
+    box-shadow: 0 0 0 2px rgba(34, 197, 94, 0);
+    background-color: rgba(34, 197, 94, 0);
+  }
+}
+.card-updated {
+  animation: card-update-flash 2.2s ease-out 1;
+}
+
 /* Tours guiados (driver.js) — retema o popover padrão pro visual Pegasus (preto + verde),
    com suporte a dark mode, já que a biblioteca só vem com um tema claro genérico. */
 .pegasus-tour-popover.driver-popover {

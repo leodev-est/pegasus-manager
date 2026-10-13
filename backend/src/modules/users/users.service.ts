@@ -1,6 +1,7 @@
 import bcrypt from "bcrypt";
 import { prisma } from "../../config/prisma";
 import { AppError } from "../../middlewares/error.middleware";
+import { MARKETING_FUNCTIONS } from "../marketing/marketing.shared";
 
 type UserPayload = {
   name?: string;
@@ -10,7 +11,17 @@ type UserPayload = {
   active?: boolean;
   mustChangePassword?: boolean;
   roles?: string[];
+  marketingFunctions?: string[];
 };
+
+function normalizeFunctions(value?: string[]) {
+  if (value === undefined) return undefined;
+  if (!Array.isArray(value)) throw new AppError("Funções devem ser uma lista", 400);
+  const unique = Array.from(new Set(value.map((fn) => String(fn).trim().toLowerCase()).filter(Boolean)));
+  const invalid = unique.find((fn) => !(MARKETING_FUNCTIONS as readonly string[]).includes(fn));
+  if (invalid) throw new AppError(`Função inválida: ${invalid}`, 400);
+  return unique;
+}
 
 const includeRoles = {
   roles: {
@@ -41,6 +52,7 @@ async function formatUser(userId: string) {
     username: user.username,
     active: user.active,
     mustChangePassword: user.mustChangePassword,
+    marketingFunctions: user.marketingFunctions ?? [],
     roles: user.roles.map((userRole) => userRole.role.name),
     permissions: Array.from(
       new Set(
@@ -84,6 +96,7 @@ function serializeUser(user: {
   username: string;
   active: boolean;
   mustChangePassword: boolean;
+  marketingFunctions?: string[];
   createdAt: Date;
   updatedAt: Date;
   roles: Array<{
@@ -100,6 +113,7 @@ function serializeUser(user: {
     username: user.username,
     active: user.active,
     mustChangePassword: user.mustChangePassword,
+    marketingFunctions: user.marketingFunctions ?? [],
     roles: user.roles.map((userRole) => userRole.role.name),
     permissions: Array.from(
       new Set(
@@ -168,6 +182,7 @@ export const usersService = {
       password?: string;
       active?: boolean;
       mustChangePassword?: boolean;
+      marketingFunctions?: string[];
     } = {};
 
     if (payload.name !== undefined) data.name = payload.name;
@@ -188,6 +203,8 @@ export const usersService = {
       data.mustChangePassword = payload.mustChangePassword;
     }
     if (payload.password) data.password = await bcrypt.hash(payload.password, 10);
+    const functions = normalizeFunctions(payload.marketingFunctions);
+    if (functions !== undefined) data.marketingFunctions = functions;
 
     await prisma.user.update({
       where: { id },

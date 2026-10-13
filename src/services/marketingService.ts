@@ -1,8 +1,9 @@
 import { api } from "./api";
+import type { ContentFormat, ContentStatus } from "../utils/contentPipeline";
 
 export type MarketingStatus = "ideas" | "production" | "review" | "scheduled" | "published";
 export type MarketingPriority = "baixa" | "media" | "alta";
-export type MarketingChannel = "Instagram" | "WhatsApp" | "Arte" | "Captacao" | "Evento";
+export type MarketingChannel = "Instagram" | "WhatsApp" | "Arte" | "Captacao" | "Evento" | "Video" | "YouTube";
 export type MarketingComment = {
   id: string;
   text: string;
@@ -28,8 +29,13 @@ export type MarketingTask = {
   labels: string[];
   comments: MarketingComment[];
   checklist: MarketingChecklistItem[];
+  links: Array<{ id: string; label: string; url: string }>;
   approvalStatus: string | null;
   scheduledAt: string | null;
+  statusChangedAt: string;
+  position: number;
+  contentFormat: ContentFormat | null;
+  contentStep: ContentStatus | null;
   createdAt: string;
   updatedAt: string;
 };
@@ -52,6 +58,9 @@ export type MarketingTaskPayload = {
   labels?: string[];
   comments?: MarketingComment[];
   checklist?: MarketingChecklistItem[];
+  links?: Array<{ id: string; label: string; url: string }>;
+  contentFormat?: ContentFormat | null;
+  contentStep?: ContentStatus | null;
 };
 
 function cleanFilters(filters?: MarketingFilters) {
@@ -82,8 +91,8 @@ export const marketingService = {
     const { data } = await api.patch<MarketingTask>(`/tasks/${id}`, payload);
     return data;
   },
-  async updateTaskStatus(id: string, status: MarketingStatus) {
-    const { data } = await api.patch<MarketingTask>(`/tasks/${id}/status`, { status });
+  async updateTaskStatus(id: string, status: MarketingStatus, position?: number) {
+    const { data } = await api.patch<MarketingTask>(`/tasks/${id}/status`, { status, position });
     return data;
   },
   async deleteTask(id: string) {
@@ -97,6 +106,25 @@ export const marketingService = {
 
   async rejectTask(id: string) {
     const { data } = await api.patch<MarketingTask>(`/tasks/${id}/reject`, {});
+    return data;
+  },
+
+  async getCleanupPreview() {
+    const { data } = await api.get<{ count: number; retentionDays: number }>("/tasks/cleanup-preview", {
+      params: { area: "marketing" },
+    });
+    return data;
+  },
+
+  async getHistory(id: string) {
+    const { data } = await api.get<Array<{ id: string; action: string; userName: string | null; meta: unknown; createdAt: string }>>(
+      `/tasks/${id}/history`,
+    );
+    return data;
+  },
+
+  async cleanupOldTasks() {
+    const { data } = await api.post<{ deleted: number }>("/tasks/cleanup", { area: "marketing" });
     return data;
   },
 };

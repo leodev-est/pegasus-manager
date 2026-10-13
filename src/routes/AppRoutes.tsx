@@ -20,6 +20,7 @@ const ManagementKanbanPage = lazy(() => import("../pages/management/ManagementKa
 const MarketingPage = lazy(() => import("../pages/marketing/MarketingPage").then((m) => ({ default: m.MarketingPage })));
 const MarketingCalendarPage = lazy(() => import("../pages/marketing/MarketingCalendarPage").then((m) => ({ default: m.MarketingCalendarPage })));
 const ContentCalendarPage = lazy(() => import("../pages/marketing/ContentCalendarPage").then((m) => ({ default: m.ContentCalendarPage })));
+const CuratoriaPage = lazy(() => import("../pages/marketing/CuratoriaPage").then((m) => ({ default: m.CuratoriaPage })));
 const EventsPage = lazy(() => import("../pages/marketing/EventsPage").then((m) => ({ default: m.EventsPage })));
 const SchoolsPage = lazy(() => import("../pages/operational/SchoolsPage").then((m) => ({ default: m.SchoolsPage })));
 const SpreadsheetsPage = lazy(() => import("../pages/operational/SpreadsheetsPage").then((m) => ({ default: m.SpreadsheetsPage })));
@@ -186,6 +187,14 @@ export function AppRoutes() {
             element={
               <ProtectedRoute permissions={["marketing"]}>
                 <ContentCalendarPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="marketing/curadoria"
+            element={
+              <ProtectedRoute permissions={["marketing"]}>
+                <CuratoriaPage />
               </ProtectedRoute>
             }
           />

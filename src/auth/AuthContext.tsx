@@ -21,6 +21,8 @@ export type AuthUser = {
   roleLabels?: string[];
   permissions: string[];
   mustChangePassword?: boolean;
+  /** Funções no time de marketing (chefe, social, arte, edicao, curadoria, eventos). */
+  marketingFunctions?: string[];
 };
 
 type AuthContextValue = {
@@ -204,6 +206,7 @@ function normalizeUser(rawUser: unknown): AuthUser {
     username: String(user.username ?? ""),
     email: String(user.email ?? ""),
     mustChangePassword: Boolean(user.mustChangePassword),
+    marketingFunctions: Array.isArray(user.marketingFunctions) ? user.marketingFunctions.map(String) : [],
     roles,
     roleLabels: roleLabels.length > 0 ? roleLabels : roles,
     permissions: Array.from(

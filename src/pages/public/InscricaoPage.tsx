@@ -8,6 +8,7 @@ import {
   type PublicApplicationPayload,
 } from "../../services/athleteApplicationService";
 import { turmaService, type PublicTurma } from "../../services/turmaService";
+import { getActiveSeason } from "../../utils/season";
 
 // ── Tipos internos ─────────────────────────────────────────────────────────────
 
@@ -360,6 +361,7 @@ function ErrorBanner({ message }: { message: string }) {
 
 export function InscricaoPage() {
   const navigate = useNavigate();
+  const season = getActiveSeason();
   const [form, setForm] = useState<FormData>(loadDraft);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -462,7 +464,10 @@ export function InscricaoPage() {
             <Link to="/" className="flex items-center gap-3">
               <img src={ORG_LOGO_URL || logoFull} alt={`Projeto ${ORG_SHORT_NAME}`} className="h-10 w-20 rounded-xl object-contain" />
               <div>
-                <p className="font-bold leading-tight">Projeto {ORG_SHORT_NAME}</p>
+                <p className="font-bold leading-tight">
+                  Projeto {ORG_SHORT_NAME}
+                  {season ? ` ${season.emoji}` : ""}
+                </p>
                 <p className="text-xs text-[#42A5F5]">Caminho Para o Time</p>
               </div>
             </Link>
