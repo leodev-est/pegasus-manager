@@ -226,7 +226,7 @@ export function AppRoutes() {
           <Route
             path="treinos"
             element={
-              <ProtectedRoute permissions={["treinos"]}>
+              <ProtectedRoute permissions={["treinos_plano"]}>
                 <TrainingsPage />
               </ProtectedRoute>
             }

@@ -58,4 +58,16 @@ export const trainingsController = {
       next(error);
     }
   }) satisfies RequestHandler,
+
+  downloadPdf: (async (request, response, next) => {
+    try {
+      const { buffer, fileName } = await trainingsService.generatePdf(getParamId(request.params.id));
+      response.setHeader("Content-Type", "application/pdf");
+      response.setHeader("Content-Disposition", `attachment; filename="${fileName}"`);
+      response.setHeader("Content-Length", buffer.length);
+      response.end(buffer);
+    } catch (error) {
+      next(error);
+    }
+  }) satisfies RequestHandler,
 };

@@ -359,7 +359,7 @@ export function MyProfilePage() {
                 <div className="rounded-2xl border border-stone-200 bg-white p-4" key={training.id}>
                   <p className="font-black text-pegasus-navy">{training.title}</p>
                   <p className="mt-1 text-sm text-slate-500">{formatDate(training.date)} · {OFFICIAL_TRAINING.location} · {OFFICIAL_TRAINING.time}</p>
-                  <p className="mt-2 text-sm text-slate-600">{training.objective ?? `Treino oficial ${ORG_NAME}.`}</p>
+                  <p className="mt-2 text-sm text-slate-600">{training.category ?? `Treino oficial ${ORG_NAME}.`}</p>
                 </div>
               ))
             ) : (

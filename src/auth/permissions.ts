@@ -17,6 +17,9 @@ export type Permission =
   | "financeiro"
   | "marketing"
   | "treinos"
+  // Tela de montar o treino (/app/treinos) — só o próprio técnico/treinador, nem Gestão/
+  // Operacional/Atleta, que só precisam do calendário/quadra-tática ("treinos" comum).
+  | "treinos_plano"
   | "chamada"
   | "operacional"
   | "admin"
@@ -30,6 +33,7 @@ export const rolePermissions: Record<Role, Permission[]> = {
     "financeiro",
     "marketing",
     "treinos",
+    "treinos_plano",
     "chamada",
     "operacional",
     "admin",
@@ -40,7 +44,7 @@ export const rolePermissions: Record<Role, Permission[]> = {
   Marketing: ["dashboard", "marketing", "gestao"],
   ChefeMarketing: ["dashboard", "marketing", "gestao"],
   Gestor: ["dashboard", "gestao", "treinos", "operacional"],
-  Tecnico: ["dashboard", "treinos", "chamada"],
+  Tecnico: ["dashboard", "treinos", "treinos_plano", "chamada"],
   Operacional: ["dashboard", "gestao", "treinos", "operacional"],
   Atleta: ["dashboard", "atleta", "treinos"],
 };

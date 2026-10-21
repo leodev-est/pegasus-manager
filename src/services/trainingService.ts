@@ -5,11 +5,9 @@ export type Training = {
   date: string;
   title: string;
   category: string | null;
-  objective: string | null;
   warmup: string | null;
   fundamentals: string | null;
   mainPart: string | null;
-  reducedGame: string | null;
   finalPart: string | null;
   notes: string | null;
   createdBy: string;
@@ -27,11 +25,9 @@ export type TrainingPayload = {
   date: string;
   title: string;
   category?: string;
-  objective?: string;
   warmup?: string;
   fundamentals?: string;
   mainPart?: string;
-  reducedGame?: string;
   finalPart?: string;
   notes?: string;
   createdBy: string;
@@ -66,5 +62,14 @@ export const trainingService = {
   },
   async remove(id: string) {
     await api.delete(`/trainings/${id}`);
+  },
+  async downloadPdf(id: string, fileName: string): Promise<void> {
+    const response = await api.get(`/trainings/${id}/pdf`, { responseType: "blob" });
+    const url = URL.createObjectURL(response.data as Blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = fileName;
+    a.click();
+    URL.revokeObjectURL(url);
   },
 };

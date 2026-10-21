@@ -1,4 +1,5 @@
-﻿import { Prisma } from "@prisma/client";
+﻿import { Prisma, type Training } from "@prisma/client";
+import PDFDocument from "pdfkit";
 import { prisma } from "../../config/prisma";
 import { AppError } from "../../middlewares/error.middleware";
 import {
@@ -223,6 +224,106 @@ function buildData(payload: TrainingPayload, requireBaseFields: boolean, blocked
   return data;
 }
 
+function formatPdfDate(date: Date) {
+  return new Intl.DateTimeFormat("pt-BR", { timeZone: "UTC", day: "2-digit", month: "2-digit", year: "numeric" }).format(date);
+}
+
+async function generateTrainingPdfBuffer(training: Training): Promise<Buffer> {
+  const setting = await prisma.trainingSetting.findUnique({ where: { id: "singleton" }, select: { systemName: true } });
+  const orgName = setting?.systemName ?? "Pegasus Manager";
+
+  const W = 595.28;
+  const H = 841.89;
+  const ML = 40;
+  const MR = 40;
+  const contentW = W - ML - MR;
+
+  return new Promise((resolve, reject) => {
+    const doc = new PDFDocument({ margins: { top: ML, bottom: 40, left: ML, right: MR }, size: "A4", autoFirstPage: true });
+    const chunks: Buffer[] = [];
+    doc.on("data", (chunk: Buffer) => chunks.push(chunk));
+    doc.on("end", () => resolve(Buffer.concat(chunks)));
+    doc.on("error", reject);
+
+    // Mesma paleta preto + verde do demonstrativo financeiro (reports.service.ts).
+    const ink = "#18181b";
+    const gray = "#71717a";
+    const grayLight = "#a1a1aa";
+    const surface = "#f4f4f5";
+    const border = "#e4e4e7";
+    const emerald = "#16a34a";
+
+    doc.rect(0, 0, W, 72).fill(ink);
+    doc.rect(0, 72, W, 3).fill(emerald);
+    doc.fillColor("white").fontSize(22).font("Helvetica-Bold").text(orgName, ML, 16, { lineBreak: false });
+    const pillLabel = `TREINO · ${formatPdfDate(training.date).toUpperCase()}`;
+    const pillW = doc.font("Helvetica-Bold").fontSize(8.5).widthOfString(pillLabel, { characterSpacing: 0.6 }) + 20;
+    doc.roundedRect(ML, 42, pillW, 18, 9).fill("#134e2f");
+    doc.fillColor("#86efac").font("Helvetica-Bold").fontSize(8.5).text(pillLabel, ML + 10, 47, { lineBreak: false, characterSpacing: 0.6 });
+
+    let y = 100;
+
+    function ensureSpace(minHeight: number) {
+      if (y + minHeight > H - 60) {
+        doc.addPage();
+        y = ML;
+      }
+    }
+
+    function sectionTitle(title: string) {
+      const label = title.toUpperCase();
+      const textW = doc.font("Helvetica-Bold").fontSize(9.5).widthOfString(label, { characterSpacing: 0.6 });
+      ensureSpace(50);
+      doc.roundedRect(ML, y, textW + 24, 21, 10.5).fill(surface);
+      doc.circle(ML + 12, y + 10.5, 3).fill(emerald);
+      doc.fillColor(ink).font("Helvetica-Bold").fontSize(9.5).text(label, ML + 20, y + 6, { lineBreak: false, characterSpacing: 0.6 });
+      y += 21;
+      doc.moveTo(ML, y + 7).lineTo(ML + contentW, y + 7).strokeColor(border).lineWidth(0.75).stroke();
+      y += 17;
+    }
+
+    function paragraph(text: string) {
+      doc.font("Helvetica").fontSize(10).fillColor(ink);
+      const height = doc.heightOfString(text, { width: contentW, lineGap: 3 });
+      ensureSpace(height + 10);
+      doc.text(text, ML, y, { width: contentW, lineGap: 3 });
+      y += height + 18;
+    }
+
+    function block(title: string, text: string | null) {
+      if (!text?.trim()) return;
+      sectionTitle(title);
+      paragraph(text.trim());
+    }
+
+    // ── Cabeçalho do treino ───────────────────────────────────────────────────
+    doc.font("Helvetica-Bold").fontSize(15).fillColor(ink).text(training.title, ML, y, { width: contentW });
+    y += doc.heightOfString(training.title, { width: contentW }) + 4;
+    const metaParts = [training.category, `Criado por ${training.createdBy}`].filter(Boolean);
+    doc.font("Helvetica").fontSize(9.5).fillColor(gray).text(metaParts.join(" · "), ML, y, { width: contentW, lineBreak: false });
+    y += 26;
+
+    // ── Blocos do treino ──────────────────────────────────────────────────────
+    block("Aquecimento", training.warmup);
+    block("Fundamentos", training.fundamentals);
+    block("Parte principal", training.mainPart);
+    block("Parte final", training.finalPart);
+    block("Observações", training.notes);
+
+    if (![training.warmup, training.fundamentals, training.mainPart, training.finalPart, training.notes].some((v) => v?.trim())) {
+      doc.font("Helvetica").fontSize(9).fillColor(grayLight).text("Nenhum bloco preenchido ainda.", ML, y, { lineBreak: false });
+    }
+
+    // ── Footer ────────────────────────────────────────────────────────────────
+    const footerY = H - 28;
+    doc.rect(0, footerY, W, 28).fill(surface);
+    doc.font("Helvetica").fontSize(7.5).fillColor(gray)
+      .text(`Gerado em ${new Date().toLocaleString("pt-BR")} · ${orgName}`, ML, footerY + 9, { width: contentW, align: "center", lineBreak: false });
+
+    doc.end();
+  });
+}
+
 export const trainingsService = {
   async findAll(filters: TrainingFilters) {
     await ensureUpcomingTrainings().catch(() => {
@@ -270,6 +371,14 @@ export const trainingsService = {
     const existing = await this.findById(id);
     await prisma.training.delete({ where: { id } });
     googleCalendarService.syncTrainingDelete(existing.googleEventId).catch(() => {});
+  },
+
+  async generatePdf(id: string) {
+    const training = await this.findById(id);
+    const buffer = await generateTrainingPdfBuffer(training);
+    const datePart = toTrainingDateKey(training.date);
+    const safeTitle = training.title.replace(/[\\/:*?"<>|]/g, "").slice(0, 60);
+    return { buffer, fileName: `Treino ${datePart} - ${safeTitle}.pdf` };
   },
 };
 

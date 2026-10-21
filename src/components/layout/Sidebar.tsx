@@ -116,7 +116,7 @@ export const menuGroups: MenuGroup[] = [
         icon: CalendarDays,
         permissions: ["treinos"],
       },
-      { label: "Treinos", path: "/app/treinos", icon: ClipboardList, permissions: ["treinos"] },
+      { label: "Treinos", path: "/app/treinos", icon: ClipboardList, permissions: ["treinos_plano"] },
       {
         label: "Turmas",
         path: "/app/admin/turmas",

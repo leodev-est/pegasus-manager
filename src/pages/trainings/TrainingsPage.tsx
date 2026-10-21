@@ -1,4 +1,4 @@
-﻿import { CalendarDays, Dumbbell, Loader2, Plus, Star } from "lucide-react";
+﻿import { CalendarDays, CheckCircle2, Dumbbell, FileDown, Flag, Flame, Loader2, NotebookPen, Plus, Star, Target } from "lucide-react";
 import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 import { useAuth } from "../../auth/AuthContext";
 import { useTour } from "../../tours/useTour";
@@ -41,28 +41,36 @@ const emptyTraining: TrainingForm = {
   date: new Date().toISOString().slice(0, 10),
   title: "",
   category: "",
-  objective: "",
   warmup: "",
   fundamentals: "",
   mainPart: "",
-  reducedGame: "",
   finalPart: "",
   notes: "",
   createdBy: "",
 };
 
+// Cada bloco do treino com seu ícone e uma dica curta — monta a esteira visual do formulário
+// e também o "Ver detalhes"/PDF, pra não duplicar a lista em três lugares.
+const BLOCKS: Array<{ key: keyof TrainingForm; label: string; icon: typeof Flame; hint: string; rows?: number }> = [
+  { key: "warmup", label: "Aquecimento", icon: Flame, hint: "Ativação, mobilidade, bola em movimento..." },
+  { key: "fundamentals", label: "Fundamentos", icon: Target, hint: "Saque, manchete, toque, ataque, bloqueio..." },
+  { key: "mainPart", label: "Parte principal", icon: Dumbbell, hint: "O corpo do treino: exercícios, progressões, tempo de cada um...", rows: 6 },
+  { key: "finalPart", label: "Parte final", icon: Flag, hint: "Volta à calma, alongamento, fechamento..." },
+  { key: "notes", label: "Observações", icon: NotebookPen, hint: "Qualquer detalhe extra pra quem for aplicar o treino." },
+];
+
 const TOUR_STEPS = [
   {
     popover: {
       title: "🏐 Treinos",
-      description: "Planejamento técnico dos treinos: crie, edite e visualize treinos organizados por data, categoria e blocos de atividade.",
+      description: "Monte o treino por blocos (aquecimento, fundamentos, parte principal, parte final) e baixe em PDF quando terminar.",
     },
   },
   {
     element: "[data-tour='treinos-filtros']",
     popover: {
       title: "Filtros",
-      description: "Filtre treinos por nome, categoria e mês. Use 'Novo treino' para criar uma sessão com aquecimento, fundamentos, parte principal e jogo.",
+      description: "Filtre treinos por nome, categoria e mês. Use 'Novo treino' para montar uma sessão do zero.",
       side: "bottom" as const,
     },
   },
@@ -70,7 +78,7 @@ const TOUR_STEPS = [
     element: "[data-tour='treinos-lista']",
     popover: {
       title: "Lista de treinos",
-      description: "Treinos agrupados por data. Clique em 'Ver' para ler o plano completo. Clique em 'Editar' para modificar ou no ícone de lixeira para excluir.",
+      description: "Treinos agrupados por data. 'Ver' mostra o plano completo, 'Baixar PDF' gera o impresso pra levar pra quadra.",
       side: "top" as const,
     },
   },
@@ -90,11 +98,9 @@ function trainingToForm(training: Training): TrainingForm {
     date: toInputDate(training.date),
     title: training.title,
     category: training.category ?? "",
-    objective: training.objective ?? "",
     warmup: training.warmup ?? "",
     fundamentals: training.fundamentals ?? "",
     mainPart: training.mainPart ?? "",
-    reducedGame: training.reducedGame ?? "",
     finalPart: training.finalPart ?? "",
     notes: training.notes ?? "",
     createdBy: training.createdBy,
@@ -106,15 +112,19 @@ function buildPayload(form: TrainingForm): TrainingPayload {
     date: form.date,
     title: form.title,
     category: form.category,
-    objective: form.objective,
     warmup: form.warmup,
     fundamentals: form.fundamentals,
     mainPart: form.mainPart,
-    reducedGame: form.reducedGame,
     finalPart: form.finalPart,
     notes: form.notes,
     createdBy: form.createdBy,
   };
+}
+
+/** Mesmo formato de nome do PDF gerado no backend (trainings.service.ts). */
+function pdfFileName(training: Training) {
+  const safeTitle = training.title.replace(/[\\/:*?"<>|]/g, "").slice(0, 60);
+  return `Treino ${toInputDate(training.date)} - ${safeTitle}.pdf`;
 }
 
 export function TrainingsPage() {
@@ -136,6 +146,8 @@ export function TrainingsPage() {
   const [form, setForm] = useState<TrainingForm>(emptyTraining);
   const [viewFeedback, setViewFeedback] = useState<TrainingFeedbackWithAthlete[]>([]);
   const [isLoadingFeedback, setIsLoadingFeedback] = useState(false);
+  const [doneTraining, setDoneTraining] = useState<Training | null>(null);
+  const [downloadingId, setDownloadingId] = useState<string | null>(null);
 
   useEffect(() => {
     if (!viewTraining) {
@@ -156,7 +168,7 @@ export function TrainingsPage() {
     ? viewFeedback.reduce((sum, fb) => sum + fb.rating, 0) / viewFeedback.length
     : 0;
 
-  useTour("treinos:v1", isLoading ? [] : TOUR_STEPS);
+  useTour("treinos:v2", isLoading ? [] : TOUR_STEPS);
 
   const categories = useMemo(
     () => Array.from(new Set(trainings.map((training) => training.category).filter(Boolean))) as string[],
@@ -215,20 +227,29 @@ export function TrainingsPage() {
     setIsSaving(true);
 
     try {
-      if (editingTraining) {
-        await trainingService.update(editingTraining.id, buildPayload(form));
-        showToast("Treino atualizado com sucesso.", "success");
-      } else {
-        await trainingService.create(buildPayload(form));
-        showToast("Treino criado com sucesso.", "success");
-      }
+      const saved = editingTraining
+        ? await trainingService.update(editingTraining.id, buildPayload(form))
+        : await trainingService.create(buildPayload(form));
 
+      showToast(editingTraining ? "Treino atualizado com sucesso." : "Treino criado com sucesso.", "success");
       setIsModalOpen(false);
+      setDoneTraining(saved);
       await loadTrainings();
     } catch (error) {
       showToast(getApiErrorMessage(error), "error");
     } finally {
       setIsSaving(false);
+    }
+  }
+
+  async function handleDownloadPdf(training: Training) {
+    setDownloadingId(training.id);
+    try {
+      await trainingService.downloadPdf(training.id, pdfFileName(training));
+    } catch (error) {
+      showToast(getApiErrorMessage(error), "error");
+    } finally {
+      setDownloadingId(null);
     }
   }
 
@@ -252,7 +273,7 @@ export function TrainingsPage() {
     <div className="space-y-6">
       <PageHeader
         title="Treinos"
-        description="Planejamento técnico dos treinos, separado por data e blocos de atividade."
+        description="Monte o treino por blocos e baixe em PDF quando terminar."
         action={
           canCreate ? (
             <Button onClick={openCreateModal} className="w-full sm:w-auto">
@@ -314,16 +335,15 @@ export function TrainingsPage() {
                         <div className="min-w-0 flex-1">
                           <p className="text-sm font-bold text-pegasus-primary">{training.category ?? "Treino"}</p>
                           <h4 className="mt-1 font-bold text-pegasus-navy">{training.title}</h4>
-                          <p className="mt-2 text-sm leading-6 text-slate-600">{training.objective ?? "Sem objetivo informado."}</p>
+                          <p className="mt-2 text-sm leading-6 text-slate-600">{training.mainPart || "Parte principal ainda não definida."}</p>
                         </div>
                       </div>
                       <div className="mt-4 grid gap-2 text-sm text-slate-600 sm:grid-cols-2">
                         <p><strong className="text-pegasus-navy">Aquecimento:</strong> {training.warmup ?? "-"}</p>
-                        <p><strong className="text-pegasus-navy">Fundamento:</strong> {training.fundamentals ?? "-"}</p>
-                        <p><strong className="text-pegasus-navy">Jogo reduzido:</strong> {training.reducedGame ?? "-"}</p>
+                        <p><strong className="text-pegasus-navy">Fundamentos:</strong> {training.fundamentals ?? "-"}</p>
                         <p><strong className="text-pegasus-navy">Criado por:</strong> {training.createdBy}</p>
                       </div>
-                      <div className="mt-4 border-t border-stone-100 pt-3">
+                      <div className="mt-4 flex flex-wrap items-center justify-between gap-2 border-t border-stone-100 pt-3">
                         <ActionButtons
                           canDelete={canDelete}
                           canEdit={canUpdate}
@@ -331,6 +351,19 @@ export function TrainingsPage() {
                           onEdit={() => openEditModal(training)}
                           onView={() => setViewTraining(training)}
                         />
+                        <button
+                          className="min-h-10 font-bold text-pegasus-primary disabled:opacity-50"
+                          disabled={downloadingId === training.id}
+                          onClick={() => handleDownloadPdf(training)}
+                          type="button"
+                        >
+                          {downloadingId === training.id ? (
+                            <Loader2 className="mr-1 inline animate-spin" size={16} />
+                          ) : (
+                            <FileDown className="mr-1 inline" size={16} />
+                          )}
+                          Baixar PDF
+                        </button>
                       </div>
                     </article>
                   ))}
@@ -349,31 +382,76 @@ export function TrainingsPage() {
         )}
       </section>
 
-      <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title={editingTraining ? "Editar treino" : "Novo treino"}>
-        <form className="grid gap-4" onSubmit={handleSubmit}>
-          <div className="grid gap-4 md:grid-cols-2">
+      <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title={editingTraining ? "Editar treino" : "Novo treino"} size="xl">
+        <form className="grid gap-5" onSubmit={handleSubmit}>
+          <div className="grid gap-4 rounded-2xl border border-stone-200 p-4 md:grid-cols-2">
             <Input disabled={isSaving} label="Data" onChange={(event) => setForm({ ...form, date: event.target.value })} required type="date" value={form.date} />
-            <Input disabled={isSaving} label="Título" onChange={(event) => setForm({ ...form, title: event.target.value })} required value={form.title} />
-            <Input disabled={isSaving} label="Categoria" onChange={(event) => setForm({ ...form, category: event.target.value })} value={form.category} />
-            <Input disabled={isSaving} label="Criado por" onChange={(event) => setForm({ ...form, createdBy: event.target.value })} required value={form.createdBy} />
+            <Input disabled={isSaving} label="Título" onChange={(event) => setForm({ ...form, title: event.target.value })} placeholder="Ex: Treino de saque e ataque" required value={form.title} />
+            <Input disabled={isSaving} label="Categoria" onChange={(event) => setForm({ ...form, category: event.target.value })} placeholder="Ex: Sub-17" value={form.category} />
+            <div>
+              <span className="mb-1.5 block text-sm font-semibold text-slate-700">Criado por</span>
+              <p className="flex h-11 items-center rounded-md border border-slate-200 bg-slate-50 px-3 text-sm text-slate-600">
+                {form.createdBy || "-"}
+              </p>
+            </div>
           </div>
-          <Textarea disabled={isSaving} label="Objetivo" onChange={(event) => setForm({ ...form, objective: event.target.value })} value={form.objective} />
-          <Textarea disabled={isSaving} label="Aquecimento" onChange={(event) => setForm({ ...form, warmup: event.target.value })} value={form.warmup} />
-          <Textarea disabled={isSaving} label="Fundamento" onChange={(event) => setForm({ ...form, fundamentals: event.target.value })} value={form.fundamentals} />
-          <Textarea disabled={isSaving} label="Parte principal" onChange={(event) => setForm({ ...form, mainPart: event.target.value })} rows={6} value={form.mainPart} />
-          <Textarea disabled={isSaving} label="Jogo reduzido" onChange={(event) => setForm({ ...form, reducedGame: event.target.value })} value={form.reducedGame} />
-          <Textarea disabled={isSaving} label="Parte final" onChange={(event) => setForm({ ...form, finalPart: event.target.value })} value={form.finalPart} />
-          <Textarea disabled={isSaving} label="Observações" onChange={(event) => setForm({ ...form, notes: event.target.value })} value={form.notes} />
+
+          {BLOCKS.map(({ key, label, icon: Icon, hint, rows }) => (
+            <section className="rounded-2xl border border-stone-200 p-4" key={key}>
+              <div className="mb-2 flex items-center gap-2">
+                <Icon className="text-pegasus-primary" size={18} />
+                <p className="text-xs text-slate-400">{hint}</p>
+              </div>
+              <Textarea
+                disabled={isSaving}
+                label={label}
+                onChange={(event) => setForm({ ...form, [key]: event.target.value })}
+                rows={rows}
+                value={form[key] as string}
+              />
+            </section>
+          ))}
+
           <div className="flex flex-col gap-3 sm:flex-row">
             <Button disabled={isSaving} type="submit">
-              {isSaving ? <Loader2 className="animate-spin" size={17} /> : null}
-              {editingTraining ? "Salvar alterações" : "Criar treino"}
+              {isSaving ? <Loader2 className="animate-spin" size={17} /> : <CheckCircle2 size={17} />}
+              Pronto
             </Button>
             <Button disabled={isSaving} onClick={() => setIsModalOpen(false)} variant="secondary">
               Cancelar
             </Button>
           </div>
         </form>
+      </Modal>
+
+      <Modal
+        description="Treino salvo. Já pode baixar o PDF pra levar pra quadra."
+        isOpen={Boolean(doneTraining)}
+        onClose={() => setDoneTraining(null)}
+        title="Treino pronto!"
+      >
+        {doneTraining ? (
+          <div className="space-y-4">
+            <div className="flex items-center gap-3 rounded-2xl bg-pegasus-surface p-4">
+              <span className="rounded-xl bg-emerald-100 p-2.5 text-emerald-600">
+                <CheckCircle2 size={22} />
+              </span>
+              <div>
+                <p className="font-bold text-pegasus-navy">{doneTraining.title}</p>
+                <p className="text-sm text-slate-500">{formatDate(doneTraining.date)}</p>
+              </div>
+            </div>
+            <div className="flex flex-col gap-3 sm:flex-row">
+              <Button disabled={downloadingId === doneTraining.id} onClick={() => handleDownloadPdf(doneTraining)}>
+                {downloadingId === doneTraining.id ? <Loader2 className="animate-spin" size={17} /> : <FileDown size={17} />}
+                Baixar PDF
+              </Button>
+              <Button onClick={() => setDoneTraining(null)} variant="secondary">
+                Fechar
+              </Button>
+            </div>
+          </div>
+        ) : null}
       </Modal>
 
       <Modal isOpen={Boolean(viewTraining)} onClose={() => setViewTraining(null)} title={viewTraining?.title ?? "Detalhes do treino"}>
@@ -384,18 +462,13 @@ export function TrainingsPage() {
               <p><strong className="text-pegasus-navy">Categoria:</strong> {viewTraining.category ?? "-"}</p>
               <p><strong className="text-pegasus-navy">Criado por:</strong> {viewTraining.createdBy}</p>
             </div>
-            {[
-              ["Objetivo", viewTraining.objective],
-              ["Aquecimento", viewTraining.warmup],
-              ["Fundamento", viewTraining.fundamentals],
-              ["Parte principal", viewTraining.mainPart],
-              ["Jogo reduzido", viewTraining.reducedGame],
-              ["Finalização", viewTraining.finalPart],
-              ["Observações", viewTraining.notes],
-            ].map(([title, value]) => (
-              <section className="rounded-2xl border border-stone-200 bg-white p-4" key={title}>
-                <h3 className="font-black text-pegasus-navy">{title}</h3>
-                <p className="mt-2 whitespace-pre-wrap">{value || "-"}</p>
+            {BLOCKS.map(({ key, label, icon: Icon }) => (
+              <section className="rounded-2xl border border-stone-200 bg-white p-4" key={key}>
+                <div className="flex items-center gap-2">
+                  <Icon className="text-pegasus-primary" size={16} />
+                  <h3 className="font-black text-pegasus-navy">{label}</h3>
+                </div>
+                <p className="mt-2 whitespace-pre-wrap">{(viewTraining[key] as string | null) || "-"}</p>
               </section>
             ))}
 
@@ -435,6 +508,16 @@ export function TrainingsPage() {
                 </div>
               )}
             </section>
+
+            <Button
+              className="w-full sm:w-auto"
+              disabled={downloadingId === viewTraining.id}
+              onClick={() => handleDownloadPdf(viewTraining)}
+              variant="secondary"
+            >
+              {downloadingId === viewTraining.id ? <Loader2 className="animate-spin" size={17} /> : <FileDown size={17} />}
+              Baixar PDF
+            </Button>
           </div>
         ) : null}
       </Modal>
@@ -450,4 +533,3 @@ export function TrainingsPage() {
     </div>
   );
 }
-

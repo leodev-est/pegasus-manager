@@ -9,6 +9,7 @@ trainingsRoutes.use(authMiddleware);
 
 trainingsRoutes.get("/", permissionMiddleware("trainings:read"), trainingsController.findAll);
 trainingsRoutes.get("/:id", permissionMiddleware("trainings:read"), trainingsController.findById);
+trainingsRoutes.get("/:id/pdf", permissionMiddleware("trainings:read"), trainingsController.downloadPdf);
 trainingsRoutes.post("/", permissionMiddleware("trainings:create"), trainingsController.create);
 trainingsRoutes.patch("/:id", permissionMiddleware("trainings:update"), trainingsController.update);
 trainingsRoutes.delete("/:id", permissionMiddleware("trainings:delete"), trainingsController.delete);
