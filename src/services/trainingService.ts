@@ -1,3 +1,4 @@
+import axios from "axios";
 import { api } from "./api";
 
 export type Training = {
@@ -64,7 +65,19 @@ export const trainingService = {
     await api.delete(`/trainings/${id}`);
   },
   async downloadPdf(id: string, fileName: string): Promise<void> {
-    const response = await api.get(`/trainings/${id}/pdf`, { responseType: "blob" });
+    let response;
+    try {
+      response = await api.get(`/trainings/${id}/pdf`, { responseType: "blob" });
+    } catch (error) {
+      // Com responseType "blob", o erro do servidor também chega como Blob — lê o JSON
+      // de dentro pra mostrar a mensagem real em vez do aviso genérico.
+      const data = axios.isAxiosError(error) ? error.response?.data : undefined;
+      if (data instanceof Blob) {
+        const parsed = await data.text().then((text) => JSON.parse(text) as { message?: string }).catch(() => null);
+        if (parsed?.message) throw new Error(parsed.message);
+      }
+      throw error;
+    }
     const url = URL.createObjectURL(response.data as Blob);
     const a = document.createElement("a");
     a.href = url;

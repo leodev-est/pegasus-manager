@@ -62,8 +62,18 @@ export const trainingsController = {
   downloadPdf: (async (request, response, next) => {
     try {
       const { buffer, fileName } = await trainingsService.generatePdf(getParamId(request.params.id));
+      // Cabeçalho HTTP não aceita caracteres fora do ASCII (o "—" de "Treino Oficial — Feminino"
+      // derrubava a resposta): manda um nome ASCII de reserva + o nome real codificado (RFC 5987).
+      const asciiName = fileName
+        .normalize("NFD")
+        .replace(/[̀-ͯ]/g, "")
+        .replace(/[^\x20-\x7e]/g, "-")
+        .replace(/"/g, "");
       response.setHeader("Content-Type", "application/pdf");
-      response.setHeader("Content-Disposition", `attachment; filename="${fileName}"`);
+      response.setHeader(
+        "Content-Disposition",
+        `attachment; filename="${asciiName}"; filename*=UTF-8''${encodeURIComponent(fileName)}`,
+      );
       response.setHeader("Content-Length", buffer.length);
       response.end(buffer);
     } catch (error) {
