@@ -371,6 +371,7 @@ function Column<TTask extends KanbanTaskBase, TStatus extends string>({
   icon: Icon,
   isOver,
   locked,
+  allowQuickCreate = true,
   recentlyUpdatedIds,
   showApprovalBadge,
   statusLabel,
@@ -386,6 +387,8 @@ function Column<TTask extends KanbanTaskBase, TStatus extends string>({
   icon: LucideIcon;
   isOver: boolean;
   locked?: boolean;
+  /** Falso nas colunas que só se alcançam pela aprovação (Agendado/Publicado). */
+  allowQuickCreate?: boolean;
   recentlyUpdatedIds: Set<string>;
   showApprovalBadge: boolean;
   statusLabel: (status: string) => string;
@@ -434,7 +437,7 @@ function Column<TTask extends KanbanTaskBase, TStatus extends string>({
         </span>
       </div>
 
-      {canCreate && !locked ? (
+      {canCreate && !locked && allowQuickCreate ? (
         <div className="mb-2 flex items-center gap-1.5">
           <input
             className="h-8 flex-1 rounded-md border border-dashed border-stone-300 bg-transparent px-2 text-xs text-stone-600 placeholder:text-stone-400 focus:border-pegasus-sky focus:outline-none dark:border-slate-600 dark:text-slate-200"
@@ -668,7 +671,9 @@ function SortableTaskCard<TTask extends KanbanTaskBase, TStatus extends string>(
     <TaskCard
       actions={actions}
       currentUserName={currentUserName}
-      dragAttributes={attributes as unknown as Record<string, unknown>}
+      // O dnd-kit marca como aria-disabled o card que não pode ser arrastado (ex.: Agendado), mas
+      // ele continua abrindo no clique/Enter: leitor de tela não pode anunciá-lo como desativado.
+      dragAttributes={{ ...attributes, "aria-disabled": undefined } as unknown as Record<string, unknown>}
       dragListeners={listeners as unknown as Record<string, (...event: unknown[]) => void>}
       highlighted={highlighted}
       isDragging={isDragging}
@@ -1253,13 +1258,11 @@ export function AdvancedKanban<TTask extends KanbanTaskBase, TStatus extends str
 
     if (approvalColumn) {
       const approvalIdx = columns.findIndex((c) => c.value === approvalColumn);
-      const currentIdx = columns.findIndex((c) => c.value === currentStatus);
       const nextIdx = columns.findIndex((c) => c.value === nextStatus);
 
-      // Cards in review only leave via the approve/reject buttons.
-      if (currentStatus === approvalColumn && nextIdx > approvalIdx) return false;
-      // Cards before review cannot jump past it.
-      if (currentIdx < approvalIdx && nextIdx > approvalIdx) return false;
+      // Colunas depois da Revisão (Agendado/Publicado) só se alcançam pela aprovação,
+      // venha o card de onde vier (inclusive de Publicado de volta para Agendado).
+      if (nextIdx > approvalIdx) return false;
     }
 
     return true;
@@ -1496,6 +1499,16 @@ export function AdvancedKanban<TTask extends KanbanTaskBase, TStatus extends str
   }
 
   const Icon = icon;
+  // Status que só se alcançam pela aprovação não aparecem no formulário (salvo se o card já está lá).
+  const formStatusOptions = columns.filter(
+    (column) =>
+      !approvalColumn ||
+      column.value === form.status ||
+      column.value === (editingTask?.status ?? emptyStatus) ||
+      isMoveAllowed(editingTask?.status ?? emptyStatus, column.value),
+  );
+  // Card agendado já foi aprovado: só quem aprova muda o conteúdo (o servidor também barra).
+  const isLockedScheduled = (task: TTask) => Boolean(scheduledColumn && task.status === scheduledColumn && !canApprove);
   const recentlyUpdatedSet = useMemo(() => new Set(Object.keys(recentlyUpdated)), [recentlyUpdated]);
   const dropAnimation = useMemo(
     () => (typeof window !== "undefined" && window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ? null : undefined),
@@ -1629,6 +1642,11 @@ export function AdvancedKanban<TTask extends KanbanTaskBase, TStatus extends str
                   isOver={overColumn === column.value}
                   key={column.value}
                   locked={scheduledColumn === column.value}
+                  allowQuickCreate={
+                    !approvalColumn ||
+                    columns.findIndex((item) => item.value === column.value) <=
+                      columns.findIndex((item) => item.value === approvalColumn)
+                  }
                   recentlyUpdatedIds={recentlyUpdatedSet}
                   showApprovalBadge={approvalColumn === column.value}
                   statusLabel={statusLabel}
@@ -1793,13 +1811,24 @@ export function AdvancedKanban<TTask extends KanbanTaskBase, TStatus extends str
                 <p className="mb-2 text-xs font-black uppercase tracking-wide text-amber-700">Publicação agendada</p>
                 <ScheduledBadge scheduledAt={viewTask.scheduledAt} />
                 {canApprove && onApprove ? (
-                  <Button
-                    className="mt-3 w-full bg-emerald-600 hover:bg-emerald-700"
-                    onClick={() => handlePublishNow(viewTask)}
-                  >
-                    Publicar agora
-                  </Button>
-                ) : null}
+                  <div className="mt-3 flex flex-col gap-2 sm:flex-row">
+                    <Button
+                      className="flex-1 bg-emerald-600 hover:bg-emerald-700"
+                      onClick={() => handlePublishNow(viewTask)}
+                    >
+                      Publicar agora
+                    </Button>
+                    {onReject ? (
+                      <Button className="flex-1" onClick={() => handleReject(viewTask)} variant="secondary">
+                        Desagendar
+                      </Button>
+                    ) : null}
+                  </div>
+                ) : (
+                  <p className="mt-3 text-xs text-amber-800">
+                    Já aprovado. Para mudar o conteúdo, peça a quem aprova para desagendar.
+                  </p>
+                )}
               </div>
             ) : null}
 
@@ -1825,7 +1854,7 @@ export function AdvancedKanban<TTask extends KanbanTaskBase, TStatus extends str
             ) : null}
 
             <div className="flex flex-col gap-3 sm:flex-row">
-              {canUpdate ? (
+              {canUpdate && !isLockedScheduled(viewTask) ? (
                 <Button onClick={() => openEditModal(viewTask)} variant="secondary">
                   Editar
                 </Button>
@@ -2006,7 +2035,7 @@ export function AdvancedKanban<TTask extends KanbanTaskBase, TStatus extends str
                   disabled={isSaving}
                   label="Status"
                   onChange={(event) => setForm({ ...form, status: event.target.value as TStatus })}
-                  options={columns.map((item) => ({ label: item.label, value: item.value }))}
+                  options={formStatusOptions.map((item) => ({ label: item.label, value: item.value }))}
                   value={form.status}
                 />
               </div>

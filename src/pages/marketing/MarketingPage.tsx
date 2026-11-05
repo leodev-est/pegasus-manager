@@ -348,7 +348,7 @@ export function MarketingPage() {
         onReject={(task) =>
           saveWithFeedback(
             () => marketingService.rejectTask(task.id).then(() => undefined),
-            "Tarefa reprovada e devolvida para Produção.",
+            task.status === "scheduled" ? "Desagendado. O card voltou para Produção." : "Reprovado. O card voltou para Produção.",
           )
         }
       />
