@@ -30,6 +30,7 @@ import { useToast } from "../../components/ui/Toast";
 import { getApiErrorMessage } from "../../services/api";
 import { roleService, type RoleRecord } from "../../services/roleService";
 import { userService } from "../../services/userService";
+import { MARKETING_FUNCTION_SUGGESTIONS } from "../marketing/marketingConfig";
 
 const accessByRole: Record<string, string> = {
   Atleta: "Dashboard",
@@ -62,6 +63,7 @@ export function AccessControlPage() {
   const [error, setError] = useState("");
   const [editingUsernameFor, setEditingUsernameFor] = useState<AuthUser | null>(null);
   const [usernameInput, setUsernameInput] = useState("");
+  const [marketingFunctionInput, setMarketingFunctionInput] = useState("");
   const [usernameError, setUsernameError] = useState("");
   const [isSavingUsername, setIsSavingUsername] = useState(false);
 
@@ -123,6 +125,7 @@ export function AccessControlPage() {
   function openEditUsername(user: AuthUser) {
     setEditingUsernameFor(user);
     setUsernameInput(user.username);
+    setMarketingFunctionInput(user.marketingFunction ?? "");
     setUsernameError("");
   }
 
@@ -140,11 +143,14 @@ export function AccessControlPage() {
     setUsernameError("");
 
     try {
-      const updatedUser = await userService.updateUser(editingUsernameFor.id, { username: next });
+      const updatedUser = await userService.updateUser(editingUsernameFor.id, {
+        username: next,
+        marketingFunction: marketingFunctionInput.trim() || null,
+      });
       setUsers((currentUsers) =>
         currentUsers.map((currentUser) => (currentUser.id === updatedUser.id ? updatedUser : currentUser)),
       );
-      showToast("Login atualizado com sucesso.", "success");
+      showToast("Usuário salvo.", "success");
       setEditingUsernameFor(null);
     } catch (usernameUpdateError) {
       setUsernameError(getApiErrorMessage(usernameUpdateError));
@@ -180,10 +186,13 @@ export function AccessControlPage() {
                     <div className="flex items-start justify-between gap-3">
                       <div className="min-w-0">
                         <h3 className="font-bold text-pegasus-navy">{user.name}</h3>
+                        {user.marketingFunction ? (
+                          <p className="text-xs font-semibold text-emerald-700">Marketing · {user.marketingFunction}</p>
+                        ) : null}
                         <p className="mt-1 flex flex-wrap items-center gap-1.5 break-words text-sm text-slate-500">
                           @{user.username} {user.email ? `| ${user.email}` : ""}
                           <button
-                            aria-label="Editar login"
+                            aria-label="Editar usuário"
                             className="focus-ring text-stone-400 hover:text-pegasus-primary"
                             onClick={() => openEditUsername(user)}
                             type="button"
@@ -251,10 +260,13 @@ export function AccessControlPage() {
                     <tr key={user.id || user.email} className="bg-white">
                       <td className="px-6 py-4">
                         <p className="font-bold text-pegasus-navy">{user.name}</p>
+                        {user.marketingFunction ? (
+                          <p className="text-xs font-semibold text-emerald-700">Marketing · {user.marketingFunction}</p>
+                        ) : null}
                         <p className="flex items-center gap-1.5 text-xs text-slate-500">
                           @{user.username} {user.email ? `| ${user.email}` : ""}
                           <button
-                            aria-label="Editar login"
+                            aria-label="Editar usuário"
                             className="focus-ring text-stone-400 hover:text-pegasus-primary"
                             onClick={() => openEditUsername(user)}
                             type="button"
@@ -345,7 +357,7 @@ export function AccessControlPage() {
       <Modal
         isOpen={Boolean(editingUsernameFor)}
         onClose={() => setEditingUsernameFor(null)}
-        title="Editar login"
+        title="Editar usuário"
         description={editingUsernameFor ? `Usuário: ${editingUsernameFor.name}` : ""}
       >
         <form className="grid gap-4" onSubmit={saveUsername}>
@@ -356,6 +368,25 @@ export function AccessControlPage() {
             onChange={(event) => setUsernameInput(event.target.value)}
             value={usernameInput}
           />
+          <div>
+            <Input
+              disabled={isSavingUsername}
+              label="Função no marketing"
+              list="marketing-function-suggestions"
+              maxLength={80}
+              onChange={(event) => setMarketingFunctionInput(event.target.value)}
+              placeholder="Ex.: Edição de vídeos"
+              value={marketingFunctionInput}
+            />
+            <datalist id="marketing-function-suggestions">
+              {MARKETING_FUNCTION_SUGGESTIONS.map((suggestion) => (
+                <option key={suggestion} value={suggestion} />
+              ))}
+            </datalist>
+            <p className="mt-1.5 text-xs text-slate-500">
+              Aparece ao atribuir cards no Kanban de marketing. Deixe vazio se a pessoa não é da equipe.
+            </p>
+          </div>
           <div className="flex flex-col gap-3 sm:flex-row">
             <Button disabled={isSavingUsername} type="submit">
               {isSavingUsername ? "Salvando..." : "Salvar"}

@@ -7,6 +7,7 @@ export const usersRoutes = Router();
 
 usersRoutes.use(authMiddleware);
 
+usersRoutes.get("/marketing-team", permissionMiddleware("marketing:read"), usersController.findMarketingTeam);
 usersRoutes.get("/by-role/:role", permissionMiddleware(["management:read", "marketing:read"]), usersController.findByRole);
 usersRoutes.get("/", permissionMiddleware("users:read"), usersController.findAll);
 usersRoutes.post("/", permissionMiddleware("users:create"), usersController.create);

@@ -1,32 +1,32 @@
 import { ExternalLink, Lightbulb, Megaphone, Palette, ShieldCheck } from "lucide-react";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import { useAuth } from "../../auth/AuthContext";
 import { useTour } from "../../tours/useTour";
 import { AdvancedKanban } from "../../components/kanban/AdvancedKanban";
-import { FilterBar } from "../../components/ui/FilterBar";
-import { Select } from "../../components/ui/Select";
 import { useToast } from "../../components/ui/Toast";
 import { getApiErrorMessage } from "../../services/api";
 import {
   marketingService,
-  type MarketingChannel,
-  type MarketingPriority,
+  type MarketingChecklistItem,
   type MarketingStatus,
   type MarketingTask,
   type MarketingTaskPayload,
 } from "../../services/marketingService";
 import { userService } from "../../services/userService";
 import { ORG_NAME } from "../../config/org";
+import {
+  MARKETING_CHANNELS,
+  MARKETING_COLUMNS,
+  MARKETING_FORMATS,
+  STALE_AFTER_DAYS,
+  archiveStateOf,
+  normalizeLegacyTask,
+} from "./marketingConfig";
+import { MarketingFilters, applyMarketingFilters, usePersistedFilters } from "./MarketingFilters";
 
-const columns: Array<{ label: string; value: MarketingStatus }> = [
-  { label: "Ideias", value: "ideas" },
-  { label: "Produção", value: "production" },
-  { label: "Revisão", value: "review" },
-  { label: "Agendado", value: "scheduled" },
-  { label: "Publicado", value: "published" },
-];
+const columns = MARKETING_COLUMNS;
 
-const channels: MarketingChannel[] = ["Instagram", "WhatsApp", "Arte", "Captacao", "Evento"];
 const savedContentLabels = ["Vídeo de Treino", "Reels", "Fotos"];
 type MarketingTab = "kanban" | "identidade";
 
@@ -64,24 +64,13 @@ const TOUR_STEPS = [
     element: "[data-tour='mkt-kanban']",
     popover: {
       title: "Kanban de marketing",
-      description: "Arraste cards entre colunas: Ideias → Produção → Revisão → Agendado → Publicado. Filtre por canal, responsável e prioridade.",
+      description: "Arraste cards entre colunas (no celular, use o menu ⋯ do card). Tudo passa pela Revisão antes de Agendado ou Publicado. Filtre por Meus, Atrasados, formato, canal e pessoa.",
       side: "top" as const,
     },
   },
 ];
 
 type MarketingForm = Required<Omit<MarketingTaskPayload, "area">>;
-
-function label(value: string) {
-  const labels: Record<string, string> = {
-    Captacao: "Captação",
-    media: "Média",
-    baixa: "Baixa",
-    alta: "Alta",
-  };
-
-  return labels[value] ?? value.charAt(0).toUpperCase() + value.slice(1);
-}
 
 function buildPayload(form: MarketingForm): MarketingTaskPayload {
   return {
@@ -91,9 +80,14 @@ function buildPayload(form: MarketingForm): MarketingTaskPayload {
     dueDate: form.dueDate,
     priority: form.priority,
     status: form.status,
-    channel: form.channel,
+    format: form.format || null,
+    stagesDone: form.format ? form.stagesDone : [],
+    // Tarefa solta (and any format without a platform) is saved without a channel.
+    channel: form.channel && MARKETING_FORMATS.find((item) => item.value === form.format)?.showChannel !== false
+      ? form.channel
+      : null,
     labels: form.labels,
-    comments: form.comments,
+    // Comments are added through their own endpoint (author from the login, @mentions).
     checklist: form.checklist,
     area: "marketing",
   };
@@ -107,9 +101,8 @@ export function MarketingPage() {
   const canDelete = hasPermission(["marketing:delete"]);
   const canApprove = user?.roles?.includes("ChefeMarketing") || user?.roles?.includes("Diretor") || false;
   const [tasks, setTasks] = useState<MarketingTask[]>([]);
-  const [channel, setChannel] = useState("todos");
-  const [assignedTo, setAssignedTo] = useState("todos");
-  const [priority, setPriority] = useState("todos");
+  const [filters, setFilters] = usePersistedFilters();
+  const showArchived = filters.showArchived;
   const [activeTab, setActiveTab] = useState<MarketingTab>("kanban");
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
@@ -118,59 +111,254 @@ export function MarketingPage() {
   const [marketingUsers, setMarketingUsers] = useState<Array<{ label: string; value: string }>>([]);
   const today = new Date().toISOString().slice(0, 10);
 
-  const owners = useMemo(
-    () => Array.from(new Set(tasks.flatMap((task) => task.assignedTo))),
-    [tasks],
+  const people = useMemo(
+    () =>
+      Array.from(new Set([...marketingUsers.map((member) => member.value), ...tasks.flatMap((task) => task.assignedTo)])).sort(
+        (a, b) => a.localeCompare(b, "pt-BR"),
+      ),
+    [marketingUsers, tasks],
   );
+  const visibleTasks = useMemo(
+    () => applyMarketingFilters(tasks, filters, user?.name),
+    [filters, tasks, user?.name],
+  );
+  const visibleIds = useMemo(() => new Set(visibleTasks.map((task) => task.id)), [visibleTasks]);
+  const isVisible = useCallback((task: MarketingTask) => visibleIds.has(task.id), [visibleIds]);
 
-  const loadTasks = useCallback(async () => {
-    setIsLoading(true);
+  // Skeleton only on the very first load; later loads keep the board on screen.
+  const hasLoadedRef = useRef(false);
+  // Responses are applied only if no newer request or local change happened meanwhile,
+  // so a slow background refresh never undoes a move made while it was in flight.
+  const requestIdRef = useRef(0);
+  const mutationSeqRef = useRef(0);
 
-    try {
-      const data = await marketingService.getTasks({
-        channel: channel as MarketingChannel | "todos",
-        assignedTo,
-        priority: priority as MarketingPriority | "todos",
-      });
-      setTasks(data);
-    } catch (error) {
-      showToast(getApiErrorMessage(error), "error");
-    } finally {
-      setIsLoading(false);
-    }
-  }, [assignedTo, channel, priority, showToast]);
+  const loadTasks = useCallback(
+    async ({ background = false }: { background?: boolean } = {}) => {
+      const requestId = ++requestIdRef.current;
+      const mutationSeq = mutationSeqRef.current;
+      if (!hasLoadedRef.current) setIsLoading(true);
+
+      try {
+        // Everything is filtered on screen (instant); only archived cards are left to the server.
+        const data = await marketingService.getTasks({ includeArchived: showArchived });
+        if (requestId !== requestIdRef.current || mutationSeq !== mutationSeqRef.current) return;
+        setTasks(data.map(normalizeLegacyTask));
+        hasLoadedRef.current = true;
+      } catch (error) {
+        if (!background) showToast(getApiErrorMessage(error), "error");
+      } finally {
+        if (requestId === requestIdRef.current) setIsLoading(false);
+      }
+    },
+    [showArchived, showToast],
+  );
 
   useEffect(() => {
     loadTasks();
   }, [loadTasks]);
 
-  // Auto-reload every 60s when any task is in the scheduled column
+  const refreshInBackground = useCallback(() => loadTasks({ background: true }), [loadTasks]);
+
+  // ?card=<id> (calendar, @mention notification): open that card once the board is loaded.
+  const [searchParams, setSearchParams] = useSearchParams();
+  const requestedCardId = searchParams.get("card");
+  const [cardToOpen, setCardToOpen] = useState<MarketingTask | null>(null);
   useEffect(() => {
-    const hasPending = tasks.some((t) => t.status === "scheduled");
-    if (!hasPending) return;
-    const id = setInterval(loadTasks, 60_000);
-    return () => clearInterval(id);
-  }, [tasks, loadTasks]);
+    if (!requestedCardId || isLoading) return;
+    let cancelled = false;
+    const clearParam = () =>
+      setSearchParams(
+        (params) => {
+          params.delete("card");
+          return params;
+        },
+        { replace: true },
+      );
+    const loaded = tasks.find((task) => task.id === requestedCardId);
+    if (loaded) {
+      setActiveTab("kanban");
+      setCardToOpen(loaded);
+      clearParam();
+      return;
+    }
+    // Not on the board (archived or filtered out on the server): fetch it directly.
+    marketingService
+      .getTask(requestedCardId)
+      .then((task) => {
+        if (cancelled) return;
+        setActiveTab("kanban");
+        setCardToOpen(normalizeLegacyTask(task));
+      })
+      .catch(() => {
+        if (!cancelled) showToast("Card não encontrado. Ele pode ter sido excluído.", "error");
+      })
+      .finally(() => {
+        if (!cancelled) clearParam();
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [isLoading, requestedCardId, setSearchParams, showToast, tasks]);
+  const handleCardOpened = useCallback(() => setCardToOpen(null), []);
+
+  function replaceTask(updated: MarketingTask) {
+    const normalized = normalizeLegacyTask(updated);
+    setTasks((current) => current.map((task) => (task.id === normalized.id ? normalized : task)));
+  }
+
+  async function moveTask(task: MarketingTask, status: MarketingStatus) {
+    mutationSeqRef.current += 1;
+    try {
+      replaceTask(await marketingService.updateTaskStatus(task.id, status));
+    } catch (error) {
+      showToast(`Não foi possível mover. ${getApiErrorMessage(error)}`, "error");
+      throw error;
+    }
+  }
+
+  async function saveChecklist(task: MarketingTask, checklist: MarketingChecklistItem[]) {
+    mutationSeqRef.current += 1;
+    try {
+      replaceTask(await marketingService.updateTask(task.id, { checklist }));
+    } catch (error) {
+      showToast(`Não foi possível salvar o checklist. ${getApiErrorMessage(error)}`, "error");
+      throw error;
+    }
+  }
+
+  async function quickCreate(title: string, status: MarketingStatus) {
+    mutationSeqRef.current += 1;
+    try {
+      const created = normalizeLegacyTask(await marketingService.createTask({ title, status, area: "marketing" }));
+      setTasks((current) => [created, ...current]);
+    } catch (error) {
+      showToast(`Não foi possível criar. ${getApiErrorMessage(error)}`, "error");
+      throw error;
+    }
+  }
+
+  async function quickUpdate(task: MarketingTask, patch: { assignedTo?: string[]; dueDate?: string | null }) {
+    mutationSeqRef.current += 1;
+    try {
+      replaceTask(await marketingService.updateTask(task.id, patch));
+    } catch (error) {
+      showToast(`Não foi possível salvar. ${getApiErrorMessage(error)}`, "error");
+      throw error;
+    }
+  }
+
+  async function duplicateTask(task: MarketingTask) {
+    mutationSeqRef.current += 1;
+    const due = task.dueDate?.slice(0, 10) ?? null;
+    try {
+      const created = await marketingService.createTask({
+        title: `${task.title} (cópia)`,
+        description: task.description ?? undefined,
+        // Copies start the flow again: approval-only columns are not a starting point.
+        status: task.status === "scheduled" || task.status === "published" ? "ideas" : task.status,
+        assignedTo: task.assignedTo,
+        dueDate: due && due >= today ? due : undefined,
+        priority: task.priority,
+        channel: task.channel,
+        format: task.format,
+        labels: task.labels,
+        checklist: task.checklist.map((item, index) => ({ ...item, id: `check-${Date.now()}-${index}`, done: false })),
+        area: "marketing",
+      });
+      setTasks((current) => [normalizeLegacyTask(created), ...current]);
+      showToast("Duplicado.", "success");
+    } catch (error) {
+      showToast(`Não foi possível duplicar. ${getApiErrorMessage(error)}`, "error");
+      throw error;
+    }
+  }
+
+  async function archiveTask(task: MarketingTask, archived: boolean) {
+    mutationSeqRef.current += 1;
+    const previous = tasks;
+    // Hidden right away unless archived cards are on screen.
+    setTasks((current) =>
+      archived && !showArchived
+        ? current.filter((item) => item.id !== task.id)
+        : current.map((item) =>
+            item.id === task.id ? { ...item, archivedAt: archived ? new Date().toISOString() : null } : item,
+          ),
+    );
+    try {
+      const saved = await marketingService.archiveTask(task.id, archived);
+      if (!archived || showArchived) replaceTask(saved);
+      showToast(archived ? "Arquivado." : "Desarquivado.", "success");
+    } catch (error) {
+      setTasks(previous);
+      showToast(`Não foi possível ${archived ? "arquivar" : "desarquivar"}. ${getApiErrorMessage(error)}`, "error");
+      throw error;
+    }
+  }
+
+  async function reorderTask(task: MarketingTask, neighbours: { beforeId: string | null; afterId: string | null }) {
+    mutationSeqRef.current += 1;
+    try {
+      await marketingService.reorderTask(task.id, neighbours);
+      // The first hand-sort of a column spaces out every card in it: reload to get all positions.
+      await loadTasks({ background: true });
+    } catch (error) {
+      showToast(`Não foi possível salvar a ordem. ${getApiErrorMessage(error)}`, "error");
+      throw error;
+    }
+  }
+
+  async function addComment(task: MarketingTask, text: string) {
+    mutationSeqRef.current += 1;
+    try {
+      replaceTask(await marketingService.addComment(task.id, text));
+    } catch (error) {
+      showToast(`Não foi possível comentar. ${getApiErrorMessage(error)}`, "error");
+      throw error;
+    }
+  }
+
+  async function saveStages(task: MarketingTask, stagesDone: string[]) {
+    mutationSeqRef.current += 1;
+    try {
+      // Format goes along so legacy cards (format read from the old channel) get it saved too.
+      replaceTask(await marketingService.updateTask(task.id, { stagesDone, format: task.format }));
+    } catch (error) {
+      showToast(`Não foi possível salvar a etapa. ${getApiErrorMessage(error)}`, "error");
+      throw error;
+    }
+  }
 
   useEffect(() => {
-    Promise.all([
-      userService.getUsersByRole("Marketing"),
-      userService.getUsersByRole("ChefeMarketing"),
-    ])
-      .then(([marketing, chefe]) => {
-        const seen = new Set<string>();
-        const merged = [...marketing, ...chefe].filter((u) => {
-          if (seen.has(u.id)) return false;
-          seen.add(u.id);
-          return true;
-        });
-        setMarketingUsers(merged.map((u) => ({ label: u.name, value: u.name })));
-      })
-      .catch(() => setMarketingUsers([]));
+    // Team with each person's marketing function ("Gustavo — Edição de vídeos").
+    // Falls back to the role lists if the API doesn't have the team route yet.
+    marketingService
+      .getTeam()
+      .then((team) =>
+        setMarketingUsers(
+          team.map((member) => ({
+            label: member.marketingFunction ? `${member.name} — ${member.marketingFunction}` : member.name,
+            value: member.name,
+          })),
+        ),
+      )
+      .catch(() =>
+        Promise.all([userService.getUsersByRole("Marketing"), userService.getUsersByRole("ChefeMarketing")])
+          .then(([marketing, chefe]) => {
+            const seen = new Set<string>();
+            const merged = [...marketing, ...chefe].filter((u) => {
+              if (seen.has(u.id)) return false;
+              seen.add(u.id);
+              return true;
+            });
+            setMarketingUsers(merged.map((u) => ({ label: u.name, value: u.name })));
+          })
+          .catch(() => setMarketingUsers([])),
+      );
   }, []);
 
   async function saveWithFeedback(action: () => Promise<void>, message: string) {
     setIsSaving(true);
+    mutationSeqRef.current += 1;
 
     try {
       await action();
@@ -212,7 +400,10 @@ export function MarketingPage() {
         canCreate={canCreate}
         canDelete={canDelete}
         canUpdate={canUpdate}
-        channelOptions={channels.map((item) => ({ label: label(item), value: item }))}
+        channelOptions={MARKETING_CHANNELS}
+        formatOptions={MARKETING_FORMATS}
+        stagesColumn="production"
+        staleAfterDays={STALE_AFTER_DAYS}
         columns={columns}
         currentUserName={user?.name}
         description={`Kanban de comunicação, conteúdo e identidade visual do Projeto ${ORG_NAME}.`}
@@ -222,42 +413,19 @@ export function MarketingPage() {
         responsibleOptions={marketingUsers}
         savedLabels={savedContentLabels}
         filters={
-          <FilterBar>
-            <Select
-              label="Canal"
-              onChange={(event) => setChannel(event.target.value)}
-              options={[
-                { label: "Todos os canais", value: "todos" },
-                ...channels.map((item) => ({ label: label(item), value: item })),
-              ]}
-              value={channel}
-            />
-            <Select
-              label="Responsável"
-              onChange={(event) => setAssignedTo(event.target.value)}
-              options={[
-                { label: "Todos os responsáveis", value: "todos" },
-                ...owners.map((item) => ({ label: item, value: item })),
-              ]}
-              value={assignedTo}
-            />
-            <Select
-              label="Prioridade"
-              onChange={(event) => setPriority(event.target.value)}
-              options={[
-                { label: "Todas as prioridades", value: "todos" },
-                { label: "Baixa", value: "baixa" },
-                { label: "Média", value: "media" },
-                { label: "Alta", value: "alta" },
-              ]}
-              value={priority}
-            />
-          </FilterBar>
+          <MarketingFilters
+            filters={filters}
+            people={people}
+            shown={visibleTasks.length}
+            total={tasks.length}
+            onChange={setFilters}
+          />
         }
         icon={Megaphone}
         isLoading={isLoading}
         isSaving={isSaving}
         tasks={tasks}
+        taskFilter={isVisible}
         title="Marketing"
         onCreate={(form) =>
           saveWithFeedback(
@@ -271,12 +439,20 @@ export function MarketingPage() {
             "Tarefa excluída com sucesso.",
           )
         }
-        onMove={(task, status) =>
-          saveWithFeedback(
-            () => marketingService.updateTaskStatus(task.id, status).then(() => undefined),
-            "Tarefa movida com sucesso.",
-          )
-        }
+        onMove={moveTask}
+        onChecklistToggle={saveChecklist}
+        onStagesToggle={saveStages}
+        onQuickCreate={quickCreate}
+        onQuickUpdate={quickUpdate}
+        onDuplicate={duplicateTask}
+        onAddComment={addComment}
+        onReorder={reorderTask}
+        openTask={cardToOpen}
+        onOpenTaskHandled={handleCardOpened}
+        loadHistory={(task) => marketingService.getHistory(task.id)}
+        onArchive={archiveTask}
+        archiveState={archiveStateOf}
+        onRefresh={refreshInBackground}
         onUpdate={(task, form) =>
           saveWithFeedback(
             () => marketingService.updateTask(task.id, buildPayload(form as MarketingForm)).then(() => undefined),
@@ -292,7 +468,7 @@ export function MarketingPage() {
         onReject={(task) =>
           saveWithFeedback(
             () => marketingService.rejectTask(task.id).then(() => undefined),
-            "Tarefa reprovada e devolvida para Produção.",
+            task.status === "scheduled" ? "Desagendado. O card voltou para Produção." : "Reprovado. O card voltou para Produção.",
           )
         }
       />

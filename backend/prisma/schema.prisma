@@ -17,6 +17,8 @@ model User {
   mustChangePassword  Boolean    @default(false)
   athleteId           String?    @unique
   avatarUrl           String?
+  // Função na equipe de marketing (ex.: "Edição de vídeos"), mostrada ao atribuir cards.
+  marketingFunction   String?
   googleRefreshToken  String?
   googleCalendarId    String?
   createdAt           DateTime   @default(now())
@@ -206,6 +208,18 @@ model Task {
   checklist      Json      @default("[]")
   approvalStatus String?
   scheduledAt    DateTime?
+  // Marketing: formato de produção (video | video_arte | arte | evento | tarefa) e as
+  // sub-etapas já feitas dele (chaves definidas no front, ex.: "roteiro", "gravar").
+  format         String?
+  stagesDone     String[]  @default([])
+  // Quando o card entrou na coluna atual (null = antes deste campo existir).
+  statusChangedAt DateTime?
+  // Arquivado à mão. Publicados há mais de 30 dias também ficam ocultos (calculado na consulta).
+  archivedAt     DateTime?
+  // Ordem dentro da coluna (menor = mais acima). Null = ainda não ordenado à mão.
+  position       Float?
+  // Item da antiga Pauta de Conteúdo de onde este card veio (migração única, evita duplicar).
+  sourceContentItemId String? @unique
   createdAt      DateTime  @default(now())
   updatedAt      DateTime  @updatedAt
 }

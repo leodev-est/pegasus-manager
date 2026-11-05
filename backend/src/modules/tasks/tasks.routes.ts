@@ -13,10 +13,14 @@ tasksRoutes.use(authMiddleware);
 // (eles têm marketing:*, não management:*) e o próprio ChefeMarketing em approve/reject.
 tasksRoutes.get("/publish-scheduled", permissionMiddleware(["management:read", "marketing:read"]), tasksController.publishScheduled);
 tasksRoutes.get("/", tasksController.findAll);
+tasksRoutes.get("/:id/history", tasksController.history);
 tasksRoutes.get("/:id", tasksController.findById);
 tasksRoutes.post("/", tasksController.create);
 tasksRoutes.patch("/:id", tasksController.update);
 tasksRoutes.patch("/:id/status", tasksController.updateStatus);
 tasksRoutes.patch("/:id/approve", tasksController.approve);
 tasksRoutes.patch("/:id/reject", tasksController.reject);
+tasksRoutes.patch("/:id/archive", tasksController.archive);
+tasksRoutes.post("/:id/comments", tasksController.addComment);
+tasksRoutes.patch("/:id/position", tasksController.reorder);
 tasksRoutes.delete("/:id", tasksController.delete);

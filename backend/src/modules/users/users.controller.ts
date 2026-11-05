@@ -53,6 +53,14 @@ export const usersController = {
     }
   }) satisfies RequestHandler,
 
+  findMarketingTeam: (async (_request, response, next) => {
+    try {
+      response.json(await usersService.findMarketingTeam());
+    } catch (error) {
+      next(error);
+    }
+  }) satisfies RequestHandler,
+
   findByRole: (async (request, response, next) => {
     try {
       const users = await usersService.findByRole(String(request.params.role));

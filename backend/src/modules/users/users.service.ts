@@ -10,7 +10,10 @@ type UserPayload = {
   active?: boolean;
   mustChangePassword?: boolean;
   roles?: string[];
+  marketingFunction?: string | null;
 };
+
+const MARKETING_ROLES = ["Marketing", "MarketingLvl1", "MarketingLvl2", "ChefeMarketing"];
 
 const includeRoles = {
   roles: {
@@ -41,6 +44,7 @@ async function formatUser(userId: string) {
     username: user.username,
     active: user.active,
     mustChangePassword: user.mustChangePassword,
+    marketingFunction: user.marketingFunction,
     roles: user.roles.map((userRole) => userRole.role.name),
     permissions: Array.from(
       new Set(
@@ -84,6 +88,7 @@ function serializeUser(user: {
   username: string;
   active: boolean;
   mustChangePassword: boolean;
+  marketingFunction: string | null;
   createdAt: Date;
   updatedAt: Date;
   roles: Array<{
@@ -100,6 +105,7 @@ function serializeUser(user: {
     username: user.username,
     active: user.active,
     mustChangePassword: user.mustChangePassword,
+    marketingFunction: user.marketingFunction,
     roles: user.roles.map((userRole) => userRole.role.name),
     permissions: Array.from(
       new Set(
@@ -128,6 +134,22 @@ export const usersService = {
       include: includeRoles,
     });
     return users.map(serializeUser);
+  },
+
+  /** Equipe de marketing: quem tem papel de marketing ou uma função de marketing cadastrada. */
+  async findMarketingTeam() {
+    const users = await prisma.user.findMany({
+      where: {
+        active: true,
+        OR: [
+          { marketingFunction: { not: null } },
+          { roles: { some: { role: { name: { in: MARKETING_ROLES } } } } },
+        ],
+      },
+      orderBy: { name: "asc" },
+      select: { id: true, name: true, marketingFunction: true },
+    });
+    return users;
   },
 
   async findAll(includeInactive = false) {
@@ -168,6 +190,7 @@ export const usersService = {
       password?: string;
       active?: boolean;
       mustChangePassword?: boolean;
+      marketingFunction?: string | null;
     } = {};
 
     if (payload.name !== undefined) data.name = payload.name;
@@ -188,6 +211,14 @@ export const usersService = {
       data.mustChangePassword = payload.mustChangePassword;
     }
     if (payload.password) data.password = await bcrypt.hash(payload.password, 10);
+    if (payload.marketingFunction !== undefined) {
+      if (payload.marketingFunction !== null && typeof payload.marketingFunction !== "string") {
+        throw new AppError("Função no marketing inválida.", 400);
+      }
+      const value = payload.marketingFunction?.trim() ?? "";
+      if (value.length > 80) throw new AppError("Função no marketing deve ter até 80 caracteres.", 400);
+      data.marketingFunction = value || null;
+    }
 
     await prisma.user.update({
       where: { id },

@@ -182,13 +182,15 @@ export function AppRoutes() {
             }
           />
           <Route
-            path="marketing/pauta"
+            path="marketing/calendario"
             element={
               <ProtectedRoute permissions={["marketing"]}>
                 <ContentCalendarPage />
               </ProtectedRoute>
             }
           />
+          {/* A Pauta de Conteúdo virou cards do Kanban; links antigos caem no calendário. */}
+          <Route path="marketing/pauta" element={<Navigate to="/app/marketing/calendario" replace />} />
           <Route
             path="marketing/eventos"
             element={

@@ -90,13 +90,24 @@ function typeLabel(type: Notification["type"]) {
     frequencia: "Frequência",
     sistema: "Sistema",
     treino: "Treino",
+    marketing: "Marketing",
   };
 
   return labels[type];
 }
 
-function notificationHref(type: Notification["type"], isAthlete: boolean): string | null {
-  const routes: Record<Notification["type"], { athlete: string; staff: string } | null> = {
+function notificationHref(notification: Notification, isAthlete: boolean): string | null {
+  const type = notification.type;
+  if (type === "marketing") {
+    // Mentions point at the card: the Kanban opens it from ?card=.
+    try {
+      const meta = notification.meta ? (JSON.parse(notification.meta) as { taskId?: string }) : null;
+      return meta?.taskId ? `/app/marketing?card=${encodeURIComponent(meta.taskId)}` : "/app/marketing";
+    } catch {
+      return "/app/marketing";
+    }
+  }
+  const routes: Record<Exclude<Notification["type"], "marketing">, { athlete: string; staff: string } | null> = {
     treino: { athlete: "/app/meu-perfil", staff: "/app/treinos/calendario" },
     financeiro: { athlete: "/app/atleta/mensalidades", staff: "/app/financeiro" },
     frequencia: { athlete: "/app/atleta/frequencia", staff: "/app/frequencia" },
@@ -216,7 +227,7 @@ export function Topbar({ onMenuClick, isSidebarCollapsed = false }: TopbarProps)
     if (!notification.read) {
       markAsRead(notification.id);
     }
-    const href = notificationHref(notification.type, isAthlete);
+    const href = notificationHref(notification, isAthlete);
     if (href) {
       setIsNotificationsOpen(false);
       navigate(href);

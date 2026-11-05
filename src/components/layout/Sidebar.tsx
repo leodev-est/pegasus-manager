@@ -239,8 +239,8 @@ export const menuGroups: MenuGroup[] = [
         permissions: ["marketing"],
       },
       {
-        label: "Pauta de Conteúdo",
-        path: "/app/marketing/pauta",
+        label: "Calendário de Conteúdo",
+        path: "/app/marketing/calendario",
         icon: CalendarDays,
         permissions: ["marketing"],
       },

@@ -21,6 +21,8 @@ export type AuthUser = {
   roleLabels?: string[];
   permissions: string[];
   mustChangePassword?: boolean;
+  /** Função na equipe de marketing (só vem na listagem de usuários). */
+  marketingFunction?: string | null;
 };
 
 type AuthContextValue = {
