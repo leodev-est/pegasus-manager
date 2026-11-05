@@ -339,6 +339,19 @@ function mergeIncomingComments(stored: unknown, incoming: unknown, actor?: { id:
   ];
 }
 
+/**
+ * Muda o status só se o card ainda estiver no status que foi checado. Sem isso, uma ação que
+ * chega atrasada (ex.: aprovar um card que acabou de ser reprovado) passaria por cima da mais
+ * nova. Devolve o card atualizado ou responde 409.
+ */
+async function updateIfStatusUnchanged(id: string, expectedStatus: string, data: Prisma.TaskUncheckedUpdateManyInput) {
+  const { count } = await prisma.task.updateMany({ where: { id, status: expectedStatus }, data });
+  if (count === 0) {
+    throw new AppError("O card mudou de coluna enquanto isso. Atualize e tente de novo.", 409);
+  }
+  return prisma.task.findUniqueOrThrow({ where: { id } });
+}
+
 async function notifyTaskAssignees(title: string, before: string[], after: string[], actorId?: string) {
   const had = new Set(before.map((n) => n.toLowerCase()));
   const added = after.filter((name) => !had.has(name.toLowerCase()));
@@ -592,13 +605,10 @@ export const tasksService = {
     const statusChanged = status !== task.status;
     const nextPosition = position ?? (statusChanged ? await endOfColumnPosition(area, status) : task.position);
 
-    const updated = await prisma.task.update({
-      where: { id },
-      data: {
-        status,
-        position: nextPosition,
-        ...(statusChanged ? { statusChangedAt: new Date() } : {}),
-      },
+    const updated = await updateIfStatusUnchanged(id, task.status, {
+      status,
+      position: nextPosition,
+      ...(statusChanged ? { statusChangedAt: new Date() } : {}),
     });
 
     if (statusChanged) {
@@ -650,9 +660,12 @@ export const tasksService = {
       if (date.getTime() <= Date.now()) {
         throw new AppError("Escolha uma data e hora no futuro para agendar", 400);
       }
-      const updated = await prisma.task.update({
-        where: { id },
-        data: { approvalStatus: "approved", status: "scheduled", scheduledAt: date, statusChangedAt: new Date(), position },
+      const updated = await updateIfStatusUnchanged(id, task.status, {
+        approvalStatus: "approved",
+        status: "scheduled",
+        scheduledAt: date,
+        statusChangedAt: new Date(),
+        position,
       });
       void auditService.log({
         userId: actor?.id,
@@ -665,9 +678,12 @@ export const tasksService = {
       return updated;
     }
 
-    const updated = await prisma.task.update({
-      where: { id },
-      data: { approvalStatus: "approved", status: "published", scheduledAt: null, statusChangedAt: new Date(), position },
+    const updated = await updateIfStatusUnchanged(id, task.status, {
+      approvalStatus: "approved",
+      status: "published",
+      scheduledAt: null,
+      statusChangedAt: new Date(),
+      position,
     });
     void auditService.log({
       userId: actor?.id,
@@ -687,9 +703,12 @@ export const tasksService = {
       throw new AppError("Só cards em Revisão ou Agendado podem voltar para Produção", 400);
     }
     const position = await endOfColumnPosition("marketing", "production");
-    const updated = await prisma.task.update({
-      where: { id },
-      data: { approvalStatus: "rejected", status: "production", scheduledAt: null, statusChangedAt: new Date(), position },
+    const updated = await updateIfStatusUnchanged(id, task.status, {
+      approvalStatus: "rejected",
+      status: "production",
+      scheduledAt: null,
+      statusChangedAt: new Date(),
+      position,
     });
     void auditService.log({
       userId: actor?.id,
