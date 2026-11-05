@@ -40,6 +40,39 @@ const FINISHED_STATUS_BY_AREA = {
 } as const;
 export const TASK_RETENTION_DAYS = 60;
 
+// Marketing: Agendado/Publicado só se alcança pelo fluxo de aprovação (approve/publishScheduled).
+const APPROVAL_ONLY_STATUSES = ["scheduled", "published"];
+const MAX_NEW_COMMENTS_PER_EDIT = 10;
+const MAX_COMMENT_LENGTH = 2000;
+
+type RawComment = { id?: unknown; text?: unknown; author?: unknown };
+
+/** Campos que mudam o que vai ao ar: travados num card já aprovado e agendado (o checklist é da produção). */
+const SCHEDULED_CONTENT_FIELDS = ["title", "description", "channel", "contentFormat", "labels", "links"] as const;
+
+/**
+ * Card agendado já foi aprovado e sai sozinho na hora marcada: só quem aprova pode mudar o
+ * conteúdo dele, senão o post sai diferente do que foi aprovado. Compara do jeito que o
+ * servidor grava (texto aparado, "" = vazio, links normalizados), então reenviar o formulário
+ * sem mudança continua valendo.
+ */
+function ensureScheduledContentLocked(current: Record<string, unknown> & { status: string }, payload: TaskPayload) {
+  if (current.status !== "scheduled") return;
+  const incoming = payload as Record<string, unknown>;
+  const same = (field: string, value: unknown) => {
+    let normalized = typeof value === "string" ? value.trim() : value;
+    if (normalized === "" || normalized === undefined) normalized = null;
+    if (field === "links") normalized = normalizeLinks(normalized ?? []);
+    return JSON.stringify(normalized);
+  };
+  const changed = SCHEDULED_CONTENT_FIELDS.some(
+    (field) => incoming[field] !== undefined && same(field, incoming[field]) !== same(field, current[field]),
+  );
+  if (changed) {
+    throw new AppError("Card agendado já foi aprovado. Peça a quem aprova para desagendar antes de editar.", 400);
+  }
+}
+
 export type TaskArea = (typeof allowedAreas)[number];
 export type TaskPriority = (typeof allowedPriorities)[number];
 export type TaskStatus = (typeof statusByArea)[TaskArea][number];
@@ -260,6 +293,52 @@ function resolveContentFields(
   return { contentFormat: format, contentStep: step };
 }
 
+/** Toda peça de marketing passa pela Revisão: ninguém cria, edita ou move direto pra Agendado/Publicado. */
+function ensureNotSkippingApproval(area: TaskArea, nextStatus: string | undefined, currentStatus?: string) {
+  if (area !== "marketing" || !nextStatus || nextStatus === currentStatus) return;
+  if (APPROVAL_ONLY_STATUSES.includes(nextStatus)) {
+    throw new AppError("Esse card precisa ser aprovado na Revisão antes de ser agendado ou publicado", 400);
+  }
+  if (currentStatus === "scheduled") {
+    throw new AppError("Card agendado só sai da coluna ao ser publicado ou desagendado", 400);
+  }
+}
+
+/**
+ * Comentários pela edição só podem ser ACRESCENTADOS: os que já existem ficam exatamente como
+ * estão no banco (ninguém apaga, edita ou assina pelo outro) e os novos são montados aqui, com o
+ * autor vindo do login.
+ */
+function mergeIncomingComments(stored: unknown, incoming: unknown, actor?: { id: string; name: string }) {
+  if (!Array.isArray(incoming)) throw new AppError("Comentários deve ser uma lista", 400);
+  const existing = Array.isArray(stored) ? (stored as RawComment[]) : [];
+  // Só ids de verdade contam como "já existe": comentário sem id é sempre novo.
+  const knownIds = new Set(
+    existing.map((comment) => comment?.id).filter((id): id is string => typeof id === "string" && id.length > 0),
+  );
+  const added = (incoming as RawComment[])
+    .filter((comment) => comment && !(typeof comment.id === "string" && knownIds.has(comment.id)))
+    .map((comment) => (typeof comment.text === "string" ? comment.text.trim() : ""))
+    .filter(Boolean);
+
+  if (added.length > MAX_NEW_COMMENTS_PER_EDIT) throw new AppError("Comentários demais de uma vez", 400);
+  if (added.some((text) => text.length > MAX_COMMENT_LENGTH)) {
+    throw new AppError(`Comentário deve ter até ${MAX_COMMENT_LENGTH} caracteres`, 400);
+  }
+
+  const now = new Date().toISOString();
+  return [
+    ...existing,
+    ...added.map((text, index) => ({
+      id: `comment-${Date.now()}-${index}-${Math.random().toString(36).slice(2, 8)}`,
+      text,
+      author: actor?.name ?? "Pegasus",
+      authorId: actor?.id ?? null,
+      createdAt: now,
+    })),
+  ];
+}
+
 async function notifyTaskAssignees(title: string, before: string[], after: string[], actorId?: string) {
   const had = new Set(before.map((n) => n.toLowerCase()));
   const added = after.filter((name) => !had.has(name.toLowerCase()));
@@ -275,8 +354,6 @@ async function endOfColumnPosition(area: TaskArea, status: string) {
   });
   return (result._max.position ?? 0) + 1;
 }
-
-type RawComment = { id?: unknown; text?: unknown; author?: unknown };
 
 function findNewComments(before: unknown, after: unknown): Array<{ text: string; author?: string }> {
   if (!Array.isArray(after)) return [];
@@ -360,6 +437,10 @@ export const tasksService = {
       area,
       true,
     ) as Prisma.TaskUncheckedCreateInput;
+    ensureNotSkippingApproval(area, status);
+    if (payload.comments !== undefined) {
+      data.comments = mergeIncomingComments([], payload.comments, actor) as unknown as Prisma.InputJsonValue;
+    }
 
     if (data.position === undefined) {
       data.position = await endOfColumnPosition(area, status);
@@ -383,15 +464,35 @@ export const tasksService = {
     return created;
   },
 
-  async update(id: string, payload: TaskPayload, actor?: { id: string; name: string }) {
+  async update(
+    id: string,
+    payload: TaskPayload,
+    actor?: { id: string; name: string },
+    options: { canEditScheduledContent?: boolean; attempt?: number } = {},
+  ): Promise<Awaited<ReturnType<typeof prisma.task.findUniqueOrThrow>>> {
     const task = await this.findById(id);
     const area = resolveTaskArea(task.area);
+    if (!options.canEditScheduledContent) ensureScheduledContentLocked(task, payload);
 
     if (payload.area !== undefined && payload.area !== task.area) {
       throw new AppError("Area da tarefa não pode ser alterada", 400);
     }
 
-    const data = buildData(payload, area, false) as Prisma.TaskUncheckedUpdateInput;
+    // Reenviar o mesmo prazo (mesmo que já passado) não é mudança: não pode barrar a edição
+    // de um card atrasado com "o prazo não pode ser anterior a hoje".
+    const sameDueDate =
+      typeof payload.dueDate === "string" &&
+      task.dueDate !== null &&
+      payload.dueDate.slice(0, 10) === task.dueDate.toISOString().slice(0, 10);
+    const data = buildData(
+      sameDueDate ? { ...payload, dueDate: undefined } : payload,
+      area,
+      false,
+    ) as Prisma.TaskUncheckedUpdateInput;
+    ensureNotSkippingApproval(area, payload.status, task.status);
+    if (payload.comments !== undefined) {
+      data.comments = mergeIncomingComments(task.comments, payload.comments, actor) as unknown as Prisma.InputJsonValue;
+    }
 
     const contentFields = resolveContentFields({ contentFormat: task.contentFormat, contentStep: task.contentStep }, payload);
     const contentStepChanged = contentFields !== undefined && contentFields.contentStep !== task.contentStep;
@@ -408,10 +509,20 @@ export const tasksService = {
       }
     }
 
-    const updated = await prisma.task.update({
-      where: { id },
-      data,
+    // Grava só se o card não mudou desde que foi lido: assim uma edição não passa por cima de
+    // uma aprovação feita no mesmo instante, nem de um comentário salvo por outra pessoa.
+    const { count } = await prisma.task.updateMany({
+      where: { id, updatedAt: task.updatedAt },
+      data: data as Prisma.TaskUncheckedUpdateManyInput,
     });
+    if (count === 0) {
+      // Outra gravação entrou no meio (ex.: dois cliques rápidos no checklist): refaz tudo sobre
+      // o card atualizado — trava do agendado e junção de comentários incluídas.
+      const attempt = options.attempt ?? 0;
+      if (attempt < 2) return this.update(id, payload, actor, { ...options, attempt: attempt + 1 });
+      throw new AppError("O card mudou enquanto você editava. Atualize e tente de novo.", 409);
+    }
+    const updated = await this.findById(id);
 
     if (statusChanged) {
       void auditService.log({
@@ -476,6 +587,7 @@ export const tasksService = {
     const task = await this.findById(id);
     const area = resolveTaskArea(task.area);
     validateStatus(status, area);
+    ensureNotSkippingApproval(area, status, task.status);
 
     const statusChanged = status !== task.status;
     const nextPosition = position ?? (statusChanged ? await endOfColumnPosition(area, status) : task.position);
@@ -517,8 +629,13 @@ export const tasksService = {
     });
   },
 
-  async approve(id: string, action: "schedule" | "publish", scheduledAt?: string) {
+  async approve(id: string, action: "schedule" | "publish", scheduledAt?: string, actor?: { id: string; name: string }) {
     const task = await this.findById(id);
+    // Aprova-se o que está na Revisão; "Publicar agora" também vale pra um card já agendado.
+    const allowedFrom = action === "publish" ? ["review", "scheduled"] : ["review"];
+    if (task.area !== "marketing" || !allowedFrom.includes(task.status)) {
+      throw new AppError("Só cards em Revisão podem ser aprovados", 400);
+    }
     const nextStatus = action === "schedule" ? "scheduled" : "published";
     const position = await endOfColumnPosition("marketing", nextStatus);
 
@@ -530,11 +647,21 @@ export const tasksService = {
       if (Number.isNaN(date.getTime())) {
         throw new AppError("scheduledAt inválido", 400);
       }
+      if (date.getTime() <= Date.now()) {
+        throw new AppError("Escolha uma data e hora no futuro para agendar", 400);
+      }
       const updated = await prisma.task.update({
         where: { id },
         data: { approvalStatus: "approved", status: "scheduled", scheduledAt: date, statusChangedAt: new Date(), position },
       });
-      void auditService.log({ action: "task.move", entity: "Task", entityId: id, meta: { from: task.status, to: "scheduled" } });
+      void auditService.log({
+        userId: actor?.id,
+        userName: actor?.name,
+        action: "task.move",
+        entity: "Task",
+        entityId: id,
+        meta: { from: task.status, to: "scheduled" },
+      });
       return updated;
     }
 
@@ -542,18 +669,36 @@ export const tasksService = {
       where: { id },
       data: { approvalStatus: "approved", status: "published", scheduledAt: null, statusChangedAt: new Date(), position },
     });
-    void auditService.log({ action: "task.move", entity: "Task", entityId: id, meta: { from: task.status, to: "published" } });
+    void auditService.log({
+      userId: actor?.id,
+      userName: actor?.name,
+      action: "task.move",
+      entity: "Task",
+      entityId: id,
+      meta: { from: task.status, to: "published" },
+    });
     return updated;
   },
 
-  async reject(id: string) {
+  /** Reprovar (da Revisão) ou desagendar (de Agendado): o card volta pra Produção. */
+  async reject(id: string, actor?: { id: string; name: string }) {
     const task = await this.findById(id);
+    if (task.area !== "marketing" || (task.status !== "review" && task.status !== "scheduled")) {
+      throw new AppError("Só cards em Revisão ou Agendado podem voltar para Produção", 400);
+    }
     const position = await endOfColumnPosition("marketing", "production");
     const updated = await prisma.task.update({
       where: { id },
-      data: { approvalStatus: "rejected", status: "production", statusChangedAt: new Date(), position },
+      data: { approvalStatus: "rejected", status: "production", scheduledAt: null, statusChangedAt: new Date(), position },
     });
-    void auditService.log({ action: "task.move", entity: "Task", entityId: id, meta: { from: task.status, to: "production" } });
+    void auditService.log({
+      userId: actor?.id,
+      userName: actor?.name,
+      action: "task.move",
+      entity: "Task",
+      entityId: id,
+      meta: { from: task.status, to: "production" },
+    });
     return updated;
   },
 
@@ -570,10 +715,14 @@ export const tasksService = {
     });
   },
 
-  /** Quantas tasks finalizadas (done/published) de uma área já passaram do prazo de retenção. */
+  /**
+   * Quantas tasks finalizadas (done/published) de uma área estão nessa coluna há mais que o
+   * prazo de retenção. Conta a partir de quando o card chegou lá (statusChangedAt), não da
+   * última edição: reordenar ou comentar num card antigo não reinicia o prazo.
+   */
   async countFinishedOlderThan(area: TaskArea, cutoff: Date = retentionCutoff()) {
     return prisma.task.count({
-      where: { area, status: FINISHED_STATUS_BY_AREA[area], updatedAt: { lt: cutoff } },
+      where: { area, status: FINISHED_STATUS_BY_AREA[area], statusChangedAt: { lt: cutoff } },
     });
   },
 
@@ -587,7 +736,7 @@ export const tasksService = {
     const results = await Promise.all(
       areas.map((current) =>
         prisma.task.deleteMany({
-          where: { area: current, status: FINISHED_STATUS_BY_AREA[current], updatedAt: { lt: cutoff } },
+          where: { area: current, status: FINISHED_STATUS_BY_AREA[current], statusChangedAt: { lt: cutoff } },
         }),
       ),
     );

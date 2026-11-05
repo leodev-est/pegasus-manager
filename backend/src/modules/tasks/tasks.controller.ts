@@ -16,6 +16,12 @@ function actorOf(request: Parameters<RequestHandler>[0]) {
 
 type TaskAction = "read" | "create" | "update" | "delete";
 
+const APPROVER_ROLES = ["Diretor", "ChefeMarketing"];
+
+function isApprover(request: Parameters<RequestHandler>[0]) {
+  return Boolean(request.user?.roles.some((role) => APPROVER_ROLES.includes(role)));
+}
+
 function ensureAreaPermission(request: Parameters<RequestHandler>[0], area: TaskArea, action: TaskAction) {
   const user = request.user;
   const permission = `${area}:${action}`;
@@ -76,7 +82,7 @@ export const tasksController = {
       const id = getParamId(request.params.id);
       const currentTask = await tasksService.findById(id);
       ensureAreaPermission(request, currentTask.area as TaskArea, "update");
-      const task = await tasksService.update(id, request.body, actorOf(request));
+      const task = await tasksService.update(id, request.body, actorOf(request), { canEditScheduledContent: isApprover(request) });
       response.json(task);
     } catch (error) {
       next(error);
@@ -129,7 +135,10 @@ export const tasksController = {
       }
       const id = getParamId(request.params.id);
       const { action, scheduledAt } = request.body as { action: "schedule" | "publish"; scheduledAt?: string };
-      const task = await tasksService.approve(id, action, scheduledAt);
+      if (action !== "schedule" && action !== "publish") {
+        throw new AppError("Ação inválida: use schedule ou publish", 400);
+      }
+      const task = await tasksService.approve(id, action, scheduledAt, actorOf(request));
       response.json(task);
     } catch (error) {
       next(error);
@@ -140,11 +149,11 @@ export const tasksController = {
     try {
       const user = request.user;
       if (!user || (!user.roles.includes("Diretor") && !user.roles.includes("ChefeMarketing"))) {
-        next(new AppError("Apenas o responsável de marketing pode reprovar tarefas", 403));
+        next(new AppError("Apenas o responsável de marketing pode reprovar ou desagendar tarefas", 403));
         return;
       }
       const id = getParamId(request.params.id);
-      const task = await tasksService.reject(id);
+      const task = await tasksService.reject(id, actorOf(request));
       response.json(task);
     } catch (error) {
       next(error);
